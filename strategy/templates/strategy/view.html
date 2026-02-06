@@ -1,5 +1,5 @@
 {% extends "app/base_site.html" %}
-{% block title %} All Projects {% endblock title %}
+{% block title %} All Quarterly Rocks {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
 
@@ -12,13 +12,11 @@
 <div class="right_col" role="main">
   <div class="">
 		<ul class="nav navbar-right project_action" style="">
-		<!-- <li><a href="#" class="btn btn-sm btn-success">Approve</a></li> -->
-		<!-- <li><a href="#" class="btn btn-sm btn-warning">Pause</a></li> -->
 		<li style="display: inline-block"><a href="/strategy/add.html" class="btn btn-sm btn-info">Add</a></li>
 		</ul>
     <div class="page-title">
       <div class="title_left">
-        <h3>All Strategies</h3>
+        <h3>All Quarterly Rocks</h3>
       </div>
       <div class="clearfix"></div>
       <div class="row">
@@ -36,14 +34,16 @@
                           <th>Date Created</th>
                           <th>Date Modified</th>
                           <th>Name</th>
+                          <th>Annual Rock</th>
+                          <th>Department</th>
+                          <th>Year</th>
+                          <th>Quarter</th>
                           <th>Impact</th>
                           <th>Goal</th>
-                          <th>Alignment</th>
                           <th>Level</th>
-                          <th>Business Unit</th>
                           <th>Competitive Position</th>
                           <th>Purpose</th>
-                          <th>Why</th>                      
+                          <th>Target Completion</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -52,23 +52,20 @@
                           <td><a href="{{ strategy.id}}/" >{{ strategy.date_created }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.date_modified }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.name }}</a></td>
+                          <td><a href="{{ strategy.id}}/" >{{ strategy.annual_rock|default:"-" }}</a></td>
+                          <td><a href="{{ strategy.id}}/" >{{ strategy.department|default:"-" }}</a></td>
+                          <td><a href="{{ strategy.id}}/" >{{ strategy.year|default:"-" }}</a></td>
+                          <td><a href="{{ strategy.id}}/" >{{ strategy.get_quarter_display|default:"-" }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.impact }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.goal }}</a></td>
-                          <td><a href="{{ strategy.id}}/" >{{ strategy.objective }}</a></td>                          
                           <td><a href="{{ strategy.id}}/" >{{ strategy.level }}</a></td>
-                          <td><a href="{{ strategy.id}}/" >{{ strategy.business_unit }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.competitive_position }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.purpose }}</a></td>
-                          <td><a href="{{ strategy.id}}/" >{{ strategy.why }}</a></td>
+                          <td><a href="{{ strategy.id}}/" >{{ strategy.target_completion|default:"-" }}</a></td>
                         </tr>
                         {% empty %}
                         <tr>
-                          <td>For Loop Fail</td>
-                          <td>Desired Impact</td>
-                          <td>{{ Strategy.iep_alignment }}</td>
-                          <td>61</td>
-                          <td>2011/04/25</td>
-                          <td>$320,800</td>
+                          <td colspan="13" style="text-align:center;">No Quarterly Rocks yet.</td>
                         </tr>
                         {% endfor %}
                       </tbody>
@@ -87,17 +84,3 @@
 <!-- Ion.RangeSlider -->
 <script src="/static/vendors/ion.rangeSlider/js/ion.rangeSlider.js"></script>
 {% endblock javascripts %}
-<!--
-Desired Impact -- 70 Chart Input
-Definition of success -- 70 Chart Input
-Alignment - Ic, IPs, IPF -- Multi Check
-corporate strategy, business unit strategy, and team strategy -- radio
-Business Unit/Corporate Area/Team -- drop down
-Competitive Position - Dominant, Strong, Favorable, Tenable, Weak -- Radio Button
-Purpose - New Growth, Hold Position, Defend Position, Reverse Decay -- Radio Button
-Projects
-Feature/Test
-Update/New
-ADL Matrix - https://www.youtube.com/watch?v=4S90cdIeYoI
-https://www.mindtools.com/pages/article/what-is-strategy.htm
--->

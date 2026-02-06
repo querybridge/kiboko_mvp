@@ -17,7 +17,7 @@ from django.contrib import messages
 from app.forms import StrategyForm
 from app.models import MonthlyGoal, DailyActual
 from project.models import Project
-from strategy.models import Strategy
+from strategy.models import Strategy, AnnualRock
 from project.views import project_detail
 
 
@@ -367,37 +367,28 @@ def _build_chart_data(year):
 def index(request):
     # Exclude archived projects from dashboard
     projects = Project.objects.filter(approved=True, archived=False).order_by('-normalized_score')
-    strategy = Strategy.objects.all()
-    project_count_ic = Project.objects.filter(strategy__objective="IC", approved=True, archived=False).count()
-    project_value_ic = Project.objects.filter(strategy__objective="IC", approved=True, archived=False).aggregate(Sum('value'))
-    project_count_ips = Project.objects.filter(strategy__objective="IPS", approved=True, archived=False).count()
-    project_value_ips = Project.objects.filter(strategy__objective="IPS", approved=True, archived=False).aggregate(Sum('value'))
-    project_count_ipf = Project.objects.filter(strategy__objective="IPF", approved=True, archived=False).count()
-    project_value_ipf = Project.objects.filter(strategy__objective="IPF", approved=True, archived=False).aggregate(Sum('value'))
-    project_count_ic_p = Project.objects.filter(strategy__objective="IC", approved=False, archived=False).count()
-    project_value_ic_p = Project.objects.filter(strategy__objective="IC", approved=False, archived=False).aggregate(Sum('value'))
-    project_count_ips_p = Project.objects.filter(strategy__objective="IPS", approved=False, archived=False).count()
-    project_value_ips_p = Project.objects.filter(strategy__objective="IPS", approved=False, archived=False).aggregate(Sum('value'))
-    project_count_ipf_p = Project.objects.filter(strategy__objective="IPF", approved=False, archived=False).count()
-    project_value_ipf_p = Project.objects.filter(strategy__objective="IPF", approved=False, archived=False).aggregate(Sum('value'))
+
+    # Dynamic Annual Rock tiles
+    annual_rocks_data = []
+    for rock in AnnualRock.objects.all():
+        count = Project.objects.filter(annual_rock=rock, approved=True, archived=False).count()
+        value = Project.objects.filter(annual_rock=rock, approved=True, archived=False).aggregate(Sum('value'))
+        count_p = Project.objects.filter(annual_rock=rock, approved=False, archived=False).count()
+        value_p = Project.objects.filter(annual_rock=rock, approved=False, archived=False).aggregate(Sum('value'))
+        annual_rocks_data.append({
+            'rock': rock,
+            'count': count,
+            'value': value,
+            'count_p': count_p,
+            'value_p': value_p,
+        })
 
     # Build revenue chart data
     chart_data = _build_chart_data(date.today().year)
 
     return render(request, 'app/index2.html', {
         'projects': projects,
-        'project_count_ic': project_count_ic,
-        'project_value_ic': project_value_ic,
-        'project_count_ips': project_count_ips,
-        'project_value_ips': project_value_ips,
-        'project_count_ipf': project_count_ipf,
-        'project_value_ipf': project_value_ipf,
-        'project_count_ic_p': project_count_ic_p,
-        'project_value_ic_p': project_value_ic_p,
-        'project_count_ips_p': project_count_ips_p,
-        'project_value_ips_p': project_value_ips_p,
-        'project_count_ipf_p': project_count_ipf_p,
-        'project_value_ipf_p': project_value_ipf_p,
+        'annual_rocks_data': annual_rocks_data,
         'chart_data_mtd': json.dumps(chart_data['mtd']),
         'chart_data_qtd': json.dumps(chart_data['qtd']),
         'chart_data_ytd': json.dumps(chart_data['ytd']),

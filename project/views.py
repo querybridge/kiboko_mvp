@@ -55,8 +55,7 @@ def project(request):
 @login_required
 def project_detail(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    strategy = Strategy.objects.get(pk=project.strategy_id)
-    return render(request, 'project/detail.html', {'project': project, 'strategy':strategy,})
+    return render(request, 'project/detail.html', {'project': project})
 
 #Edit Project
 @login_required

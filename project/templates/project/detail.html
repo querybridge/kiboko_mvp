@@ -54,7 +54,7 @@
 				<!--<li style="display: inline-block"><a href="#" class="btn btn-sm btn-danger">Delete</a></li>-->
               </ul>
             <div class="x_title">
-              <h1><strong>Project: </strong>{{ project.name }}<br/><!-- <a href="/strategy/{{ project.strategy_id }}">--><small><strong>Strategy: </strong><!-- <a href="/strategy/{{ project.strategy_id }}">-->{{strategy.name}}</small><!--</a>--></h1>
+              <h1><strong>Project: </strong>{{ project.name }}<br/><small><strong>Quarterly Rock: </strong>{{ project.strategy.name }}</small></h1>
               <div class="clearfix"></div>
             </div>
 
@@ -154,16 +154,22 @@
                     <div class="project_detail">
                     <p class="title">Project Owner</p>
                     <p>{{ project.owner }}</p>
-                    <p class="title">Created:</p>  
+                    <p class="title">Department</p>
+                    <p>{{ project.business_unit|default:"-" }}</p>
+                    <p class="title">Annual Rock</p>
+                    <p>{{ project.annual_rock|default:"-" }}</p>
+                    <p class="title">Vertical</p>
+                    <p>{{ project.vertical|default:"-" }}</p>
+                    <p class="title">Metric</p>
+                    <p>{{ project.metric|default:"-" }}{% if project.metric %} <i class="fa fa-info-circle" title="Quantifiable data points and performance indicators such as conversion rates, customer acquisition costs, or average order value"></i>{% endif %}</p>
+                    <p class="title">KPI</p>
+                    <p>{{ project.kpi|default:"-" }}{% if project.kpi %} <i class="fa fa-info-circle" title="Quantifiable data points measuring performance against strategic goals, such as profitability, growth, and customer satisfaction"></i>{% endif %}</p>
+                    <p class="title">Created:</p>
                     <p>{{ project.date_created }}</p>
                     <p class="title">Modified:</p>
-                    <p>{{ project.date_modified }}</p> 
+                    <p>{{ project.date_modified }}</p>
                     <p class="title">User Story</p>
                     <p>{{ project.why }}</p>
-                      <!-- <p class="title">Sponsor</p>
-                      <p>Jordan Peele</p>-->
-                      <!-- <p class="title">Team</p>
-                      <p>{{ project.BusinessUnit }}</p>	-->
                       {% if request.user.is_superuser %}
                       <p class="title">Weighted Score</p>
                       <p>{{ project.normalized_score }}</p>

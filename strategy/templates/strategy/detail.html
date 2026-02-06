@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Strategy Details {% endblock title %}
+{% block title %} Quarterly Rock Details {% endblock title %}
 
 {% block sidebar_class %}menu_fixed{% endblock sidebar_class %}
 
@@ -13,7 +13,7 @@
     <div class="">
       <div class="page-title">
         <div class="title_left">
-          <h3>Strategy Detail</h3>
+          <h3>Quarterly Rock Detail</h3>
         </div>
 
         <div class="title_right">
@@ -27,7 +27,7 @@
         <div class="col-md-12">
           <div class="x_panel">
             <div class="x_title">
-              <h1><strong>Strategy #{{ strategy.id }}: </strong>{{ strategy.name }}</h1>
+              <h1><strong>Quarterly Rock #{{ strategy.id }}: </strong>{{ strategy.name }}</h1>
               <ul class="nav navbar-right project_action">
 				<li><a href="edit/" class="btn btn-sm btn-info">Edit</a></li>
                 <li><a href="#" class="btn btn-sm btn-danger">Delete</a></li>
@@ -57,17 +57,17 @@
                     <span class="name"> Project Progress </span>
                     <span class="value text-success">
 					<!-- <span class="project_progress"> -->
-                      <div class="progress progress_sm center-block" style="width:75%;"> 
+                      <div class="progress progress_sm center-block" style="width:75%;">
                         <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="{{ strategy.Progress }}"></div>
                       </div>
                       <small>{{ strategy.Progress }}</small>
 					<!--</span> -->
 					</span>
-                  </li>				  
+                  </li>
                 </ul>
                 <br />
 </div>
-				
+
 				<!-- Chart
                 <div id="mainb" style="height:350px;"></div>
 -->
@@ -104,7 +104,7 @@
                         <h4 class="heading"></h4>
                         <blockquote class="message">Nothing posted yet. Start the convo!</blockquote>
                         <br />
-                      
+
                     {% endfor %}
                       </div>
                     </li>
@@ -112,11 +112,8 @@
           </div>
                   <!-- end of user messages -->
 
-				
-                
 
 
-              
 
               <!-- start project-detail sidebar -->
               <div class="col-md-4 col-sm-4 col-xs-12">
@@ -124,37 +121,32 @@
                 <section class="panel">
 
                   <div class="x_title">
-                    <h2>Project Description</h2>
+                    <h2>Quarterly Rock Description</h2>
                     <div class="clearfix"></div>
                   </div>
                   <div class="panel-body">
-                    <!-- </div><h3 class="green"><i class="fa fa-paint-brush"></i> Gentelella</h3> -->
-
-                    <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi.</p>
-                    <br />
 
                     <div class="project_detail">
-
-                      <p class="title">Sponsor</p>
-                      <p>Jordan Peele</p>
-                      <p class="title">Team</p>
-                      <p>Shopping Experience</p>					  
-                      <p class="title">Project Owner</p>
-                      <p><!--<i class="fa fa-skype">&nbsp;</i><a href=”mailto:sdistin@ashleyfurniture.com″>-->Sean Carter<!--</a>--></p>
+                      <p class="title">Annual Rock</p>
+                      <p>{{ strategy.annual_rock|default:"-" }}</p>
+                      <p class="title">Department</p>
+                      <p>{{ strategy.department|default:"-" }}</p>
+                      <p class="title">Year</p>
+                      <p>{{ strategy.year|default:"-" }}</p>
+                      <p class="title">Quarter</p>
+                      <p>{{ strategy.get_quarter_display|default:"-" }}</p>
+                      <p class="title">Definition of Done</p>
+                      <p>{{ strategy.definition_of_done|default:"-" }}</p>
+                      <p class="title">Target Completion</p>
+                      <p>{{ strategy.target_completion|default:"-" }}</p>
                     </div>
 
                     <br />
                     <h5>Score Elements</h5>
                     <ul class="list-unstyled project_files">
-                      <li><a href=""><i class="fa fa-group"></i> Increase New Customers</a>
+                      <li><a href=""><i class="fa fa-road"></i> {{ strategy.get_purpose_display|default:strategy.purpose }}</a>
                       </li>
-                      <li><a href=""><i class="fa fa-lightbulb-o"></i> Enlighten</a>
-                      </li>
-                      <li><a href=""><i class="fa fa-road"></i> Strong, New Growth</a>
-                      </li>
-                      <li><a href=""><i class="fa fa-money"></i> $23,000</a>
-                      </li>
-                      <li><a href=""><i class="fa fa-text-height"></i> XXL</a>
+                      <li><a href=""><i class="fa fa-lightbulb-o"></i> Level: {{ strategy.level }}</a>
                       </li>
                     </ul>
                     <br />

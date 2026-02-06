@@ -111,76 +111,31 @@
 					</div>
 				-->
       <div class="row top_tiles"><hr/>
-        <div class="animated flipInY col-lg-4 col-m4-6 col-sm-12 col-xs-12">
-          <div class="tile-stats">
-            <div class="icon"><i class="fa fa-group fa-sm"></i></div>
-            <div class="x_title">
-			<h3>Increase Shopper Volume</h3>
-            <p>Count of New and Returning Shoppers</p>
-			</div>
-              <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
-              	<div class="count">
-              	{{ project_count_ic }} Projects
-              	<br>
-              	<span class="">
-              		<p>{{ project_count_ic_p }} Inactive</p>
-              </div>
-          	</div>
-			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
-				<div class="count pull-right">
-				${{ project_value_ic.value__sum|intcomma }}
-				<br>
-				<p>${{ project_value_ic_p.value__sum|intcomma }}</p>
-			</div>
-			</div>
-          </div>
-        </div>
+        {% for item in annual_rocks_data %}
         <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
           <div class="tile-stats">
-            <div class="icon"><i class="fa fa-money fa-sm"></i></div>
+            <div class="icon"><i class="fa fa-bullseye fa-sm"></i></div>
             <div class="x_title">
-			<h3>Increase Shopping Activity</h3>
-            <p>Number of Product Views, Add to Carts, Begin Checkout, and Purchases</p>
-			</div>
-			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
-				<div class="count">
-				{{ project_count_ips }} Projects
-				<br>
-				<p>{{ project_count_ips_p }} Inactive</p>
-			</div>
-			</div>
-			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
-				<div class="count pull-right">
-				${{ project_value_ips.value__sum|intcomma }}
-				<br>
-				<p>${{ project_value_ips_p.value__sum|intcomma }}</p>
-			</div>
-			</div>
-          </div>
-        </div>
-        <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
-          <div class="tile-stats">
-            <div class="icon"><i class="fa fa-heart fa-sm"></i></div>
-            <div class="x_title">
-			<h3>Increase Average Order Value</h3>
-            <p>Count of Orders above Median Order Value</p>
+			<h3>{{ item.rock.name }}</h3>
+            <p>{{ item.rock.description }}</p>
 			</div>
               <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">
-                  <div class="count">
-                  {{ project_count_ipf }} Projects
-                  <br>
-                  <p>{{ project_count_ipf_p }} Inactive</p>
+              	<div class="count">
+              	{{ item.count }} Projects
+              	<br>
+              	<p>{{ item.count_p }} Inactive</p>
               </div>
-              </div>
+          	</div>
 			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">
-                <div class="count pull-right">
-                ${{ project_value_ipf.value__sum|intcomma }}
-                <br>
-                <p>${{ project_value_ipf_p.value__sum|intcomma }}</p>
-            	</div>
-            </div>
+				<div class="count pull-right">
+				${{ item.value.value__sum|intcomma }}
+				<br>
+				<p>${{ item.value_p.value__sum|intcomma }}</p>
+			</div>
+			</div>
           </div>
         </div>
+        {% endfor %}
 
       <!-- Revenue Chart -->
       <div class="row">
@@ -240,14 +195,14 @@
 					<div class="x_panel">
 						<div class="x_title">
 							<h3>Work in Progress</h3>
-                            <h5>Accepted Strategies & Projects</h5>
+                            <h5>Quarterly Rocks & Projects</h5>
 						</div>
                             <table id="datatable" class="table table-striped table-bordered dataTable no-footer" role="grid" aria-describedby="datatable_info">
                                  <thead>
 									  <tr>
-										<th>Strategy</th>
+										<th>Quarterly Rock</th>
 										<th>Project</th>
-										<th>Objective</th>
+										<th>Annual Rock</th>
 										<th>Score</th>
 										<th>Progress</th>
 										<th>Value</th>
@@ -267,17 +222,7 @@
 											  <tr>
 												<td scope="row">{{ project.strategy.name }}</td>
 												<td><a href="/project/{{ project.id }}">{{ project.name }}</a></td>
-												<td class="
-												{% if project.strategy.objective == 'IC' %}
-												fa fa-group
-												{% endif %}
-												{% if project.strategy.objective == 'IPS' %}
-												fa fa-money
-												{% endif %}
-												{% if project.strategy.objective == 'IPF' %}
-												fa fa-heart
-												{% endif %}
-												fa fa-2x" style="text-align: center !important"></td>
+												<td>{{ project.annual_rock|default:"-" }}</td>
 												<td>{{ project.normalized_score }}</td>
 												 <td class="project_progress">
 												  <div class="progress progress_sm">

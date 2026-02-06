@@ -23,9 +23,9 @@
       <ul class="nav side-menu">
         <li><a><i class="fa fa-edit"></i> Add Work<span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-          {% for group in user.groups.all %}  
-			    {% if group.name == 'A-Team' %}  
-            <li><a href="/strategy/add.html">New Strategy</a></li>
+          {% for group in user.groups.all %}
+			    {% if group.name == 'A-Team' %}
+            <li><a href="/strategy/add.html">New Quarterly Rock</a></li>
             {% else %}
             {% endif %}
             {% endfor %}
@@ -36,8 +36,8 @@
         {% if group.name == 'VP' %}
         <li><a><i class="fa fa-calculator"></i> Estimate Value &amp; LOE <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-          {% for group in user.groups.all %}  
-			    {% if group.name == 'A-Team' %} 
+          {% for group in user.groups.all %}
+			    {% if group.name == 'A-Team' %}
             <li><a href="/project/value.html">Estimate Value</a></li>
             {% else %}
             {% endif %}
@@ -50,9 +50,9 @@
         {% endfor %}
         <li><a><i class="fa fa-clone"></i>All Work <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-          	{% for group in user.groups.all %}  
-		    {% if group.name == 'A-Team' %} 	          
-            <li><a href="/strategy/view.html">Strategies</a></li>
+          	{% for group in user.groups.all %}
+		    {% if group.name == 'A-Team' %}
+            <li><a href="/strategy/view.html">Quarterly Rocks</a></li>
             {% else %}
             {% endif %}
 			{% endfor %}
@@ -60,6 +60,19 @@
             <li><a href="/project/archive/">Archive</a></li>
           </ul>
         </li>
+      </ul>
+    </div>
+    <div class="menu_section">
+      <h3>Admin</h3>
+      <ul class="nav side-menu">
+        {% for group in user.groups.all %}
+        {% if group.name == 'A-Team' %}
+        <li><a href="/strategy/rocks/"><i class="fa fa-bullseye"></i> Edit Rocks</a></li>
+        {% endif %}
+        {% endfor %}
+        {% if user.is_superuser %}
+        <li><a href="/strategy/measurement/"><i class="fa fa-bar-chart"></i> Measurements</a></li>
+        {% endif %}
       </ul>
     </div>
     <div class="menu_section">
@@ -78,7 +91,7 @@
             <li><a href="/app/adl.html">ADL Matrix</a></li>
             <!-- <li><a href="#">Decision Matrix</a></li> -->
           </ul>
-        </li>       
+        </li>
     </div>
 	</div>
   <!-- /sidebar menu -->

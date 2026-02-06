@@ -1,0 +1,188 @@
+{% extends "app/base_site.html" %}
+{% block title %} Measurements {% endblock title %}
+{% block stylesheets %}
+{{ block.super }}
+<style>
+  .transfer-list {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    min-height: 200px;
+    background: #fafafa;
+  }
+  .transfer-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .transfer-list ul li {
+    padding: 6px 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .transfer-list ul li:last-child {
+    border-bottom: none;
+  }
+  .transfer-header {
+    font-weight: 700;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #555;
+  }
+</style>
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Measurements</h3>
+        <p>Manage Metrics and KPIs that appear in project intake dropdowns.</p>
+      </div>
+      <div class="clearfix"></div>
+    </div>
+
+    <div class="row">
+      <!-- Metrics Transfer List -->
+      <div class="col-md-6 col-sm-12">
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Metrics</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <div class="row">
+              <div class="col-md-5">
+                <div class="transfer-header">Inactive</div>
+                <div class="transfer-list">
+                  <ul>
+                    {% for item in inactive_metrics %}
+                    <li>
+                      <span>{{ item.name }}</span>
+                      <form method="post" style="display:inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="activate_metric">
+                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                        <button type="submit" class="btn btn-success btn-xs" title="Activate">&rarr;</button>
+                      </form>
+                    </li>
+                    {% empty %}
+                    <li><em>None</em></li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+              <div class="col-md-2" style="display:flex; align-items:center; justify-content:center;">
+              </div>
+              <div class="col-md-5">
+                <div class="transfer-header">Active</div>
+                <div class="transfer-list" style="background:#f0fff0;">
+                  <ul>
+                    {% for item in active_metrics %}
+                    <li>
+                      <form method="post" style="display:inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="deactivate_metric">
+                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                        <button type="submit" class="btn btn-warning btn-xs" title="Deactivate">&larr;</button>
+                      </form>
+                      <span>{{ item.name }}</span>
+                    </li>
+                    {% empty %}
+                    <li><em>None</em></li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <hr>
+            <form method="post" class="form-inline">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_metric">
+              <div class="input-group" style="width:100%">
+                <input type="text" name="name" class="form-control" placeholder="New metric name" required>
+                <span class="input-group-btn">
+                  <button type="submit" class="btn btn-success">Add New</button>
+                </span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs Transfer List -->
+      <div class="col-md-6 col-sm-12">
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>KPIs</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <div class="row">
+              <div class="col-md-5">
+                <div class="transfer-header">Inactive</div>
+                <div class="transfer-list">
+                  <ul>
+                    {% for item in inactive_kpis %}
+                    <li>
+                      <span>{{ item.name }}</span>
+                      <form method="post" style="display:inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="activate_kpi">
+                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                        <button type="submit" class="btn btn-success btn-xs" title="Activate">&rarr;</button>
+                      </form>
+                    </li>
+                    {% empty %}
+                    <li><em>None</em></li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+              <div class="col-md-2" style="display:flex; align-items:center; justify-content:center;">
+              </div>
+              <div class="col-md-5">
+                <div class="transfer-header">Active</div>
+                <div class="transfer-list" style="background:#f0fff0;">
+                  <ul>
+                    {% for item in active_kpis %}
+                    <li>
+                      <form method="post" style="display:inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="deactivate_kpi">
+                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                        <button type="submit" class="btn btn-warning btn-xs" title="Deactivate">&larr;</button>
+                      </form>
+                      <span>{{ item.name }}</span>
+                    </li>
+                    {% empty %}
+                    <li><em>None</em></li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <hr>
+            <form method="post" class="form-inline">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_kpi">
+              <div class="input-group" style="width:100%">
+                <input type="text" name="name" class="form-control" placeholder="New KPI name" required>
+                <span class="input-group-btn">
+                  <button type="submit" class="btn btn-success">Add New</button>
+                </span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock content %}
+{% block javascripts %}
+{{ block.super }}
+{% endblock javascripts %}

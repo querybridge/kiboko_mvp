@@ -11,4 +11,6 @@ urlpatterns = [
     path('<int:strategy_id>/comment/', views.add_comment_to_strategy, name='add_comment_to_strategy'),
     path('view.html', views.strategy_view, name='strategy_view'),
     path('add.html', views.strategy, name='strategy'),
+    path('rocks/', views.edit_rocks, name='edit_rocks'),
+    path('measurement/', views.measurement, name='measurement'),
 ]

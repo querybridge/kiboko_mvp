@@ -3,8 +3,8 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 from multiselectfield import MultiSelectField
-from strategy.models import Strategy
-from business_unit.models import BusinessUnit
+from strategy.models import Strategy, AnnualRock, Metric, KPI
+from business_unit.models import BusinessUnit, Vertical
 from .project_field_options import locations, status_options
 from .scoring import CRITERIA, weighted_score
 
@@ -35,6 +35,12 @@ class Project(models.Model):
 	archived = models.BooleanField(default=False)
 	business_unit = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE)
 
+	# New fields
+	annual_rock = models.ForeignKey(AnnualRock, on_delete=models.SET_NULL, null=True, blank=True)
+	vertical = models.ForeignKey(Vertical, on_delete=models.SET_NULL, null=True, blank=True)
+	metric = models.ForeignKey(Metric, on_delete=models.SET_NULL, null=True, blank=True)
+	kpi = models.ForeignKey(KPI, on_delete=models.SET_NULL, null=True, blank=True)
+
 	# --- 6 scoring criteria (each 0-10) ---
 	customer_value = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
 	business_value = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
@@ -44,7 +50,7 @@ class Project(models.Model):
 	level_of_effort = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
 
 	def save(self, *args, **kwargs):
-		# Compute weighted score from 6 criteria → 0-10 scale
+		# Compute weighted score from 6 criteria -> 0-10 scale
 		values = {c: getattr(self, c, 0) or 0 for c in CRITERIA}
 		score = weighted_score(values)
 		self.normalized_score = Decimal(str(score)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)

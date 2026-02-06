@@ -8,19 +8,24 @@ import datetime
 # Create your models here.
 
 
-business_unit_names = (
-		('Merchandising', 'Merchandising'),
-		('Customer Service', 'Customer Service'),
-		('Innovation', 'Innovation'),
-		('Marketing', 'Marketing'),				
-	)
+class Vertical(models.Model):
+    name = models.CharField(max_length=140)
+
+    class Meta:
+        verbose_name = 'Vertical'
+        verbose_name_plural = 'Verticals'
+
+    def __str__(self):
+        return self.name
+
 
 class BusinessUnit(models.Model):
-	name = models.CharField(max_length=140, choices=business_unit_names)
+	name = models.CharField(max_length=140)
 	owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
 	class Meta:
-			verbose_name_plural = 'Business Units'
+		verbose_name = 'Department'
+		verbose_name_plural = 'Departments'
 
 	def __str__(self):
 		return self.name

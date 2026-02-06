@@ -1,19 +1,7 @@
-objective_options = (
-		('IC', 'Increase Shopper Volume'),
-		('IPS', 'Increase Shopping Activity'),
-		('IPF', 'Increase Average Order Value'),
-	)
-
 level_options = (
 		('Corporate', 'Corporate'),
-		('Business Unit', 'Business Unit'),
+		('Department', 'Department'),
 		('Team', 'Team'),
-	)
-
-businessUnit_options = (
-		('Merchandising', 'Merchandising'),
-		('Customer Service', 'Customer Service'),
-		('Innovation', 'Innovation'),
 	)
 
 purpose_options = (
