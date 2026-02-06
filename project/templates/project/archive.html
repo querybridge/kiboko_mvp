@@ -28,6 +28,11 @@
                     <th>Owner</th>
                     <th>Launch Date</th>
                     <th>Value</th>
+                    <th>Cust Val</th>
+                    <th>Biz Val</th>
+                    <th>Cost Sav</th>
+                    <th>Op Cost</th>
+                    <th>Biz Risk</th>
                     <th>LOE</th>
                     <th>Score</th>
                     <th>Status</th>
@@ -42,7 +47,12 @@
                     <td>{{ project.owner }}</td>
                     <td>{{ project.launch }}</td>
                     <td>${{ project.value|intcomma }}</td>
-                    <td>{{ project.loe }}</td>
+                    <td>{{ project.customer_value|default:"0" }}</td>
+                    <td>{{ project.business_value|default:"0" }}</td>
+                    <td>{{ project.cost_savings|default:"0" }}</td>
+                    <td>{{ project.operational_cost|default:"0" }}</td>
+                    <td>{{ project.business_risk|default:"0" }}</td>
+                    <td>{{ project.level_of_effort|default:"0" }}</td>
                     <td>{{ project.normalized_score }}</td>
                     <td>{{ project.status }}</td>
                     <td>
@@ -51,7 +61,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="9" style="text-align: center;">No archived projects</td>
+                    <td colspan="14" style="text-align: center;">No archived projects</td>
                   </tr>
                   {% endfor %}
                 </tbody>

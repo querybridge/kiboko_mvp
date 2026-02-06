@@ -26,7 +26,7 @@
                 {% for group in user.groups.all %}
                 {% if group.name == 'VP' %}         
                 <li style="display: inline-block; padding-top: 10px">
-                  {% if project.value == 0 and project.loe == 'NA' %}
+                  {% if project.normalized_score == 0 %}
 
                   {% else %}
                   <a class="btn btn-sm btn-success" id="approve-btn" href="approve/?next={{ request.path|urlencode }}">
@@ -68,8 +68,8 @@
                     <span class="value text-success"> ${{ project.value|intcomma }} </span>
                   </li>
                   <li style="display: inline-block">
-                    <span class="name"> T-Shirt Size </span>
-                    <span class="value text-success"> {{  project.loe }} </span>
+                    <span class="name"> Score </span>
+                    <span class="value text-success"> {{ project.normalized_score }} </span>
                   </li>
                   <li style="display: inline-block">
                     <span class="name"> Launch Date </span>
@@ -165,28 +165,29 @@
                       <!-- <p class="title">Team</p>
                       <p>{{ project.BusinessUnit }}</p>	-->
                       {% if request.user.is_superuser %}
-                      <p class="title">Project Score</p>
+                      <p class="title">Weighted Score</p>
                       <p>{{ project.normalized_score }}</p>
-                      <p class="title">Raw Score</p>
-                      <p>{{ project.score }}</p>
-                      {% else %}
-
                       {% endif %}
                     </div>
 
                     <br />
-                    <h3>Score Elements</h5>
+                    <h3>Score Elements</h3>
                     <ul class="list-unstyled project_files">
-                      <li><i class="fa fa-group"></i><span class="score_detail">   {{ project.purpose }}</span>
+                      <li><i class="fa fa-star"></i><span class="score_detail">   Customer Value: {{ project.customer_value|default:"0" }}</span>
                       </li>
-                      <li><i class="fa fa-lightbulb-o"></i><span class="score_detail">   {{ project.alignment }}</span>
+                      <li><i class="fa fa-briefcase"></i><span class="score_detail">   Business Value: {{ project.business_value|default:"0" }}</span>
                       </li>
-                      <li><i class="fa fa-road"></i><span class="score_detail">   {{ project.engagement }}</span>
+                      <li><i class="fa fa-money"></i><span class="score_detail">   Cost Savings: {{ project.cost_savings|default:"0" }}</span>
                       </li>
-                      <li><i class="fa fa-money"></i><span class="score_detail">   ${{ project.value|intcomma }}</span>
+                      <li><i class="fa fa-cogs"></i><span class="score_detail">   Operational Cost: {{ project.operational_cost|default:"0" }}</span>
                       </li>
-                      <li><i class="fa fa-text-height"></i><span class="score_detail">   {{ project.loe }}</span>
-                      <li><i class="fa fa-text-height"></i><span class="score_detail">   {{ project.approved }}</span>                      
+                      <li><i class="fa fa-shield"></i><span class="score_detail">   Business Risk: {{ project.business_risk|default:"0" }}</span>
+                      </li>
+                      <li><i class="fa fa-tasks"></i><span class="score_detail">   Level of Effort: {{ project.level_of_effort|default:"0" }}</span>
+                      </li>
+                      <li><i class="fa fa-money"></i><span class="score_detail">   Value: ${{ project.value|intcomma }}</span>
+                      </li>
+                      <li><i class="fa fa-check"></i><span class="score_detail">   Approved: {{ project.approved }}</span>
                       </li>
                     </ul>
                     <br />

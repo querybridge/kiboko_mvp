@@ -251,6 +251,11 @@
 										<th>Score</th>
 										<th>Progress</th>
 										<th>Value</th>
+										<th>Cust Val</th>
+										<th>Biz Val</th>
+										<th>Cost Sav</th>
+										<th>Op Cost</th>
+										<th>Biz Risk</th>
 										<th>LOE</th>
 										<th>Launch</th>
 										<th>Status</th>
@@ -281,7 +286,12 @@
 												  <small>{{ project.progress }}% Complete</small>
 												</td>
 												<td>${{ project.value|intcomma }}</td>
-												<td style="text-align: center"><button type="button" class=" btn-success btn-xl">{{ project.loe }}</button></td>
+												<td>{{ project.customer_value|default:"0" }}</td>
+												<td>{{ project.business_value|default:"0" }}</td>
+												<td>{{ project.cost_savings|default:"0" }}</td>
+												<td>{{ project.operational_cost|default:"0" }}</td>
+												<td>{{ project.business_risk|default:"0" }}</td>
+												<td>{{ project.level_of_effort|default:"0" }}</td>
 												<td>{{ project.launch }}</td>
 												<td>{{ project.status }}</td>
 												<td style="vertical-align: middle;">

@@ -366,7 +366,7 @@ def _build_chart_data(year):
 @login_required
 def index(request):
     # Exclude archived projects from dashboard
-    projects = Project.objects.filter(approved=True, archived=False).order_by('-score')
+    projects = Project.objects.filter(approved=True, archived=False).order_by('-normalized_score')
     strategy = Strategy.objects.all()
     project_count_ic = Project.objects.filter(strategy__objective="IC", approved=True, archived=False).count()
     project_value_ic = Project.objects.filter(strategy__objective="IC", approved=True, archived=False).aggregate(Sum('value'))

@@ -37,9 +37,14 @@
                           <th>Name</th>
                           <th>Owner</th>
                           <th>Definition of Done</th>
-                          <th>Purpose</th>
                           <th>Value</th>
+                          <th>Cust Val</th>
+                          <th>Biz Val</th>
+                          <th>Cost Sav</th>
+                          <th>Op Cost</th>
+                          <th>Biz Risk</th>
                           <th>LOE</th>
+                          <th>Score</th>
                           <!-- <th>
                             <div class="icheckbox_flat-green" style="position: relative;">
                               <input type="checkbox" id="check-all" class="flat" style="position: absolute; opacity: 0;">
@@ -58,9 +63,14 @@
                           <td><a href="{{ project.id }}" class="">{{ project.name }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.owner }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.impact }}</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.purpose }}</a></td>
                           <td><a href="{{ project.id }}" class="">${{ project.value|intcomma }}</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.loe }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.customer_value|default:"0" }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.business_value|default:"0" }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.cost_savings|default:"0" }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.operational_cost|default:"0" }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.business_risk|default:"0" }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.level_of_effort|default:"0" }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.normalized_score }}</a></td>
                           <!--<td> <div class="icheckbox_flat-green" style="position: relative;">
                               <input type="checkbox" id="check-all" class="flat" style="position: absolute; opacity: 0;">
                               <ins class="iCheck-helper" style="position: absolute; top: 0%; left: 0%; display: block; width: 100%; height: 100%; margin: 0px; padding: 0px; background: rgb(255, 255, 255); border: 0px; opacity: 0;">
@@ -73,7 +83,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                          <td colspan="7" style="text-align: center">All Projects Approved</td>
+                          <td colspan="12" style="text-align: center">All Projects Approved</td>
                         </tr>
                         {% endfor %}
                       </tbody>

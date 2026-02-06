@@ -30,10 +30,8 @@
                         <tr>
                           <th>Name</th>
                           <th>Definition of Done</th>
-                          <th>IEP Alignment</th>
-                          <th>Purpose</th>
                           <th>Value</th>
-                          <th>LOE</th>
+                          <th>Score</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
@@ -43,10 +41,8 @@
                         <tr>
                           <td><a href="{{ project.id }}" class="">{{ project.name }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.impact }}</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.alignment }}</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.purpose }}</a></td>
                           <td><a href="{{ project.id }}" class="">${{ project.value|intcomma }}</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.loe }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.normalized_score }}</a></td>
                           <td>
                             <a href="/project/{{project.id}}/value/?next={{ request.path|urlencode }}" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Estimate Value </a>
                             <!--<a href="/project/{{project.id}}/delete" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>-->

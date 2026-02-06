@@ -111,11 +111,8 @@ def project_value(request, project_id):
         form.fields['strategy'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
-        form.fields['purpose'].disabled = True
-        form.fields['loe'].disabled = True                                
         if form.is_valid():
             project = form.save(commit=False)
-            #project.author = request.user
             project.modified_date = timezone.now()
             project.save()
             return HttpResponseRedirect(next)
@@ -125,8 +122,6 @@ def project_value(request, project_id):
         form.fields['strategy'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
-        form.fields['purpose'].disabled = True
-        form.fields['loe'].disabled = True              
     return render(request, 'project/add_value.html', {'form': form, 'title': title})
 
 
@@ -141,22 +136,19 @@ def project_loe(request, project_id):
         form.fields['strategy'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
-        form.fields['purpose'].disabled = True
-        form.fields['value'].disabled = True                                
+        form.fields['value'].disabled = True
         if form.is_valid():
             project = form.save(commit=False)
-            #project.author = request.user
             project.modified_date = timezone.now()
             project.save()
             return HttpResponseRedirect(next)
     else:
-        title = "Estimate LOE"
+        title = "Estimate Level of Effort"
         form = ProjectLoe(instance=project)
         form.fields['strategy'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
-        form.fields['purpose'].disabled = True
-        form.fields['value'].disabled = True              
+        form.fields['value'].disabled = True
     return render(request, 'project/add_loe.html', {'form': form, 'title': title})
 
 
@@ -173,7 +165,7 @@ def value(request):
 @login_required
 def loe(request):
     context = {}
-    projects = Project.objects.filter(loe__exact='NA')
+    projects = Project.objects.filter(level_of_effort=0)
     title = "Assign Level of Effort"
     return render(request, 'project/loe.html', {'projects': projects, 'title': title})
 
@@ -181,7 +173,7 @@ def loe(request):
 @login_required
 def approve(request):
     context = {}
-    projects = Project.objects.filter(approved__exact='False', value__gt=0).exclude(loe='NA')
+    projects = Project.objects.filter(approved__exact='False', normalized_score__gt=0)
     title = "Approve and Prioritize"
     return render(request, 'project/approvals.html', {'projects': projects, 'title': title})
     
