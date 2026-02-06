@@ -1,0 +1,61 @@
+{% extends "app/base_site.html" %}
+{% load django_tables2 %}
+{% render_table table %}
+{% block title %} New Strategy {% endblock title %}
+{% block stylesheets %}
+{{ block.super }}
+<!-- Ion.RangeSlider -->
+<link href="/static/vendors/normalize-css/normalize.css" rel="stylesheet">
+<link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.css" rel="stylesheet">
+<link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.skinNice.css" rel="stylesheet">
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Strategic Initiatives</h3>
+      </div>
+      <div class="clearfix"></div>
+      <div class="row">
+        <div class="col-md-6 col-sm-6 col-xs-6">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Define Strategy<small>All Fields Required</small></h2>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <!-- start form for validation -->
+              <!-- {% for strategy in strategy %}
+                  <h1>{{ strategy.name}}<h1>
+
+              {% endfor %}
+              {% render_table table "strategy/strategies.html" %}-->
+              <!-- end form for validations -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+{% block javascripts %}
+{{ block.super }}
+<!-- Ion.RangeSlider -->
+<script src="/static/vendors/ion.rangeSlider/js/ion.rangeSlider.js"></script>
+{% endblock javascripts %}
+<!--
+Desired Impact -- 70 Chart Input
+Definition of success -- 70 Chart Input
+Alignment - Ic, IPs, IPF -- Multi Check
+corporate strategy, business unit strategy, and team strategy -- radio
+Business Unit/Corporate Area/Team -- drop down
+Competitive Position - Dominant, Strong, Favorable, Tenable, Weak -- Radio Button
+Purpose - New Growth, Hold Position, Defend Position, Reverse Decay -- Radio Button
+Projects
+Feature/Test
+Update/New
+ADL Matrix - https://www.youtube.com/watch?v=4S90cdIeYoI
+https://www.mindtools.com/pages/article/what-is-strategy.htm
+-->

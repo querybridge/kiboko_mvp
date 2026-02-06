@@ -1,0 +1,207 @@
+{% extends "app/base_site.html" %}
+
+{% block title %} Project Details {% endblock title %}
+
+{% block sidebar_class %}menu_fixed{% endblock sidebar_class %}
+
+{% block stylesheets %}
+  {{ block.super }}
+{% endblock stylesheets %}
+
+{% block content %}
+  <div class="right_col" role="main">
+    <div class="">
+      <div class="page-title">
+        <div class="title_left">
+          <h3>Project Detail <small> Summary</small></h3>
+        </div>
+
+        <div class="title_right">
+
+        </div>
+      </div>
+
+      <div class="clearfix"></div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <div class="x_panel">
+            <div class="x_title">
+              <h1><strong>Project: </strong>Add New Content - #1001<br/><small><strong>Strategy: </strong>Increase Mattress Sales - #101</small></h1>
+			  
+              <ul class="nav navbar-right project_action">
+                <li><a href="#" class="btn btn-sm btn-success">Approve</a></li>
+				<li><a href="#" class="btn btn-sm btn-warning">Pause</a></li>
+				<li><a href="#" class="btn btn-sm btn-info">Edit</a></li>
+                <li><a href="#" class="btn btn-sm btn-danger">Delete</a></li>
+              </ul>
+              <div class="clearfix"></div>
+            </div>
+
+            <div class="x_content">
+
+              <div class="col-md-12 col-sm-12 col-xs-12">
+<div class="row top_tiles">
+                <ul class="stats-overview">
+                  <li>
+                    <span class="name"> Estimated Value </span>
+                    <span class="value text-success"> $23,000 </span>
+                  </li>
+                  <li>
+                    <span class="name"> T-Shirt Size </span>
+                    <span class="value text-success"> XXL </span>
+                  </li>
+
+                  <li class="hidden-phone">
+                    <span class="name"> Launch Date </span>
+                    <span class="value text-success"> 3/31/2019 </span>
+                  </li>
+				  <li>
+                    <span class="name"> Project Progress </span>
+                    <span class="value text-success">
+					<!-- <span class="project_progress"> -->
+                      <div class="progress progress_sm center-block" style="width:75%;"> 
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+					<!--</span> -->
+					</span>
+                  </li>				  
+                </ul>
+                <br />
+</div>
+				
+				<!-- Chart
+                <div id="mainb" style="height:350px;"></div>
+-->
+                <div>
+				<div class="row">
+				<div class="col-md-8 col-sm-8 col-xs-12">
+                  <div>
+				  <h4>Recent Activity</h4>
+				  <ul class="nav navbar-right project_action">
+					<li><a href="#" class="btn btn-sm btn-info">Add Comment</a></li>
+				  </ul>
+				</div>
+				<div class="clearfix"></div>
+                  <!-- end of user messages -->
+                  <ul class="messages">
+                    <li>
+                      <img src="/static/images/chrisevans.jpg" class="avatar" alt="Avatar">
+                      <div class="message_date">
+                        <h3 class="date text-info">24</h3>
+                        <p class="month">May</p>
+                      </div>
+                      <div class="message_wrapper">
+                        <h4 class="heading">Chris Evans</h4>
+                        <blockquote class="message">Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis.</blockquote>
+                        <br />
+                        <p class="url">
+                          <span class="fs1 text-info" aria-hidden="true" data-icon=""></span>
+                          <a href="#"><i class="fa fa-paperclip"></i> User Acceptance Test.doc </a>
+                        </p>
+                      </div>
+                    </li>
+                    <li>
+                      <img src="/static/images/kenchenault.jpg" class="avatar" alt="Avatar">
+                      <div class="message_date">
+                        <h3 class="date text-error">21</h3>
+                        <p class="month">May</p>
+                      </div>
+                      <div class="message_wrapper">
+                        <h4 class="heading">Ken Chenault</h4>
+                        <blockquote class="message">Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis</blockquote>
+                        <br />
+                        <p class="url">
+                          <span class="fs1" aria-hidden="true" data-icon=""></span>
+                          <a href="#" data-original-title="">Download</a>
+                        </p>
+                      </div>
+                    </li>
+                    <li>
+                      <img src="/static/images/sallirichardson.jpg" class="avatar" alt="Avatar">
+                      <div class="message_date">
+                        <h3 class="date text-info">24</h3>
+                        <p class="month">May</p>
+                      </div>
+                      <div class="message_wrapper">
+                        <h4 class="heading">Salli Richardson</h4>
+                        <blockquote class="message">Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis</blockquote>
+                        <br />
+                        <p class="url">
+                          <span class="fs1 text-info" aria-hidden="true" data-icon=""></span>
+                          <a href="#"><i class="fa fa-paperclip"></i> User Acceptance Test.doc </a>
+                        </p>
+                      </div>
+                    </li>
+                  </ul>
+				  </div>
+                  <!-- end of user messages -->
+
+				
+                
+
+
+              
+
+              <!-- start project-detail sidebar -->
+              <div class="col-md-4 col-sm-4 col-xs-12">
+
+                <section class="panel">
+
+                  <div class="x_title">
+                    <h2>Project Description</h2>
+                    <div class="clearfix"></div>
+                  </div>
+                  <div class="panel-body">
+                    <!-- </div><h3 class="green"><i class="fa fa-paint-brush"></i> Gentelella</h3> -->
+
+                    <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam, quis nostrud exerci tation ullamcorper suscipit lobortis nisl ut aliquip ex ea commodo consequat. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit augue duis dolore te feugait nulla facilisi.</p>
+                    <br />
+
+                    <div class="project_detail">
+
+                      <p class="title">Sponsor</p>
+                      <p>Jordan Peele</p>
+                      <p class="title">Team</p>
+                      <p>Shopping Experience</p>					  
+                      <p class="title">Project Owner</p>
+                      <p><!--<i class="fa fa-skype">&nbsp;</i><a href=”mailto:sdistin@ashleyfurniture.com″>-->Sean Carter<!--</a>--></p>
+                    </div>
+
+                    <br />
+                    <h5>Score Elements</h5>
+                    <ul class="list-unstyled project_files">
+                      <li><a href=""><i class="fa fa-group"></i> Increase New Customers</a>
+                      </li>
+                      <li><a href=""><i class="fa fa-lightbulb-o"></i> Enlighten</a>
+                      </li>
+                      <li><a href=""><i class="fa fa-road"></i> Strong, New Growth</a>
+                      </li>
+                      <li><a href=""><i class="fa fa-money"></i> $23,000</a>
+                      </li>
+                      <li><a href=""><i class="fa fa-text-height"></i> XXL</a>
+                      </li>
+                    </ul>
+                    <br />
+
+                  </div>
+
+                </section>
+
+              </div>
+              <!-- end project-detail sidebar -->
+			</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <!-- ECharts -->
+  <script src="/static/vendors/echarts/dist/echarts.min.js"></script>
+{% endblock javascripts %}

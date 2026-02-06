@@ -1,0 +1,80 @@
+{% extends "app/base_site.html" %}
+
+{% block title %} ADL Matrix {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h2>ADL Matrix</h2>
+      </div>
+    </div>
+    <div class="clearfix"></div>
+    <div class="row">
+      <div class="col-md-6 col-sm-6 col-xs-12">
+        <div class="x_panel">
+          <div class="x_content">
+            
+            <table class="table table-bordered" style="margin-top: 15px">
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">New Growth</th>
+                  <th scope="col">Hold Position</th>
+                  <th scope="col">Defend Position</th>
+                  <th scope="col">Reverse Decay</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Strong</th>
+                  <td style="background-color: #00c853;">100</td>
+                  <td style="background-color: #00e676;">95</td>
+                  <td style="background-color: #69f0ae;">90</td>
+                  <td style="background-color: #b9f6ca;">85</td>
+                  
+                </tr>
+                <tr>
+                  <th scope="row">Able</th>
+                  <td style="background-color: #c6ff00;">80</td>
+                  <td style="background-color: #eeff41;">75</td>
+                  <td style="background-color: #f4ff81;">70</td>
+                  <td style="background-color: #ffff8d;">65</td>
+                </tr>
+                <tr>
+                  <th scope="row">Attainable</th>
+                  <td style="background-color: #ffe0b2;">60</td>
+                  <td style="background-color: #ffcc80;">55</td>
+                  <td style="background-color: #ffb74d;">50</td>
+                  <td style="background-color: #ffa726;">45</td>
+                  
+                </tr>
+                <tr>
+                  <th scope="row">Steep Climb</th>
+                  <td style="background-color: #ef6c00;">40</td>
+                  <td style="background-color: #e65100;">30</td>
+                  <td style="background-color: #d84315;">20</td>
+                  <td style="background-color: #dd2c00;">10</td>
+                  
+                </tr>
+              </tbody>
+            </table>
+            
+            
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+{% endblock javascripts %}
+

@@ -1,0 +1,123 @@
+{% extends "app/base_site.html" %}
+{% block title %} New Strategy {% endblock title %}
+{% block stylesheets %}
+{{ block.super }}
+<!-- Ion.RangeSlider -->
+<link href="/static/vendors/normalize-css/normalize.css" rel="stylesheet">
+<link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.css" rel="stylesheet">
+<link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.skinNice.css" rel="stylesheet">
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Strategy Intake Form</h3>
+      </div>
+      <div class="clearfix"></div>
+      <div class="row">
+        <div class="col-md-6 col-sm-6 col-xs-6">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Define Strategy<small>All Fields Required</small></h2>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <form id="StrategyForm" data-parsley-validate method="post" name='Strategy'>
+                {% csrf_token %}
+                <input type="hidden" value="{{ user.username }}" name="username" />
+                <label for="name">Name:</label>
+                <input type="text" id="name" class="form-control" name="name" required />
+                <br>
+                {{form.StrategyForm.name}}
+                <label for="desired_impact">Desired Impact:</label>
+                <input type="text" id="desired_impact" class="form-control" name="desired_impact" required />
+                <br>
+                <label for="defofsuccess">Definition of Success:</label>
+                <input type="text" id="def_of_success" class="form-control" name="defofsuccess" data-parsley-trigger="change" required />
+                <br>
+                <hr>
+                <br>
+                <label for="alignment">3 Core Objectives Alignment:</label>
+                <br><br>
+                <input type="checkbox" name="alignment" id="alignment" value="Increase Customers" required class="flat" /> Increase Customers
+                <input type="checkbox" name="alignment" id="alignment" value="Increase AOV" class="flat" /> Increase AOV
+                <input type="checkbox" name="alignment" id="alignment" value="Increase Purchase Frequency" class="flat" /> Increase Purchase Frequency
+                <br>
+                <br>
+                <hr>
+                <br>
+                <label for="level">Strategy Level:</label>
+                <br>
+                <span class="">Corporate</span>
+                <span class=""><input type="radio" class="flat" name="level" id="corporate" value="Corporate"  /></span>
+                <span class="">Business Unit</span>
+                <span class=""><input type="radio" class="flat" name="level" id="business_unit" value="Business Unit" /></span>
+                <span class="">Team</span>
+                <span class=""><input type="radio" class="flat" name="level" id="team" value="team" /></span>
+                <br>
+                <br>
+                <br>
+                <label for="business_unit">Business Unit:</label>
+                <br>
+                <select id="business_unit" class="form-control" required>
+                  <option value="">Choose..</option>
+                  <option value="Merchandising">Merchandising</option>
+                  <option value="Customer Service">Customer Service</option>
+                  <option value="Innovation">Innovation</option>
+                </select>
+                <br>
+                <hr>
+                <br>
+                <div class="col-md-8">
+                  <label>Competitive Position:</label>
+                  <div class="grid_slider">
+                    <input type="text" id="range_31" value="" name="competitive_position" />
+                  </div>
+                </div>
+                <br>
+                <div class="col-md-12">
+                  <br>
+                  <label>Purpose:</label>
+                  <br>
+                  <span>New Growth</span> <input type="radio" class="flat" name="purpose" id="purpose" value="100" required />
+                  <span>Hold Position</span> <input type="radio" class="flat" name="purpose" id="purpose" value=95  />
+                  <spam>Defend Position</spam> <input type="radio" class="flat" name="purpose" id="purpose" value=90 />
+                  <span>Reverse Decay</span> <input type="radio" class="flat" name="purpose" id="purpose" value=85 />
+                  <br>
+                  <hr>
+                  <br>
+                  <label for="why">Define the "Why" (20 chars min, 100 max) :</label>
+                  <textarea id="why" required="required" class="form-control" name="why" data-parsley-trigger="keyup" data-parsley-minlength="20" data-parsley-maxlength="100" data-parsley-minlength-message="Come on! You need to enter at least a 20 caracters long comment.." data-parsley-validation-threshold="10"> </textarea>
+                  <br>
+                  <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+              </form>
+              <!-- end form for validations -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+{% block javascripts %}
+{{ block.super }}
+<!-- Ion.RangeSlider -->
+<script src="/static/vendors/ion.rangeSlider/js/ion.rangeSlider.js"></script>
+{% endblock javascripts %}
+<!--
+Desired Impact -- 70 Chart Input
+Definition of success -- 70 Chart Input
+Alignment - Ic, IPs, IPF -- Multi Check
+corporate strategy, business unit strategy, and team strategy -- radio
+Business Unit/Corporate Area/Team -- drop down
+Competitive Position - Dominant, Strong, Favorable, Tenable, Weak -- Radio Button
+Purpose - New Growth, Hold Position, Defend Position, Reverse Decay -- Radio Button
+Projects
+Feature/Test
+Update/New
+ADL Matrix - https://www.youtube.com/watch?v=4S90cdIeYoI
+https://www.mindtools.com/pages/article/what-is-strategy.htm
+-->

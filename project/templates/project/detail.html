@@ -1,0 +1,213 @@
+{% extends "app/base_site.html" %}
+{% load humanize %}
+{% block title %} Project Details {% endblock title %}
+
+{% block sidebar_class %}menu_fixed{% endblock sidebar_class %}
+
+{% block stylesheets %}
+  {{ block.super }}
+{% endblock stylesheets %}
+
+{% block content %}
+  <div class="right_col" role="main">
+    <div class="">
+      <div class="page-title">
+        <div class="title_right">
+
+        </div>
+      </div>
+
+      <div class="clearfix"></div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <div class="x_panel">
+              <ul class="nav navbar-right project_action" style="padding-top: 20px, display: inline">
+                {% for group in user.groups.all %}
+                {% if group.name == 'VP' %}         
+                <li style="display: inline-block; padding-top: 10px">
+                  {% if project.value == 0 and project.loe == 'NA' %}
+
+                  {% else %}
+                  <a class="btn btn-sm btn-success" id="approve-btn" href="approve/?next={{ request.path|urlencode }}">
+                    {% if project.approved == True %}
+                      Pause <i class="fa fa-pencil"></i>
+                    {% else %}
+                      Approve <i class="fa fa-pencil"></i>
+                    {% endif %} 
+                  </a>
+                </li>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+				<!-- <li><a href="#" class="btn btn-sm btn-warning">Pause</a></li> -->
+				<li style="display: inline-block; padding-top: 10px">
+          <!-- <a href="{% if 'edit' in request.path %} {{request.build_absolute_uri}} {% else %} {{ request.path }}edit {% endif %}" class="btn btn-sm btn-info">Edit</a>-->
+		          {% for group in user.groups.all %}
+		          {% if group.name == 'Manager' or group.name == 'Owner' %}
+		          <a href="edit_manager/?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Edit</a>
+		          {% else %}
+		          <a href="edit/?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Edit</a>
+		          {% endif %}
+		          {% endfor %}
+		        </li>
+				<!--<li style="display: inline-block"><a href="#" class="btn btn-sm btn-danger">Delete</a></li>-->
+              </ul>
+            <div class="x_title">
+              <h1><strong>Project: </strong>{{ project.name }}<br/><!-- <a href="/strategy/{{ project.strategy_id }}">--><small><strong>Strategy: </strong><!-- <a href="/strategy/{{ project.strategy_id }}">-->{{strategy.name}}</small><!--</a>--></h1>
+              <div class="clearfix"></div>
+            </div>
+
+            <div class="x_content">
+
+              <div class="col-md-12 col-sm-12 col-xs-12">
+<div class="row top_tiles">
+                <ul class="stats-overview">
+                  <li style="display: inline-block">
+                    <span class="name"> Estimated Value </span>
+                    <span class="value text-success"> ${{ project.value|intcomma }} </span>
+                  </li>
+                  <li style="display: inline-block">
+                    <span class="name"> T-Shirt Size </span>
+                    <span class="value text-success"> {{  project.loe }} </span>
+                  </li>
+                  <li style="display: inline-block">
+                    <span class="name"> Launch Date </span>
+                    <span class="value text-success">{{  project.launch }} </span>
+                  </li>
+                  <li style="display: inline-block">
+                    <span class="name"> Project Progress </span>
+                    <span class="value text-success">
+					<!-- <span class="project_progress"> -->
+                      <div class="progress progress_sm center-block" style="width:75%;"> 
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="{{ project.progress }}"></div>
+                      </div>
+                      <small>{{ project.progress }}% Complete</small>
+					<!--</span> -->
+					</span>
+                  </li>				  
+                </ul>
+                <br />
+</div>
+				
+				<!-- Chart
+                <div id="mainb" style="height:350px;"></div>
+-->
+                <div>
+				<div class="row">
+				<div class="col-md-8 col-sm-8 col-xs-12">
+                  <div>
+				  <h4>Recent Activity</h4>
+				  <ul class="nav navbar-right project_action">
+					<li><a href="comment/?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Add Comment</a></li>
+				  </ul>
+				</div>
+				<div class="clearfix"></div>
+                  <!-- end of user messages -->
+                  <ul class="messages">
+	                {% for comment in project.comments.all %}
+                    <li>
+                      <div class="message_date">
+                        <h3 class="date text-info">{{ comment.created_date }}</h3>
+                      </div>
+                      <div class="message_wrapper">
+                        <h4 class="heading">{{ comment.author }}</h4>
+                        <blockquote class="message">{{  comment.text|linebreaks }}</blockquote>
+                        <br />
+                    {% empty %}
+                  <ul class="messages">
+                    <li>
+                      <!-- <img src="" class="avatar" alt="Avatar"> -->
+                      <div class="message_date">
+                        <h3 class="date text-info"></h3>
+                      </div>
+                      <div class="message_wrapper">
+                        <h4 class="heading"></h4>
+                        <blockquote class="message">Nothing posted yet. Start the convo!</blockquote>
+                        <br />
+                    	
+                    {% endfor %}
+                      </div>
+                    </li>
+                  </ul>
+				  </div>
+                  <!-- end of user messages -->
+
+				
+                
+
+
+              
+
+              <!-- start project-detail sidebar -->
+              <div class="col-md-4 col-sm-4 col-xs-12">
+
+                <section class="panel">
+
+                  <div class="x_title">
+                    <h2>Project Description</h2>
+                    <div class="clearfix"></div>
+                  </div>
+                  <div class="panel-body">
+                    <!-- </div><h3 class="green"><i class="fa fa-paint-brush"></i> Gentelella</h3> -->
+
+                    <div class="project_detail">
+                    <p class="title">Project Owner</p>
+                    <p>{{ project.owner }}</p>
+                    <p class="title">Created:</p>  
+                    <p>{{ project.date_created }}</p>
+                    <p class="title">Modified:</p>
+                    <p>{{ project.date_modified }}</p> 
+                    <p class="title">User Story</p>
+                    <p>{{ project.why }}</p>
+                      <!-- <p class="title">Sponsor</p>
+                      <p>Jordan Peele</p>-->
+                      <!-- <p class="title">Team</p>
+                      <p>{{ project.BusinessUnit }}</p>	-->
+                      {% if request.user.is_superuser %}
+                      <p class="title">Project Score</p>
+                      <p>{{ project.normalized_score }}</p>
+                      <p class="title">Raw Score</p>
+                      <p>{{ project.score }}</p>
+                      {% else %}
+
+                      {% endif %}
+                    </div>
+
+                    <br />
+                    <h3>Score Elements</h5>
+                    <ul class="list-unstyled project_files">
+                      <li><i class="fa fa-group"></i><span class="score_detail">   {{ project.purpose }}</span>
+                      </li>
+                      <li><i class="fa fa-lightbulb-o"></i><span class="score_detail">   {{ project.alignment }}</span>
+                      </li>
+                      <li><i class="fa fa-road"></i><span class="score_detail">   {{ project.engagement }}</span>
+                      </li>
+                      <li><i class="fa fa-money"></i><span class="score_detail">   ${{ project.value|intcomma }}</span>
+                      </li>
+                      <li><i class="fa fa-text-height"></i><span class="score_detail">   {{ project.loe }}</span>
+                      <li><i class="fa fa-text-height"></i><span class="score_detail">   {{ project.approved }}</span>                      
+                      </li>
+                    </ul>
+                    <br />
+
+                  </div>
+
+                </section>
+
+              </div>
+              <!-- end project-detail sidebar -->
+			</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <!-- ECharts -->
+  <script src="/static/vendors/echarts/dist/echarts.min.js"></script>
+{% endblock javascripts %}

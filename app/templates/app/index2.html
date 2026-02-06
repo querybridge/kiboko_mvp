@@ -1,0 +1,535 @@
+{% extends "app/base_site.html" %}
+{% load humanize %}
+{% block title %} Dashboard {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+{% endblock stylesheets %}
+
+{% block content %}
+
+<style type="text/css">
+	td.fa {
+		display: table-cell !important;
+	}
+
+	i.fa-pencil {
+		display: inline-block !important;
+	}
+
+	table>tbody>tr>td {
+		vertical-align: middle !important;
+	} 
+</style>
+
+  <div class="right_col" role="main">
+   <div class="container">
+   	  <div class="row">
+   	  	   	<!-- REMOVING FOR PHASE 1
+					<div class="col-lg-8 col-md-8 col-sm-12 col-xs-12">
+						<div class="x_panel">
+							<div class="x_title">
+                                <h3>Revenue Trend</h3>
+                                <h5>Year to Date Progress</h5>
+							</div>
+							<div class="x_content" >
+							<div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+								<canvas id="mybarChart"></canvas>
+							</div>
+							<div class="dashboard-widget-content">
+							  <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+								<table class="countries_list">
+								  <tbody>
+									<tr>
+									  <td class="green">Actual YTD Revenue</td>
+									  <td class="fs15 fw700 text-right green">$10.6m</td>
+									</tr>
+									<tr>
+									  <td>YE Forecast</td>
+									  <td class="fs15 fw700 text-right">$212.5m</td>
+									</tr>
+									<tr>
+									  <td><strong>Project Value</strong></td>
+									  <td class="fs15 fw700 text-right"><strong>$16.4m</strong></td>
+									</tr>
+									<tr>
+									  <td>YE Forecast + Project Value</td>
+									  <td class="fs15 fw700 text-right">$228.9m</td>
+									</tr>
+									<tr>
+									  <td class="red">Forecasted Miss</td>
+									  <td class="fs15 fw700 text-right">$121.0m</td>
+									</tr>
+								  </tbody>
+								</table>
+							  </div>
+							</div>
+						</div>
+						</div>
+					</div>
+					<div class="col-lg-4 col-md-4 col-sm-12 col-xs-12">
+						<div class="x_panel">
+							<div class="x_title"><h3>3 Core Objectives</h3>
+                                <h5> Current Quarter Progress</h5></div>
+							
+								<div class="row tile_count">
+								  <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4 tile_stats_count">
+									<span class="count_top"><i class="fa fa-group"></i> New Customers</span>
+									<div class="count green">22,500</div>
+									<span class="count_top"><i class=""><i class="fa fa-sort-asc"></i>44% </i>From Last Quarter</span>
+								  </div>
+								  <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4 tile_stats_count">
+									<span class="count_top"><i class="fa fa-money"></i> Average Order Value</span>
+									<div class="count">$475.50</div>
+									<span class="count_bottom"><i class="green"><i class="fa fa-minus"></i>3% </i>From Last Quarter</span>
+								  </div>
+								  <div class="col-lg-4 col-sm-4 col-xs-4 tile_stats_count">
+									<span class="count_top"><i class="fa fa-heart"></i> Purchase Frequency</span>
+									<div class="count red">1.25</div>
+									<span class="count_bottom"><i class="red"><i class="fa fa-sort-desc"></i>34% </i>From Last Quarter</span>
+								  </div>
+								</div>
+								<div class="row tile_count">
+								  <div class="col-lg-4 col-md-4 col-sm-4 col-xs-4 tile_stats_count">
+									<span class="count_top"><i class="fa fa-group"></i> YTD New Customers</span>
+									<div class="count">31,809</div>
+									<span class="count_bottom"><i class="red">3% </i>of 330,000 YE Goal</span>
+								  </div>
+								  <div class="col-lg-4 col-sm-4 col-xs-4 tile_stats_count">
+									<span class="count_top"><i class="fa fa-money"></i> YTD Average Order Value</span>
+									<div class="count">$492.80</div>
+									<span class="count_bottom"><i class="green">90% </i>of $525.00 YE Goal</span>
+								  </div>
+								  <div class="col-lg-4 col-sm-4 col-xs-4 tile_stats_count">
+									<span class="count_top"><i class="fa fa-heart"></i> YTD Purchase Frequency</span>
+									<div class="count">1.18</div>
+									<span class="count_bottom"><i class="green">15% </i>of 1.51 YE Goal</span>
+								  </div>
+								</div>
+						</div>
+					</div>
+					</div>
+				-->
+      <div class="row top_tiles"><hr/>
+        <div class="animated flipInY col-lg-4 col-m4-6 col-sm-12 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-group fa-sm"></i></div>
+            <div class="x_title">
+			<h3>Increase Shopper Volume</h3>
+            <p>Count of New and Returning Shoppers</p>
+			</div>
+              <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
+              	<div class="count">
+              	{{ project_count_ic }} Projects
+              	<br>
+              	<span class="">
+              		<p>{{ project_count_ic_p }} Inactive</p>
+              </div>
+          	</div>
+			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
+				<div class="count pull-right">
+				${{ project_value_ic.value__sum|intcomma }}
+				<br>
+				<p>${{ project_value_ic_p.value__sum|intcomma }}</p>
+			</div>
+			</div>
+          </div>
+        </div>
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-money fa-sm"></i></div>
+            <div class="x_title">
+			<h3>Increase Shopping Activity</h3>
+            <p>Number of Product Views, Add to Carts, Begin Checkout, and Purchases</p>
+			</div>
+			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
+				<div class="count">
+				{{ project_count_ips }} Projects
+				<br>
+				<p>{{ project_count_ips_p }} Inactive</p>
+			</div>
+			</div>
+			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count ">
+				<div class="count pull-right">
+				${{ project_value_ips.value__sum|intcomma }}
+				<br>
+				<p>${{ project_value_ips_p.value__sum|intcomma }}</p>
+			</div>
+			</div>
+          </div>
+        </div>
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-heart fa-sm"></i></div>
+            <div class="x_title">
+			<h3>Increase Average Order Value</h3>
+            <p>Count of Orders above Median Order Value</p>
+			</div>
+              <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">
+                  <div class="count">
+                  {{ project_count_ipf }} Projects
+                  <br>
+                  <p>{{ project_count_ipf_p }} Inactive</p>
+              </div>
+              </div>
+			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">
+                <div class="count pull-right">
+                ${{ project_value_ipf.value__sum|intcomma }}
+                <br>
+                <p>${{ project_value_ipf_p.value__sum|intcomma }}</p>
+            	</div>
+            </div>
+          </div>
+        </div>
+
+      <!-- Revenue Chart -->
+      <div class="row">
+        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+          <div class="x_panel">
+            <div class="x_title">
+              <h3>Revenue</h3>
+              <div class="pull-right">
+                <button class="btn btn-sm btn-info active" data-period="mtd">MTD</button>
+                <button class="btn btn-sm btn-default" data-period="qtd">QTD</button>
+                <button class="btn btn-sm btn-default" data-period="ytd">YTD</button>
+              </div>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <div class="col-lg-9 col-md-8 col-sm-12 col-xs-12" style="padding-left:0; position:relative; overflow:visible;">
+                <canvas id="revenueChart" height="60"></canvas>
+                <div id="chartTooltip" style="display:none; position:absolute; background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:4px; font-size:12px; pointer-events:none; z-index:9999; white-space:nowrap;"></div>
+              </div>
+              <div class="col-lg-3 col-md-4 col-sm-12 col-xs-12">
+                <table class="table" style="margin-top:20px">
+                  <tbody>
+                    <tr>
+                      <td style="border-top:none"><strong>Actual</strong></td>
+                      <td style="border-top:none" class="text-right green" id="summary-actual"></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Forecast</strong></td>
+                      <td class="text-right" id="summary-forecast"></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Active Project Value</strong></td>
+                      <td class="text-right" id="summary-project-value"></td>
+                    </tr>
+                    <tr>
+                      <td><strong>End of Period Total</strong></td>
+                      <td class="text-right" id="summary-end-total" style="font-weight:700"></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Budget</strong></td>
+                      <td class="text-right" id="summary-budget" style="color:#337ab7; font-weight:700"></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Delta to Budget</strong></td>
+                      <td class="text-right" id="summary-delta"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="clearfix"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+				<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+					<div class="x_panel">
+						<div class="x_title">
+							<h3>Work in Progress</h3>
+                            <h5>Accepted Strategies & Projects</h5>
+						</div>
+                            <table id="datatable" class="table table-striped table-bordered dataTable no-footer" role="grid" aria-describedby="datatable_info">
+                                 <thead>
+									  <tr>
+										<th>Strategy</th>
+										<th>Project</th>
+										<th>Objective</th>
+										<th>Score</th>
+										<th>Progress</th>
+										<th>Value</th>
+										<th>LOE</th>
+										<th>Launch</th>
+										<th>Status</th>
+										<th>Edit / View Detail</th>
+									  </tr>
+									</thead>
+										<tbody>
+											{% for project in projects %}
+											  <tr>
+												<td scope="row">{{ project.strategy.name }}</td>
+												<td><a href="/project/{{ project.id }}">{{ project.name }}</a></td>
+												<td class="
+												{% if project.strategy.objective == 'IC' %}
+												fa fa-group
+												{% endif %}
+												{% if project.strategy.objective == 'IPS' %}
+												fa fa-money
+												{% endif %}
+												{% if project.strategy.objective == 'IPF' %}
+												fa fa-heart
+												{% endif %}
+												fa fa-2x" style="text-align: center !important"></td>
+												<td>{{ project.normalized_score }}</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="{{ project.progress }}"></div>
+												  </div>
+												  <small>{{ project.progress }}% Complete</small>
+												</td>
+												<td>${{ project.value|intcomma }}</td>
+												<td style="text-align: center"><button type="button" class=" btn-success btn-xl">{{ project.loe }}</button></td>
+												<td>{{ project.launch }}</td>
+												<td>{{ project.status }}</td>
+												<td style="vertical-align: middle;">
+												<ul id="project_buttons">
+													<li id="project_lists" class="" style="display: inline-block; list-style: none; vertical-align: middle;">
+														{% for group in user.groups.all %}
+														{% if group.name == 'Owner' or group.name == 'Manager' %}
+														<a href="/project/{{project.id}}/edit_manager/?next={{ request.path|urlencode }}" class="btn btn-info btn-xs">Edit</a>														
+														{% else %}
+														<a href="/project/{{project.id}}/edit/?next={{ request.path|urlencode }}" class="btn btn-info btn-xs">Edit</a>
+														{% endif %}
+														{% endfor %}
+													</li>
+													<li style="display: inline-block; list-style: none">
+														<a href="/project/{{project.id}}/" class="btn btn-info btn-xs"> View </a>
+													</li>
+												<!--<a href="/project/{{project.id}}/delete" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>-->
+												</td>
+											  </tr>
+											{% endfor %}
+											</tbody>
+										  </table>
+										</div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super}}
+  <script type="text/javascript">
+  	$().DataTable();
+  </script>
+  <!-- Chart.js (CDN - version 2.9.4) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+  <script type="text/javascript">
+  (function() {
+    var dataMTD = {{ chart_data_mtd|safe }};
+    var dataQTD = {{ chart_data_qtd|safe }};
+    var dataYTD = {{ chart_data_ytd|safe }};
+
+    var datasets = {
+      mtd: dataMTD,
+      qtd: dataQTD,
+      ytd: dataYTD
+    };
+
+    var ctx = document.getElementById('revenueChart').getContext('2d');
+    var revenueChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: dataMTD.labels,
+        datasets: [
+          {
+            label: 'Budget',
+            type: 'line',
+            data: dataMTD.budget,
+            borderColor: '#337ab7',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 3,
+            fill: false,
+            order: 1
+          },
+          {
+            label: 'Actual',
+            type: 'bar',
+            data: dataMTD.actual,
+            backgroundColor: '#1a7a5c',
+            hoverBackgroundColor: '#145c45',
+            borderColor: '#1a7a5c',
+            borderWidth: 1,
+            order: 2
+          },
+          {
+            label: 'Forecast',
+            type: 'bar',
+            data: dataMTD.forecast_base,
+            backgroundColor: '#7ed3b2',
+            hoverBackgroundColor: '#5ec49a',
+            borderColor: '#7ed3b2',
+            borderWidth: 1,
+            stack: 'forecast',
+            order: 3
+          },
+          {
+            label: 'Project Value Add',
+            type: 'bar',
+            data: dataMTD.project_value_add,
+            backgroundColor: '#c5f0e0',
+            hoverBackgroundColor: '#a8e6cf',
+            borderColor: '#a8e6cf',
+            borderWidth: 1,
+            stack: 'forecast',
+            order: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 4 / 3,
+        scales: {
+          xAxes: [{
+            stacked: true
+          }],
+          yAxes: [{
+            stacked: true,
+            ticks: {
+              beginAtZero: true,
+              callback: function(value) {
+                return '$' + value.toLocaleString();
+              }
+            }
+          }]
+        },
+        hover: {
+          mode: 'index',
+          intersect: false,
+          animationDuration: 200
+        },
+        tooltips: {
+          enabled: false,
+          mode: 'index',
+          intersect: false,
+          custom: function(tooltipModel) {
+            var tooltipEl = document.getElementById('chartTooltip');
+
+            // Hide if no tooltip
+            if (tooltipModel.opacity === 0) {
+              tooltipEl.style.display = 'none';
+              return;
+            }
+
+            // Set content
+            if (tooltipModel.body) {
+              var titleLines = tooltipModel.title || [];
+              var bodyLines = tooltipModel.body.map(function(item) { return item.lines; });
+
+              var html = '';
+              if (titleLines.length > 0) {
+                html += '<strong>' + titleLines[0] + '</strong><br>';
+              }
+
+              var forecastVal = 0;
+              var projectVal = 0;
+
+              tooltipModel.dataPoints.forEach(function(dp, i) {
+                var dataset = revenueChart.data.datasets[dp.datasetIndex];
+                var label = dataset.label;
+                var val = dp.yLabel;
+
+                if (val !== null && val !== undefined && val !== 0) {
+                  var color = dataset.borderColor || dataset.backgroundColor;
+                  var formattedVal = '$' + Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                  html += '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';margin-right:6px;"></span>' + label + ': ' + formattedVal + '<br>';
+
+                  if (label === 'Forecast') forecastVal = val;
+                  if (label === 'Project Value Add') projectVal = val;
+                }
+              });
+
+              if (forecastVal > 0 || projectVal > 0) {
+                var total = forecastVal + projectVal;
+                html += '<hr style="margin:4px 0;border-color:rgba(255,255,255,0.3);">';
+                html += '<strong>Projected Total: $' + Number(total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong>';
+              }
+
+              tooltipEl.innerHTML = html;
+            }
+
+            // Position tooltip
+            var position = this._chart.canvas.getBoundingClientRect();
+            tooltipEl.style.display = 'block';
+            tooltipEl.style.left = tooltipModel.caretX + 'px';
+            tooltipEl.style.top = tooltipModel.caretY + 'px';
+          }
+        },
+        legend: {
+          labels: {
+            filter: function(legendItem, data) {
+              return true;
+            }
+          }
+        }
+      }
+    });
+
+    function fmtDollar(v) {
+      var prefix = v < 0 ? '-$' : '$';
+      return prefix + Math.abs(v).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function updateSummary(d) {
+      var s = d.summary;
+      $('#summary-actual').text(fmtDollar(s.actual));
+      $('#summary-forecast').text(fmtDollar(s.forecast));
+      $('#summary-project-value').text(fmtDollar(s.project_value));
+      $('#summary-end-total').text(fmtDollar(s.end_total));
+      $('#summary-budget').text(fmtDollar(s.budget_total));
+      var deltaEl = $('#summary-delta');
+      deltaEl.text('$' + Math.abs(s.delta).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+      deltaEl.removeClass('green red');
+      deltaEl.addClass(s.delta > 0 ? 'red' : 'green');
+    }
+
+    // Set initial summary
+    updateSummary(dataMTD);
+
+    // Period switcher buttons
+    $('[data-period]').on('click', function() {
+      var period = $(this).data('period');
+      var d = datasets[period];
+      $('[data-period]').removeClass('btn-info active').addClass('btn-default');
+      $(this).removeClass('btn-default').addClass('btn-info active');
+
+      revenueChart.data.labels = d.labels;
+      revenueChart.data.datasets[0].data = d.budget;
+      revenueChart.data.datasets[1].data = d.actual;
+      revenueChart.data.datasets[2].data = d.forecast_base;
+      revenueChart.data.datasets[3].data = d.project_value_add;
+      revenueChart.update();
+      updateSummary(d);
+    });
+  })();
+  </script>
+  <!-- gauge.js -->
+  <script src="/static/vendors/gauge.js/dist/gauge.min.js"></script>
+  <!-- Skycons -->
+  <script src="/static/vendors/skycons/skycons.js"></script>
+  <!-- Flot -->
+  <script src="/static/vendors/Flot/jquery.flot.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.pie.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.time.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.stack.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.resize.js"></script>
+  <!-- Flot plugins -->
+  <script src="/static/vendors/flot.orderbars/js/jquery.flot.orderBars.js"></script>
+  <script src="/static/vendors/flot-spline/js/jquery.flot.spline.min.js"></script>
+  <script src="/static/vendors/flot.curvedlines/curvedLines.js"></script>
+  <!-- DateJS -->
+  <script src="/static/vendors/DateJS/build/date.js"></script>
+  <!-- JQVMap -->
+  <script src="/static/vendors/jqvmap/dist/jquery.vmap.js"></script>
+  <script src="/static/vendors/jqvmap/dist/maps/jquery.vmap.world.js"></script>
+  <script src="/static/vendors/jqvmap/examples/js/jquery.vmap.sampledata.js"></script>
+   <!-- morris.js -->
+  <script src="/static/vendors/raphael/raphael.min.js"></script>
+  <script src="/static/vendors/morris.js/morris.min.js"></script>
+    <!-- jQuery Sparklines -->
+  <script src="/static/vendors/jquery-sparkline/dist/jquery.sparkline.min.js"></script>
+  <script src="../build/js/custom.min.js" type="4c182b32632dbf75a9b27ff5-text/javascript"></script>
+  <script src="https://ajax.cloudflare.com/cdn-cgi/scripts/a2bd7673/cloudflare-static/rocket-loader.min.js" data-cf-settings="4c182b32632dbf75a9b27ff5-|49" defer=""></script>
+{% endblock javascripts %}

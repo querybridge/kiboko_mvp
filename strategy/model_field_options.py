@@ -1,0 +1,56 @@
+objective_options = (
+		('IC', 'Increase Shopper Volume'),
+		('IPS', 'Increase Shopping Activity'),
+		('IPF', 'Increase Average Order Value'),
+	)
+
+level_options = (
+		('Corporate', 'Corporate'),
+		('Business Unit', 'Business Unit'),
+		('Team', 'Team'),
+	)
+
+businessUnit_options = (
+		('Merchandising', 'Merchandising'),
+		('Customer Service', 'Customer Service'),
+		('Innovation', 'Innovation'),
+	)
+
+purpose_options = (
+		('New Growth', 'New Growth'),
+		('Hold Position', 'Hold Position'),
+		('Defend Position', 'Defend Position'),
+		('Reverse Decay', 'Reverse Decay'),
+	)
+
+status_options = (
+		('new', 'New'),
+		('gathering_requirements', 'Gathering Requirements'),
+		('ready_for_dev', 'Ready for Development'),
+		('in_development', 'In Development'),
+		('uat', 'UAT'),
+		('qa', 'QA'),
+		('ready_for_prod', 'Ready for Production'),
+		('completed_launched', 'Completed - Launched'),
+		('blocked', 'Blocked'),
+
+	)
+
+competitive_position_dict = (
+    (63, 'Niche Player - Low Vision/Low Execution'),
+    (94, 'Niche Player - Low Vision/High Execution'),
+    (94, 'Niche Player - High Vision/Low Execution'),
+    (125, 'Niche Player - High Vision/High Execution'),
+    (150, 'Visionary - Low Vision/Low Execution'),
+    (188, 'Visionary - Low Vision/High Execution'),
+    (188, 'Visionary - High Vision/Low Execution'),
+    (225, 'Visionary - High Vision/High Execution'),
+    (175, 'Challenger - Low Vision/Low Execution'),
+    (219, 'Challenger - Low Vision/High Execution'),
+    (219, 'Challenger - High Vision/Low Execution'),
+    (263, 'Challenger - High Vision/High Execution'),
+    (300, 'Leader - Low Vision/Low Execution'),
+    (350, 'Leader - Low Vision/High Execution'),
+    (350, 'Leader - High Vision/Low Execution'),
+    (400, 'Leader - High Vision/High Execution'),
+    )

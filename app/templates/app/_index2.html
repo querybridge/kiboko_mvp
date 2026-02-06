@@ -1,0 +1,945 @@
+{% extends "app/base_site.html" %}
+
+{% block title %} Dashboard 2 {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+{% endblock stylesheets %}
+
+{% block content %}
+
+  <div class="right_col" role="main">
+
+	
+   <div class="">
+   	<!-- Removing for Phase 1 -->
+   	  <!-- <div class="row">
+		<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+			<div class="x_panel">
+				<div class=" ">
+				<div class="x_content">
+				<h2>Revenue Trend <small>Year to Date Progress</small></h2><p/>
+				</div>
+				 <div class="progres" style="height:60px;">
+				   	<div class="progress-bar progress-bar-success" role="progressbar" style="width:20%">
+					  Actual YTD: $20M
+					</div>
+					<div class="progress-bar progress-bar-primary" role="progressbar" style="width:40%">
+					  Forecast YE: $200M
+					</div>
+					<div class="progress-bar progress-bar-info" role="progressbar" style="width:10%">
+					  Project Value: $310M
+					</div>
+
+					<div class="tile-stats count" style="height:60px;text-align:center;"><h3>$30M Deficit</h3></div>
+				</div>
+				<div><p>stuff</p></div>
+				  </div>
+				</div>
+			</div>
+		</div>
+	</div> -->
+   
+      <div class="row top_tiles">
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-4 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-group"></i></div>
+            <h3>Increase New Customers</h3>
+            <p>Count of New Customers</p>
+			<div class="count">30<small> Projects</small></div>
+          </div>
+        </div>
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-4 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-money"></i></div>
+            <h3>Increase Purchase Size</h3>
+            <p>Number of Orders above Current AOV</p>
+			<div class="count">15<small> Projects</small></div>
+          </div>
+        </div>
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-4 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-heart"></i></div>
+            <h3>Increase Purchase Frequency</h3>
+            <p>Orders per Customer over 2 years</p>
+			<div class="count">0<small> Projects</small></div>
+			
+          </div>
+        </div>
+      </div>
+
+
+	  
+	  <div class="row">
+	  <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+	  <div class="x_panel">
+            <div class="x_title">
+			<div class="x_content">
+	
+	<!-- start project list -->  
+	  <table class="table table-striped projects">
+                <thead>
+                  <tr>
+                    <th style="width: 1%">#</th>
+                    <th style="width: 20%">Strategy</th>
+                    <th>Alignment</th>
+					<th>Score</th>
+                    <th>Project Progress</th>
+					<th>Value</th>
+                    <th>Status</th>
+					<th>Next Launch</th>
+                    <th style="width: 20%">#Edit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Increase Mattress Sales</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-group"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					  <td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-warning btn-xs">Missed</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                     <!-- <a href="#" class="btn btn-primary btn-xs"><i class="fa fa-folder"></i> View </a> -->
+					  
+					  
+					  
+					  <!-- Large modal -->
+						<button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+						<div class="x_content">
+						<div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-hidden="true">
+						  <div class="modal-dialog modal-lg">
+							<div class="modal-content">
+
+							  <div class="modal-header">
+								<button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">×</span>
+								</button>
+								<h3 class="modal-title" id="myModalLabel"><strong>Strategy:</strong> Increase Mattress Sales </h3>
+							  </div>
+							  <div class="modal-body">
+									<div class="x_panel">
+										<div class="x_title"> 
+										  <h2>Projects <small>Features & Modifications</small></h2>
+										  <ul class="nav navbar-right panel_toolbox">
+											<li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+											</li>
+											<li class="dropdown">
+											  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+											  <ul class="dropdown-menu" role="menu">
+												<li><a href="#">Settings 1</a>
+												</li>
+												<li><a href="#">Settings 2</a>
+												</li>
+											  </ul>
+											</li>
+											<li><a class="close-link"><i class="fa fa-close"></i></a>
+											</li>
+										  </ul>
+										  <div class="clearfix"></div>
+										</div>
+										<div class="x_content">
+
+										  <table class="table table-striped">
+											<thead>
+											  <tr>
+												<th>#</th>
+												<th>Project</th>
+												<th>Team</th>
+												<th>Score</th>
+												<th>Progress</th>
+												<th>Value</th>
+												<th>Status</th>
+												<th>Estimated Delivery</th>
+												<th>Edit</th>
+											  </tr>
+											</thead>
+											<tbody>
+											  <tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td><a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a></td>
+											  </tr>
+											 <tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td><a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a></td>
+											  </tr>
+											  	<tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td><a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a></td>
+											  </tr>
+											</tbody>
+										  </table>
+
+										</div>
+									  </div>
+								  </div>
+							  <div class="modal-footer">
+								<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+							</div>
+
+							</div>
+						  </div>
+						</div>
+						</div>		  
+					  
+					  
+					  
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Improve Cross Selling Capabilities</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					<td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-danger btn-xs">Blocked</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+				  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Add Personalization to Shopping Experience</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-heart"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					                    <td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs">On Track</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+				  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Increase Mattress Sales</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					                    <td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="100"></div>
+                      </div>
+                      <small>100% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-success btn-xs">Success</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+				  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Increase Mattress Sales</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					                    <td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-success btn-xs">Success</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+				  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Increase Mattress Sales</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					                    <td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-success btn-xs">Success</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+				  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Increase Mattress Sales</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					                    <td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-success btn-xs">Success</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+				  <tr>
+                    <td>#101</td>
+                    <td>
+                      <a>Increase Mattress Sales</a>
+                      <br />
+                      <small>Created 1/15/2019</small>
+                    </td>
+                    <td>
+						<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+                    </td>
+					<td>
+					82
+					</td>
+					                    <td class="project_progress">
+                      <div class="progress progress_sm">
+                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+                      </div>
+                      <small>57% Complete</small>
+                    </td>
+					<td>
+					$23,500
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-success btn-xs">Success</button>
+                    </td>
+					<td>
+					7/8/2019
+					</td>
+                    <td>
+                      <button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target=".bs-example-modal-lg"><i class="fa fa-folder"></i> Projects</button>
+                      <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+                      <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <!-- end project list -->
+	</div>
+	  </div>
+	  </div>
+	  </div>
+	  </div>
+	  
+	  
+	  
+	  
+	  
+	  <!--
+      <div class="row">
+        <div class="col-md-12">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Transaction Summary <small>Weekly progress</small></h2>
+              <div class="filter">
+                <div id="reportrange" class="pull-right" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc">
+                  <i class="glyphicon glyphicon-calendar fa fa-calendar"></i>
+                  <span>December 30, 2014 - January 28, 2015</span> <b class="caret"></b>
+                </div>
+              </div>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <div class="col-md-9 col-sm-12 col-xs-12">
+                <div class="demo-container" style="height:280px">
+                  <div id="chart_plot_02" class="demo-placeholder"></div>
+                </div>
+                <div class="tiles">
+                  <div class="col-md-4 tile">
+                    <span>Total Sessions</span>
+                    <h2>231,809</h2>
+                    <span class="sparkline11 graph" style="height: 160px;">
+                         <canvas width="200" height="60" style="display: inline-block; vertical-align: top; width: 94px; height: 30px;"></canvas>
+                    </span>
+                  </div>
+                  <div class="col-md-4 tile">
+                    <span>Total Revenue</span>
+                    <h2>$231,809</h2>
+                    <span class="sparkline22 graph" style="height: 160px;">
+                          <canvas width="200" height="60" style="display: inline-block; vertical-align: top; width: 94px; height: 30px;"></canvas>
+                    </span>
+                  </div>
+                  <div class="col-md-4 tile">
+                    <span>Total Sessions</span>
+                    <h2>231,809</h2>
+                    <span class="sparkline11 graph" style="height: 160px;">
+                           <canvas width="200" height="60" style="display: inline-block; vertical-align: top; width: 94px; height: 30px;"></canvas>
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="col-md-3 col-sm-12 col-xs-12">
+                <div>
+                  <div class="x_title">
+                    <h2>Top Profiles</h2>
+                    <ul class="nav navbar-right panel_toolbox">
+                      <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                      </li>
+                      <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                        <ul class="dropdown-menu" role="menu">
+                          <li><a href="#">Settings 1</a>
+                          </li>
+                          <li><a href="#">Settings 2</a>
+                          </li>
+                        </ul>
+                      </li>
+                      <li><a class="close-link"><i class="fa fa-close"></i></a>
+                      </li>
+                    </ul>
+                    <div class="clearfix"></div>
+                  </div>
+                  <ul class="list-unstyled top_profiles scroll-view">
+                    <li class="media event">
+                      <a class="pull-left border-aero profile_thumb">
+                        <i class="fa fa-user aero"></i>
+                      </a>
+                      <div class="media-body">
+                        <a class="title" href="#">Ms. Mary Jane</a>
+                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                        <p> <small>12 Sales Today</small>
+                        </p>
+                      </div>
+                    </li>
+                    <li class="media event">
+                      <a class="pull-left border-green profile_thumb">
+                        <i class="fa fa-user green"></i>
+                      </a>
+                      <div class="media-body">
+                        <a class="title" href="#">Ms. Mary Jane</a>
+                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                        <p> <small>12 Sales Today</small>
+                        </p>
+                      </div>
+                    </li>
+                    <li class="media event">
+                      <a class="pull-left border-blue profile_thumb">
+                        <i class="fa fa-user blue"></i>
+                      </a>
+                      <div class="media-body">
+                        <a class="title" href="#">Ms. Mary Jane</a>
+                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                        <p> <small>12 Sales Today</small>
+                        </p>
+                      </div>
+                    </li>
+                    <li class="media event">
+                      <a class="pull-left border-aero profile_thumb">
+                        <i class="fa fa-user aero"></i>
+                      </a>
+                      <div class="media-body">
+                        <a class="title" href="#">Ms. Mary Jane</a>
+                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                        <p> <small>12 Sales Today</small>
+                        </p>
+                      </div>
+                    </li>
+                    <li class="media event">
+                      <a class="pull-left border-green profile_thumb">
+                        <i class="fa fa-user green"></i>
+                      </a>
+                      <div class="media-body">
+                        <a class="title" href="#">Ms. Mary Jane</a>
+                        <p><strong>$2300. </strong> Agent Avarage Sales </p>
+                        <p> <small>12 Sales Today</small>
+                        </p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <div class="row">
+        <div class="col-md-12">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Weekly Summary <small>Activity shares</small></h2>
+              <ul class="nav navbar-right panel_toolbox">
+                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                </li>
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="#">Settings 1</a>
+                    </li>
+                    <li><a href="#">Settings 2</a>
+                    </li>
+                  </ul>
+                </li>
+                <li><a class="close-link"><i class="fa fa-close"></i></a>
+                </li>
+              </ul>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+
+              <div class="row" style="border-bottom: 1px solid #E0E0E0; padding-bottom: 5px; margin-bottom: 5px;">
+                <div class="col-md-7" style="overflow:hidden;">
+                  <span class="sparkline_one" style="height: 160px; padding: 10px 25px;">
+                                <canvas width="200" height="60" style="display: inline-block; vertical-align: top; width: 94px; height: 30px;"></canvas>
+                            </span>
+                  <h4 style="margin:18px">Weekly sales progress</h4>
+                </div>
+
+                <div class="col-md-5">
+                  <div class="row" style="text-align: center;">
+                    <div class="col-md-4">
+                      <canvas class="canvasDoughnut" height="110" width="110" style="margin: 5px 10px 10px 0"></canvas>
+                      <h4 style="margin:0">Bounce Rates</h4>
+                    </div>
+                    <div class="col-md-4">
+                      <canvas class="canvasDoughnut" height="110" width="110" style="margin: 5px 10px 10px 0"></canvas>
+                      <h4 style="margin:0">New Traffic</h4>
+                    </div>
+                    <div class="col-md-4">
+                      <canvas class="canvasDoughnut" height="110" width="110" style="margin: 5px 10px 10px 0"></canvas>
+                      <h4 style="margin:0">Device Share</h4>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <div class="row">
+        <div class="col-md-4">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Top Profiles <small>Sessions</small></h2>
+              <ul class="nav navbar-right panel_toolbox">
+                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                </li>
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="#">Settings 1</a>
+                    </li>
+                    <li><a href="#">Settings 2</a>
+                    </li>
+                  </ul>
+                </li>
+                <li><a class="close-link"><i class="fa fa-close"></i></a>
+                </li>
+              </ul>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item One Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Three Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Top Profiles <small>Sessions</small></h2>
+              <ul class="nav navbar-right panel_toolbox">
+                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                </li>
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="#">Settings 1</a>
+                    </li>
+                    <li><a href="#">Settings 2</a>
+                    </li>
+                  </ul>
+                </li>
+                <li><a class="close-link"><i class="fa fa-close"></i></a>
+                </li>
+              </ul>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item One Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Three Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Top Profiles <small>Sessions</small></h2>
+              <ul class="nav navbar-right panel_toolbox">
+                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                </li>
+                <li class="dropdown">
+                  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><i class="fa fa-wrench"></i></a>
+                  <ul class="dropdown-menu" role="menu">
+                    <li><a href="#">Settings 1</a>
+                    </li>
+                    <li><a href="#">Settings 2</a>
+                    </li>
+                  </ul>
+                </li>
+                <li><a class="close-link"><i class="fa fa-close"></i></a>
+                </li>
+              </ul>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item One Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Two Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+              <article class="media event">
+                <a class="pull-left date">
+                  <p class="month">April</p>
+                  <p class="day">23</p>
+                </a>
+                <div class="media-body">
+                  <a class="title" href="#">Item Three Title</a>
+                  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  -->
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super}}
+  <!-- Chart.js -->
+  <script src="/static/vendors/Chart.js/dist/Chart.min.js"></script>
+  <!-- gauge.js -->
+  <script src="/static/vendors/gauge.js/dist/gauge.min.js"></script>
+  <!-- Skycons -->
+  <script src="/static/vendors/skycons/skycons.js"></script>
+  <!-- Flot -->
+  <script src="/static/vendors/Flot/jquery.flot.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.pie.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.time.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.stack.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.resize.js"></script>
+  <!-- Flot plugins -->
+  <script src="/static/vendors/flot.orderbars/js/jquery.flot.orderBars.js"></script>
+  <script src="/static/vendors/flot-spline/js/jquery.flot.spline.min.js"></script>
+  <script src="/static/vendors/flot.curvedlines/curvedLines.js"></script>
+  <!-- DateJS -->
+  <script src="/static/vendors/DateJS/build/date.js"></script>
+  <!-- JQVMap -->
+  <script src="/static/vendors/jqvmap/dist/jquery.vmap.js"></script>
+  <script src="/static/vendors/jqvmap/dist/maps/jquery.vmap.world.js"></script>
+  <script src="/static/vendors/jqvmap/examples/js/jquery.vmap.sampledata.js"></script>
+{% endblock javascripts %}

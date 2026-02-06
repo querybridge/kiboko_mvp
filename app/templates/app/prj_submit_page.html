@@ -1,0 +1,159 @@
+{% extends "app/base_site.html" %}
+
+{% block title %} New Strategy {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  <!-- Ion.RangeSlider -->
+  <link href="/static/vendors/normalize-css/normalize.css" rel="stylesheet">
+  <link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.css" rel="stylesheet">
+  <link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.skinNice.css" rel="stylesheet">
+
+{% endblock stylesheets %}
+
+{% block content %}
+    <div class="right_col" role="main">
+      <div class="">
+        <div class="page-title">
+          <div class="title_left">
+            <h3>New Project</h3>
+          </div>
+        <div class="clearfix"></div>
+
+        <div class="row">
+          <div class="col-md-6 col-sm-6 col-xs-6">
+            <div class="x_panel">
+              <div class="x_title">
+  
+              <h2>Define Project<small>All Fields Required</small></h2>
+              
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+			<hr/>
+			<h4><strong>Strategy: </strong>#101 - Increase Mattress Sales </h4>
+			<hr/>
+			
+              <!-- start form for validation -->
+			  <form id="demo-form" data-parsley-validate method="post">
+              {% csrf_token %}
+			  <input type="hidden" value="123456" name="strategy_id" />
+			  <input type="hidden" value="{{ user.username }}" name="username" />
+			  <label for="desired_impact">Desired Impact * :</label>
+                <input type="text" id="desired_impact" class="form-control" name="desired_impact" required />
+              
+				</br>
+                <label for="defosuccess">Definition of success * :</label>
+                <input type="defosuccess" id="defosuccess" class="form-control" name="definition_of_success" data-parsley-trigger="change" required />
+				</br>
+				<hr/>
+
+                <label>IEP Alignment *:</label>
+                <p>
+                  Impressive <input type="radio" class="flat" name="iep_alignment" id="iep_alignment_1" value="Impressive"  /> 
+				  Enlighten <input type="radio" class="flat" name="iep_alignment" id="iep_alignment_2" value="Enlighten" checked="" required />
+				  Purchase <input type="radio" class="flat" name="iep_alignment" id="iep_alignment_3" value="Purchase" />
+                </p>
+
+				<hr/>
+
+                    <label for="heard">Feature Location *:</label>
+                    <select id="heard" class="form-control" name="feature_location" required>
+                      <option value="">Choose..</option>
+                      <option value="Header">Header</option>
+                      <option value="Footer">Footer</option>
+                      <option value="Home Page">Home Page</option>
+					  <option value="Category Page">Category Page</option>
+					  <option value="Product List Page">Product List Page</option>
+					  <option value="Product Detail Page">Product Detail Page</option>
+					  <option value="Cart Page">Cart Page</option>
+					  <option value="Order Tracking Page">Order Tracking Page</option>
+					  <option value="Landing Page">Landing Page</option>
+                    </select>
+				</br>
+				<hr/>
+				</br>
+                    <label for="heard">Primary Engagement Type *:</label>
+                    <select id="heard" class="form-control" name="primary_engagement_type" required>
+                      <option value="">Choose..</option>
+                      <option value="Click">Click</option>
+                      <option value="Submit">Submit</option>
+                      <option value="View">View</option>
+                    </select>
+				</br>
+				<hr/>
+				</br>	
+				<div class="col-md-8">	
+                <label>Competitive Position:</label>
+                <div class="grid_slider">
+				<p>
+					<input type="text" id="range_31" value="" name="competitive_position" />
+                </p>
+				</div>
+				</div>
+				<br/>
+				<div class="col-md-12">
+				<label>Purpose:</label>
+                <p>
+                  New Growth <input type="radio" class="flat" name="purpose" id="genderM" value=100 checked="" required /> 
+				  Hold Position <input type="radio" class="flat" name="purpose" id="genderF" value=95  />
+				  Defend Position <input type="radio" class="flat" name="purpose" id="genderF" value=90 />
+				  Reverse Decay <input type="radio" class="flat" name="purpose" id="genderF" value=85 />
+                </p>
+				</br>
+				<hr/>
+				</br>
+
+
+                    <label for="message">Define the "Why" (20 chars min, 100 max) :</label>
+                    <textarea id="message" required="required" class="form-control" name="define_the_why" data-parsley-trigger="keyup" data-parsley-minlength="20" data-parsley-maxlength="100" data-parsley-minlength-message="Come on! You need to enter at least a 20 caracters long comment.."
+                      data-parsley-validation-threshold="10"></textarea>
+				
+                    <br/>
+                    <button type="submit" class="btn btn-primary">Save</button>
+					</div>
+              </form>
+              <!-- end form for validations -->
+
+            </div>
+          </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <!-- Ion.RangeSlider -->
+  <script src="/static/vendors/ion.rangeSlider/js/ion.rangeSlider.js"></script>
+  
+{% endblock javascripts %}
+
+<!--
+Desired Impact -- 70 Chart Input
+Definition of success -- 70 Chart Input
+Alignment - Ic, IPs, IPF -- Multi Check
+corporate strategy, business unit strategy, and team strategy -- radio
+Business Unit/Corporate Area/Team -- drop down
+
+Competitive Position - Dominant, Strong, Favorable, Tenable, Weak -- Radio Button
+Purpose - New Growth, Hold Position, Defend Position, Reverse Decay -- Radio Button
+
+
+
+
+
+Projects
+Feature/Test
+Update/New
+
+
+
+
+ADL Matrix - https://www.youtube.com/watch?v=4S90cdIeYoI
+https://www.mindtools.com/pages/article/what-is-strategy.htm
+
+-->

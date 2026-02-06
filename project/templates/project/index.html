@@ -1,0 +1,460 @@
+{% extends "app/base_site.html" %}
+
+{% block title %} Project Dashboard {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+{% endblock stylesheets %}
+
+{% block content %}
+
+  <div class="right_col" role="main">
+
+  	
+
+	
+   <div class="">
+   
+   	  <div class="row">
+					<div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+						<div class="col-lg-7 col-md-12 col-sm-12 col-xs-12">
+						<div class="x_panel">
+							<div class="x_title">
+							<h3>Revenue Trend <small>Year to Date Progress</small></h4>
+							</div>
+							
+							<div class="x_content" >
+							
+							<div class="chart-box col-md-7 col-sm-12 col-xs-12">
+								<canvas id="mybarChart"></canvas>
+							</div>
+								
+							<div class="dashboard-widget-content">
+							  <div class="col-md-5 hidden-small">
+								
+								<table class="countries_list">
+								  <tbody>
+									<tr>
+									  <td class="green">Actual YTD Revenue</td>
+									  <td class="fs15 fw700 text-right green">$10.6m</td>
+									</tr>
+									<tr>
+									  <td>YE Forecast</td>
+									  <td class="fs15 fw700 text-right">$212.5m</td>
+									</tr>
+									<tr>
+									  <td><strong>Project Value</strong></td>
+									  <td class="fs15 fw700 text-right"><strong>$16.4m</strong></td>
+									</tr>
+									<tr>
+									  <td>YE Forecast + Project Value</td>
+									  <td class="fs15 fw700 text-right">$228.9m</td>
+									</tr>
+									<tr>
+									  <td class="red">Forecasted Miss</td>
+									  <td class="fs15 fw700 text-right red">$121.0m</td>
+									</tr>
+								  </tbody>
+								</table>
+							  </div>
+							</div>
+						</div>
+						</div>
+					</div>
+					
+					<div class="col-lg-5 col-md-12 col-sm-12 col-xs-12">
+						<div class="x_panel">
+							<div class="x_title"><h3>3 Core Objectives <small>Current Quarter Progress</small></h4></div>
+							<!-- top tiles -->
+								<div class="row tile_count">
+								  <div class="col-md-4 col-sm-4 col-xs-6 tile_stats_count">
+									<span class="count_top"><i class="fa fa-group"></i> New Customers</span>
+									<div class="count green">22,500</div>
+									<span class="count_bottom"><i class="green"><i class="fa fa-sort-asc"></i>44% </i> From last Quarter</span>
+								  </div>
+								  <div class="col-md-4 col-sm-4 col-xs-6 tile_stats_count">
+									<span class="count_top"><i class="fa fa-money"></i> Average Order Value</span>
+									<div class="count">$475.50</div>
+									<span class="count_bottom"><i class=" "><i class="fa fa-minus"></i>3% </i> From last Quarter</span>
+								  </div>
+								  <div class="col-md-4 col-sm-4 col-xs-6 tile_stats_count">
+									<span class="count_top"><i class="fa fa-heart"></i> Purchase Frequency</span>
+									<div class="count red">1.25</div>
+									<span class="count_bottom"><i class="red"><i class="fa fa-sort-desc"></i>34% </i> From last Quarter</span>
+								  </div>
+								</div>
+								<!-- /top tiles -->
+								
+								<!-- top tiles -->
+								<div class="row tile_count">
+								  <div class="col-md-4 col-sm-4 col-xs-6 tile">
+									<span class="count_top"><i class="fa fa-group"></i> YTD New Customers</span>
+									<h3>31,809</h3>
+									<span class="count_bottom"><i class="red">3% </i>of 330,000 YE Goal</span>
+								  </div>
+								  <div class="col-md-4 col-sm-4 col-xs-6 tile_stats_count">
+									<span class="count_top"><i class="fa fa-money"></i> YTD Average Order Value</span>
+									<h3>$492.80</h3>
+									<span class="count_bottom"><i class="green">90% </i>of $525.00 YE Goal</span>
+								  </div>
+								  <div class="col-md-4 col-sm-4 col-xs-6 tile_stats_count">
+									<span class="count_top"><i class="fa fa-heart"></i> YTD Purchase Frequency</span>
+									<h3>1.18</h3>
+									<span class="count_bottom"><i class="green">15% </i>of 1.51 YE Goal</span>
+								  </div>
+								</div>
+								<!-- /top tiles -->
+						</div>
+					</div>
+			
+					</div>
+		</div>
+	 
+   
+      <div class="row top_tiles"><hr/>
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-4 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-group"></i></div>
+            <div class="x_title">
+			<h3>Increase New Customers</h3> 
+            <p>Count of New Customers</p>
+			</div>
+			<div class="col-lg-6 "><div class="count">130<small> Projects</small></div></div>
+			<div class="col-lg-6 "><div class="count pull-right">$18.25m</div></div>
+          </div>
+        </div>
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-4 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-money"></i></div>
+            <div class="x_title">
+			<h3>Increase Average Order Value</h3>
+            <p>Number of Orders above Current AOV</p>
+			</div>
+			<div class="col-lg-6 "><div class="count">8<small> Projects</small></div></div>
+			<div class="col-lg-6 "><div class="count pull-right">$900k</div></div>
+          </div>
+        </div>
+        <div class="animated flipInY col-lg-4 col-md-4 col-sm-4 col-xs-12">
+          <div class="tile-stats">
+            <div class="icon"><i class="fa fa-heart"></i></div>
+            <div class="x_title">
+			<h3>Increase Purchase Frequency</h3>
+            <p>Orders per Customer (Last 24 Months)</p>
+			</div>
+			<div class="col-lg-6 "><div class="count">0<small> Projects</small></div></div>
+			<div class="col-lg-6 "><div class="count pull-right">$0</div></div>
+			
+          </div>
+        </div>
+      </div>
+
+
+ 
+	        <div class="row"><hr/>
+				<div class="col-md-12">
+					<div class="x_panel">
+						<div class="x_title">
+							<h3>Work in Progress <small>Accepted Strategies & Projects</small></h4>
+						</div>
+										 
+										 
+									<table class="table table-striped projects">
+									 <thead>
+									  <tr>
+										<th style="width: 1%">#</th>
+										<th style="width: 20%">Strategy</th>
+										<th>Alignment</th>
+										<th>Score</th>
+										<th>Project Progress</th>
+										<th>Value</th>
+										<th>Status</th>
+										<th>Next Launch</th>
+										<th style="width: 20%">#Edit</th>
+									  </tr>
+									</thead>
+										<tbody>
+										 <tr><!-- strategy row -->	
+											<td>#101</td>
+											<td>
+											  <a>Increase Mattress Sales</a>
+											  <br />
+											  <small>Created 1/15/2019</small>
+											</td>
+											<td>
+												<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+											</td>
+											<td>
+											82
+											</td>
+											<td class="project_progress">
+											  <div class="progress progress_sm">
+												<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+											  </div>
+											  <small>57% Complete</small>
+											</td>
+											<td>
+											$23,500
+											</td>
+											<td>
+											  <button type="button" class="btn btn-success btn-xs">Success</button>
+											</td>
+											<td>
+											7/8/2019
+											</td>
+											<td>
+											  <button type="button" class="btn btn-primary btn-xs collapse-link" data-toggle="collapse" data-target="#strategy_101-projects"><i class="fa fa-folder"></i> Projects</button>
+											  <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+											  <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+											</td>
+										  </tr><!-- end strategy row -->
+										  <tr>
+										  <td colspan="9">
+										  <div id="strategy_101-projects" class="collapse">
+
+										  <table class="table table-striped">
+											<thead>
+											  <tr>
+												<th>#</th>
+												<th>Project</th>
+												<th>Team</th>
+												<th>Score</th>
+												<th>Progress</th>
+												<th>Value</th>
+												<th>Status</th>
+												<th>Estimated Delivery</th>
+												<th>Edit</th>
+											  </tr>
+											</thead>
+											<tbody>
+											  <!-- projects row -->
+											  <tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td>
+												<a href="project_detail.html" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+												<a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+												</td>
+											  </tr>
+											 <tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td>
+												<a href="project_detail.html" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+												<a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+												</td>
+											  </tr>
+											  	<tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td>
+												<a href="project_detail.html" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+												<a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+												</td>
+											  </tr>
+											</tbody>
+										  </table>
+										</td>
+										</div>
+										  </tr>
+										  <!-- end projects row -->
+										
+
+										<!-- delete -->
+										<tr><!-- strategy row -->	
+											<td>#101</td>
+											<td>
+											  <a>Increase Mattress Sales</a>
+											  <br />
+											  <small>Created 1/15/2019</small>
+											</td>
+											<td>
+												<div class="icon" style="font-size:30px;"><i class="fa fa-money"></i></div>
+											</td>
+											<td>
+											82
+											</td>
+											<td class="project_progress">
+											  <div class="progress progress_sm">
+												<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="57"></div>
+											  </div>
+											  <small>57% Complete</small>
+											</td>
+											<td>
+											$23,500
+											</td>
+											<td>
+											  <button type="button" class="btn btn-success btn-xs">Success</button>
+											</td>
+											<td>
+											7/8/2019
+											</td>
+											<td>
+											  <button type="button" class="btn btn-primary btn-xs" data-toggle="collapse" data-target="#strategy_102-projects"><i class="fa fa-folder"></i> Projects</button>
+											  <a href="#" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+											  <a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+											</td>
+										  </tr><!-- end strategy row -->
+										  <tr>
+										  <td colspan="9">
+										  <div id="strategy_102-projects" class="collapse">
+
+										  <table class="table table-striped">
+											<thead>
+											  <tr>
+												<th>#</th>
+												<th>Project</th>
+												<th>Team</th>
+												<th>Score</th>
+												<th>Progress</th>
+												<th>Value</th>
+												<th>Status</th>
+												<th>Estimated Delivery</th>
+												<th>Edit</th>
+											  </tr>
+											</thead>
+											<tbody>
+											  <!-- projects row -->
+											  <tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td>
+												<a href="project_detail.html" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+												<a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+												</td>
+											  </tr>
+											 <tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td>
+												<a href="project_detail.html" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+												<a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+												</td>
+											  </tr>
+											  	<tr>
+												<th scope="row">1</th>
+												<td>Add New Content</td>
+												<td>Shopping Experience</td>
+												<td>68</td>
+												 <td class="project_progress">
+												  <div class="progress progress_sm">
+													<div class="progress-bar bg-green" role="progressbar" data-transitiongoal="32"></div>
+												  </div>
+												  <small>32% Complete</small>
+												</td>
+												<td>$200,000</td>
+												<td><button type="button" class="btn btn-warning btn-xs">Missed</button></td>
+												<td>7/16/2019</td>
+												<td>
+												<a href="project_detail.html" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+												<a href="#" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i> Delete </a>
+												</td>
+											  </tr>
+											</tbody>
+										  </table>
+										</td>
+										</div>
+										  </tr>
+										  <!-- end projects row -->
+										<!-- delete -->										
+										  
+									     </tbody>
+										</table>					 
+
+										  
+													
+									  </div>
+									 </div>
+									</div>
+	  
+	  
+	  
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super}}
+  <!-- Chart.js -->
+  <script src="/static/vendors/Chart.js/dist/Chart.min.js"></script>
+  <!-- gauge.js -->
+  <script src="/static/vendors/gauge.js/dist/gauge.min.js"></script>
+  <!-- Skycons -->
+  <script src="/static/vendors/skycons/skycons.js"></script>
+  <!-- Flot -->
+  <script src="/static/vendors/Flot/jquery.flot.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.pie.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.time.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.stack.js"></script>
+  <script src="/static/vendors/Flot/jquery.flot.resize.js"></script>
+  <!-- Flot plugins -->
+  <script src="/static/vendors/flot.orderbars/js/jquery.flot.orderBars.js"></script>
+  <script src="/static/vendors/flot-spline/js/jquery.flot.spline.min.js"></script>
+  <script src="/static/vendors/flot.curvedlines/curvedLines.js"></script>
+  <!-- DateJS -->
+  <script src="/static/vendors/DateJS/build/date.js"></script>
+  <!-- JQVMap -->
+  <script src="/static/vendors/jqvmap/dist/jquery.vmap.js"></script>
+  <script src="/static/vendors/jqvmap/dist/maps/jquery.vmap.world.js"></script>
+  <script src="/static/vendors/jqvmap/examples/js/jquery.vmap.sampledata.js"></script>
+
+   <!-- morris.js -->
+  <script src="/static/vendors/raphael/raphael.min.js"></script>
+  <script src="/static/vendors/morris.js/morris.min.js"></script>
+  
+    <!-- jQuery Sparklines -->
+  <script src="/static/vendors/jquery-sparkline/dist/jquery.sparkline.min.js"></script>
+
+{% endblock javascripts %}

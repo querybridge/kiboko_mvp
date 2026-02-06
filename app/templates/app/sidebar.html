@@ -1,0 +1,102 @@
+<div class="left_col scroll-view">
+  <div class="navbar nav_title" style="border: 0;">
+    <a href="/app/" class="site_title" style="height: auto; line-height: 1.2; margin-top: 15px; display: flex; align-items: flex-start;"><i class="fa fa-tasks" style="margin-right: 8px;"></i><span style="display: flex; flex-direction: column; text-align: left;"><strong>Belami</strong><span style="font-size: 11px;">Project Prioritization</span></span></a>
+  </div>
+
+  <div class="clearfix"></div>
+
+
+
+  <br />
+
+  <!-- sidebar menu -->
+  <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
+      <div class="menu_section">
+	  <h3>Summary</h3>
+	  <ul class="nav side-menu">
+        <li><a href="/app/"><i class="fa fa-dashboard"></i> Dashboard </a>
+        </li>
+		</ul>
+		</div>
+	<div class="menu_section">
+      <h3>New Work</h3>
+      <ul class="nav side-menu">
+        <li><a><i class="fa fa-edit"></i> Add Work<span class="fa fa-chevron-down"></span></a>
+          <ul class="nav child_menu">
+          {% for group in user.groups.all %}  
+			    {% if group.name == 'A-Team' %}  
+            <li><a href="/strategy/add.html">New Strategy</a></li>
+            {% else %}
+            {% endif %}
+            {% endfor %}
+            <li><a href="/project/add.html">New Project</a></li>
+          </ul>
+        </li>
+        {% for group in user.groups.all %}
+        {% if group.name == 'VP' %}
+        <li><a><i class="fa fa-calculator"></i> Estimate Value &amp; LOE <span class="fa fa-chevron-down"></span></a>
+          <ul class="nav child_menu">
+          {% for group in user.groups.all %}  
+			    {% if group.name == 'A-Team' %} 
+            <li><a href="/project/value.html">Estimate Value</a></li>
+            {% else %}
+            {% endif %}
+            {% endfor %}
+            <li><a href="/project/loe.html">Estimate LOE</a></li>
+            <li><a href="/project/approvals.html">Approve Projects</a></li>
+          </ul>
+        </li>
+        {% endif %}
+        {% endfor %}
+        <li><a><i class="fa fa-clone"></i>All Work <span class="fa fa-chevron-down"></span></a>
+          <ul class="nav child_menu">
+          	{% for group in user.groups.all %}  
+		    {% if group.name == 'A-Team' %} 	          
+            <li><a href="/strategy/view.html">Strategies</a></li>
+            {% else %}
+            {% endif %}
+			{% endfor %}
+            <li><a href="/project/view.html">Projects</a></li>
+            <li><a href="/project/archive/">Archive</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <div class="menu_section">
+      <h3>Revenue</h3>
+      <ul class="nav side-menu">
+        <li><a href="/app/goals/"><i class="fa fa-bullseye"></i> Edit Goals</a></li>
+        <li><a href="/app/actuals/"><i class="fa fa-upload"></i> Update Actuals</a></li>
+      </ul>
+    </div>
+    <div class="menu_section">
+      <h3>Business Impact</h3>
+      <ul class="nav side-menu">
+        <!-- <li><a href="#"><i class="fa fa-bar-chart-o"></i> Completed Projects Value</a></li> -->
+         <li><a><i class="fa fa-road"></i> Strategy Analysis <span class="fa fa-chevron-down"></span></a>
+		  <ul class="nav child_menu">
+            <li><a href="/app/adl.html">ADL Matrix</a></li>
+            <!-- <li><a href="#">Decision Matrix</a></li> -->
+          </ul>
+        </li>       
+    </div>
+	</div>
+  <!-- /sidebar menu -->
+
+  <!-- /menu footer buttons -->
+  <!--<div class="sidebar-footer hidden-small">
+    <a data-toggle="tooltip" data-placement="top" title="Settings">
+      <span class="glyphicon glyphicon-cog" aria-hidden="true"></span>
+    </a>
+    <a data-toggle="tooltip" data-placement="top" title="FullScreen">
+      <span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>
+    </a>
+    <a data-toggle="tooltip" data-placement="top" title="Lock">
+      <span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>
+    </a>
+    <a data-toggle="tooltip" data-placement="top" title="Logout" href="login.html">
+      <span class="glyphicon glyphicon-off" aria-hidden="true"></span>
+    </a>
+  </div> -->
+  <!-- /menu footer buttons -->
+</div>

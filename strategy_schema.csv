@@ -1,0 +1,10 @@
+date_created,date_modified,created_by,modified_by,sid,name,desired_impact,def_of_success,next_launch,alignment,level,purpose,score,value,status,progress
+2019-03-01,2019-04-01,cwall,cwall,10,Strategy 1,Strategy - Desired Impact 1,Strategy - Definition of Success 1,2019-05-01,Strategy - Alignment 1,Corporate,New Growth,1,21000000,New,10
+2019-03-02,2019-04-02,cwall,cwall,11,Strategy 2,Strategy - Desired Impact 2,Strategy - Definition of Success 2,2019-06-01,Strategy - Alignment 2,Business Unit,Hold Position,4,22000000,Gathering Requirements,20
+2019-03-03,2019-04-03,cwall,cwall,12,Strategy 3,Strategy - Desired Impact 3,Strategy - Definition of Success 3,2019-07-01,Strategy - Alignment 3,Team,Defend Position,5,23000000,Ready for Development,30
+2019-03-04,2019-04-04,cwall,cwall,13,Strategy 4,Strategy - Desired Impact 4,Strategy - Definition of Success 4,2019-08-01,Strategy - Alignment 4,Corporate,Reverse Decay,3,24000000,In Development,40
+2019-03-05,2019-04-05,cwall,cwall,14,Strategy 5,Strategy - Desired Impact 5,Strategy - Definition of Success 5,2019-09-01,Strategy - Alignment 5,Business Unit,New Growth,8,25000000,UAT,70
+2019-03-06,2019-04-06,cwall,cwall,15,Strategy 2,Strategy - Desired Impact 6,Strategy - Definition of Success 6,2019-10-01,Strategy - Alignment 6,Team,Hold Position,2,26000000,QA,80
+2019-03-07,2019-04-07,cwall,cwall,16,Strategy 3,Strategy - Desired Impact 7,Strategy - Definition of Success 7,2019-11-01,Strategy - Alignment 7,Corporate,Defend Position,6,27000000,Ready for Production,90
+2019-03-08,2019-04-08,cwall,cwall,17,Strategy 4,Strategy - Desired Impact 8,Strategy - Definition of Success 8,2019-12-01,Strategy - Alignment 8,Business Unit,Reverse Decay,9,28000000,Completed - Launched,100
+2019-03-09,2019-04-09,cwall,cwall,18,Strategy 5,Strategy - Desired Impact 9,Strategy - Definition of Success 9,2020-01-01,Strategy - Alignment 9,Team,New Growth,7,29000000,Blocked,0

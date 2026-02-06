@@ -1,0 +1,58 @@
+{% extends "app/base_site.html" %}
+{% block title %} Update Actuals {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Update Actuals</h3>
+      </div>
+      <div class="clearfix"></div>
+      <div class="row">
+        <div class="col-md-8 col-sm-8 col-xs-12">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Upload Daily Revenue</h2>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              {% if messages %}
+              {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                {{ message }}
+              </div>
+              {% endfor %}
+              {% endif %}
+              <p>Upload a CSV file with the following columns:</p>
+              <ul>
+                <li><strong>Date</strong> - The date of revenue (e.g., 2026-01-15 or 01/15/2026)</li>
+                <li><strong>Actual Revenue</strong> - The revenue amount for that date (e.g., 15000.00)</li>
+              </ul>
+              <p>Re-uploading a date will update the existing record (useful for handling returns).</p>
+              <hr>
+              <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-group">
+                  <label for="csv_file">Select CSV File</label>
+                  <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv">
+                </div>
+                <button type="submit" class="btn btn-success">Upload</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+{% endblock javascripts %}

@@ -1,0 +1,9 @@
+Django>=5.1,<5.2
+django-crispy-forms>=2.0
+crispy-bootstrap3>=2024.1
+django-multiselectfield>=0.1.12
+django-tables2>=2.7
+PyMySQL>=1.1
+django-computedfields>=0.2.0
+graphviz>=0.20
+django-widget-tweaks>=1.5
