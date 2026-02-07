@@ -11,6 +11,16 @@ from business_unit.models import BusinessUnit
 from django.contrib.auth.decorators import login_required
 from django.db.models import F, Q
 
+
+def _get_vertical_id(request):
+    """Read vertical filter from query string, return int or None."""
+    v = request.GET.get('vertical', '')
+    try:
+        return int(v) if v else None
+    except (ValueError, TypeError):
+        return None
+
+
 #from .models import Project
 @login_required
 # Create your views here.
@@ -19,6 +29,7 @@ from django.db.models import F, Q
 def view(request):
     context = {}
     title = ""
+    vertical_id = _get_vertical_id(request)
     # Exclude archived projects
     # Projects that are approved OR have status Pending Assignment/Active go in the approved table
     approved_projects = Project.objects.filter(
@@ -26,6 +37,8 @@ def view(request):
     ).filter(
         Q(approved=True) | Q(status__in=['Pending Assignment', 'Active'])
     )
+    if vertical_id:
+        approved_projects = approved_projects.filter(vertical_id=vertical_id)
     owned_bus = BusinessUnit.objects.filter(owner=request.user)
     # Pending = not approved AND not Pending Assignment/Active status
     pending_filter = Q(approved=False, archived=False) & ~Q(status__in=['Pending Assignment', 'Active'])
@@ -33,6 +46,8 @@ def view(request):
         pending_projects = Project.objects.filter(pending_filter, business_unit__in=owned_bus)
     else:
         pending_projects = Project.objects.filter(pending_filter)
+    if vertical_id:
+        pending_projects = pending_projects.filter(vertical_id=vertical_id)
     return render(request, 'project/view.html', {
         'approved_projects': approved_projects,
         'pending_projects': pending_projects,
@@ -171,24 +186,30 @@ def project_loe(request, project_id):
 # Projects that need Valued
 @login_required
 def value(request):
-    context = {}
-    projects = Project.objects.filter(value = 0)
+    vertical_id = _get_vertical_id(request)
+    projects = Project.objects.filter(value=0)
+    if vertical_id:
+        projects = projects.filter(vertical_id=vertical_id)
     title = "Assign Value"
     return render(request, 'project/value.html', {'projects': projects, 'title': title})
-    
-# Projects that need LOE
-@login_required
-def loe(request):
-    context = {}
-    projects = Project.objects.filter(level_of_effort=0)
-    title = "Assign Level of Effort"
-    return render(request, 'project/loe.html', {'projects': projects, 'title': title})
 
 # Projects that need LOE
 @login_required
+def loe(request):
+    vertical_id = _get_vertical_id(request)
+    projects = Project.objects.filter(level_of_effort=0)
+    if vertical_id:
+        projects = projects.filter(vertical_id=vertical_id)
+    title = "Assign Level of Effort"
+    return render(request, 'project/loe.html', {'projects': projects, 'title': title})
+
+# Projects that need approval
+@login_required
 def approve(request):
-    context = {}
+    vertical_id = _get_vertical_id(request)
     projects = Project.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['Active', 'Pending Assignment'])
+    if vertical_id:
+        projects = projects.filter(vertical_id=vertical_id)
     title = "Approve and Prioritize"
     return render(request, 'project/approvals.html', {'projects': projects, 'title': title})
     
@@ -230,7 +251,10 @@ def delete(request, project_id):
 @login_required
 def archive(request):
     """View archived (launched) projects with pagination."""
+    vertical_id = _get_vertical_id(request)
     archived_projects = Project.objects.filter(archived=True).order_by('-launch', '-date_modified')
+    if vertical_id:
+        archived_projects = archived_projects.filter(vertical_id=vertical_id)
     paginator = Paginator(archived_projects, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
