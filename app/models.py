@@ -1,6 +1,7 @@
 from django.db import models
 from django.forms import ModelForm
 from django import forms
+from business_unit.models import Vertical
 
 # Create your all your models here
 
@@ -260,21 +261,27 @@ class StrategyForm(ModelForm):
 ########################################
 
 class MonthlyGoal(models.Model):
-    month = models.DateField(unique=True)  # Store as first day of month
+    month = models.DateField()  # Store as first day of month
+    vertical = models.ForeignKey(Vertical, on_delete=models.CASCADE, null=True, blank=True)
     budget = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     class Meta:
         ordering = ['month']
+        unique_together = [['month', 'vertical']]
 
     def __str__(self):
-        return f"{self.month.strftime('%b %Y')} - ${self.budget}"
+        v = self.vertical.name if self.vertical else 'Summary'
+        return f"{self.month.strftime('%b %Y')} [{v}] - ${self.budget}"
 
 class DailyActual(models.Model):
-    date = models.DateField(unique=True)
+    date = models.DateField()
+    vertical = models.ForeignKey(Vertical, on_delete=models.CASCADE, null=True, blank=True)
     revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     class Meta:
         ordering = ['date']
+        unique_together = [['date', 'vertical']]
 
     def __str__(self):
-        return f"{self.date} - ${self.revenue}"
+        v = self.vertical.name if self.vertical else 'Summary'
+        return f"{self.date} [{v}] - ${self.revenue}"

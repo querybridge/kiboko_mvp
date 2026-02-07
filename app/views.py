@@ -15,8 +15,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
 from django.contrib.auth.models import User
+from django.http import HttpResponseForbidden
 
 from app.forms import StrategyForm
+from users.models import ROLE_CHOICES, UserProfile
 from app.models import MonthlyGoal, DailyActual
 from business_unit.models import BusinessUnit, Vertical
 from project.models import Project
@@ -24,8 +26,12 @@ from strategy.models import Strategy, AnnualRock, Metric, KPI
 from project.views import project_detail
 
 
-def calculate_forecast(year, month, return_components=False):
+def calculate_forecast(year, month, return_components=False, vertical_id=None):
     """Calculate forecast for a given month using weekday-weighted projection.
+
+    For the current month: uses actuals-to-date + day-of-week projected remainder.
+    For future months with no actuals: falls back to prior-year same-month
+    actuals scaled by a YoY growth factor (this year budget / last year total).
 
     If return_components=True, returns (base_forecast, project_uplift) tuple.
     Otherwise returns total forecast (base + project uplift).
@@ -35,15 +41,17 @@ def calculate_forecast(year, month, return_components=False):
     days_in_month = calendar.monthrange(year, month)[1]
     last_of_month = date(year, month, days_in_month)
 
-    actuals = DailyActual.objects.filter(
-        date__year=year, date__month=month
+    actuals_qs = DailyActual.objects.filter(
+        date__year=year, date__month=month, date__lte=today
     )
-    actuals_total = actuals.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+    if vertical_id:
+        actuals_qs = actuals_qs.filter(vertical_id=vertical_id)
+    actuals_total = actuals_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
     # Group actuals by day-of-week and compute averages
     dow_totals = defaultdict(Decimal)
     dow_counts = defaultdict(int)
-    for a in actuals:
+    for a in actuals_qs:
         dow = a.date.weekday()  # 0=Mon ... 6=Sun
         dow_totals[dow] += a.revenue
         dow_counts[dow] += 1
@@ -75,13 +83,39 @@ def calculate_forecast(year, month, return_components=False):
 
     base_forecast = actuals_total + projected_remainder
 
-    # Add approved project uplift — each project contributes its daily value
+    # Fallback for future months with no actuals: use prior-year same-month
+    # actuals scaled by (this year's budget / last year's actual total).
+    if base_forecast == 0 and first_of_month > today:
+        prior_year = year - 1
+        py_qs = DailyActual.objects.filter(date__year=prior_year, date__month=month)
+        if vertical_id:
+            py_qs = py_qs.filter(vertical_id=vertical_id)
+        py_month_total = py_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+
+        if py_month_total > 0:
+            py_year_qs = DailyActual.objects.filter(date__year=prior_year)
+            if vertical_id:
+                py_year_qs = py_year_qs.filter(vertical_id=vertical_id)
+            py_year_total = py_year_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+
+            budget_qs = MonthlyGoal.objects.filter(month__year=year)
+            if vertical_id:
+                budget_qs = budget_qs.filter(vertical_id=vertical_id)
+            this_year_budget = budget_qs.aggregate(s=Sum('budget'))['s'] or Decimal('0')
+
+            if py_year_total > 0 and this_year_budget > 0:
+                growth_scale = this_year_budget / py_year_total
+                base_forecast = py_month_total * growth_scale
+
+    # Add active project uplift — each project contributes its daily value
     # only for days in this month on or after its launch date
     projects = Project.objects.filter(
-        approved=True,
+        status='Active',
     ).filter(
         Q(launch__isnull=True) | Q(launch__lte=last_of_month)
     )
+    if vertical_id:
+        projects = projects.filter(vertical_id=vertical_id)
     project_uplift = Decimal('0')
     for p in projects:
         daily_value = Decimal(str(p.value or 0)) / Decimal('365')
@@ -97,11 +131,27 @@ def calculate_forecast(year, month, return_components=False):
     return base_forecast + project_uplift
 
 
-def _build_chart_data(year):
+def _build_chart_data(year, vertical_id=None):
     """Build MTD, QTD, and YTD chart data series for the dashboard."""
     today = date.today()
     current_month = today.month
     current_year = today.year
+
+    def _filter_actuals(qs):
+        if vertical_id:
+            return qs.filter(vertical_id=vertical_id)
+        return qs
+
+    def _filter_goals(qs):
+        if vertical_id:
+            return qs.filter(vertical_id=vertical_id)
+        return qs
+
+    def _goal_budget(year, month):
+        qs = MonthlyGoal.objects.filter(month=date(year, month, 1))
+        qs = _filter_goals(qs)
+        agg = qs.aggregate(s=Sum('budget'))['s']
+        return float(agg) if agg else 0
 
     # --- YTD: monthly data Jan-Dec ---
     ytd_labels = []
@@ -114,17 +164,16 @@ def _build_chart_data(year):
         label = date(year, m, 1).strftime('%b')
         ytd_labels.append(label)
 
-        goal = MonthlyGoal.objects.filter(month=date(year, m, 1)).first()
-        budget_val = float(goal.budget) if goal else 0
+        budget_val = _goal_budget(year, m)
         ytd_budget.append(budget_val)
 
         # Check if this month has actual data (past month)
         last_day_of_month = date(year, m, calendar.monthrange(year, m)[1])
         has_actuals = last_day_of_month < today
 
-        actual_sum = DailyActual.objects.filter(
-            date__year=year, date__month=m
-        ).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+        actual_sum = _filter_actuals(DailyActual.objects.filter(
+            date__year=year, date__month=m, date__lte=today
+        )).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
         if has_actuals:
             # Past month: show actual, hide forecast
@@ -133,7 +182,7 @@ def _build_chart_data(year):
             ytd_project_value_add.append(0)
         else:
             # Current/future month: show forecast, hide actual (or show partial actual)
-            base, proj_uplift = calculate_forecast(year, m, return_components=True)
+            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
             ytd_forecast_base.append(float(base))
             ytd_project_value_add.append(float(proj_uplift))
             # For current month, show actual so far; for future, null
@@ -156,17 +205,16 @@ def _build_chart_data(year):
         label = date(year, m, 1).strftime('%b')
         qtd_labels.append(label)
 
-        goal = MonthlyGoal.objects.filter(month=date(year, m, 1)).first()
-        budget_val = float(goal.budget) if goal else 0
+        budget_val = _goal_budget(year, m)
         qtd_budget.append(budget_val)
 
         # Check if this month has actual data (past month)
         last_day_of_month = date(year, m, calendar.monthrange(year, m)[1])
         has_actuals = last_day_of_month < today
 
-        actual_sum = DailyActual.objects.filter(
-            date__year=year, date__month=m
-        ).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+        actual_sum = _filter_actuals(DailyActual.objects.filter(
+            date__year=year, date__month=m, date__lte=today
+        )).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
         if has_actuals:
             # Past month: show actual, hide forecast
@@ -175,7 +223,7 @@ def _build_chart_data(year):
             qtd_project_value_add.append(0)
         else:
             # Current/future month: show forecast, hide actual (or show partial actual)
-            base, proj_uplift = calculate_forecast(year, m, return_components=True)
+            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
             qtd_forecast_base.append(float(base))
             qtd_project_value_add.append(float(proj_uplift))
             # For current month, show actual so far; for future, null
@@ -186,15 +234,16 @@ def _build_chart_data(year):
 
     # --- MTD: daily data for current month ---
     days_in_current_month = calendar.monthrange(year, current_month)[1]
-    goal = MonthlyGoal.objects.filter(month=date(year, current_month, 1)).first()
-    monthly_budget = float(goal.budget) if goal else 0
+    monthly_budget = _goal_budget(year, current_month)
     daily_budget_rate = monthly_budget / days_in_current_month if days_in_current_month else 0
 
-    # Gather daily actuals for the month
-    daily_actuals_qs = DailyActual.objects.filter(
-        date__year=year, date__month=current_month
-    )
-    daily_actuals_map = {a.date.day: float(a.revenue) for a in daily_actuals_qs}
+    # Gather daily actuals for the month (only through today)
+    daily_actuals_qs = _filter_actuals(DailyActual.objects.filter(
+        date__year=year, date__month=current_month, date__lte=today
+    ))
+    daily_actuals_map = {}
+    for a in daily_actuals_qs:
+        daily_actuals_map[a.date.day] = daily_actuals_map.get(a.date.day, 0) + float(a.revenue)
 
     # Weekday averages for projection
     dow_totals = defaultdict(float)
@@ -213,18 +262,19 @@ def _build_chart_data(year):
 
     # Pre-compute per-project daily rates for MTD forecast
     last_of_current_month = date(year, current_month, days_in_current_month)
-    approved_projects = list(
-        Project.objects.filter(
-            approved=True,
-        ).filter(
-            Q(launch__isnull=True) | Q(launch__lte=last_of_current_month)
-        ).values_list('value', 'launch')
+    project_qs = Project.objects.filter(
+        status='Active',
+    ).filter(
+        Q(launch__isnull=True) | Q(launch__lte=last_of_current_month)
     )
+    if vertical_id:
+        project_qs = project_qs.filter(vertical_id=vertical_id)
+    active_projects = list(project_qs.values_list('value', 'launch'))
 
     def _project_uplift_for_day(d):
         """Sum daily value of all projects whose launch date is on or before d."""
         total = 0.0
-        for value, launch in approved_projects:
+        for value, launch in active_projects:
             if launch is None or launch <= d:
                 total += float(value or 0) / 365.0
         return total
@@ -275,11 +325,14 @@ def _build_chart_data(year):
     # --- Summary totals for each period ---
 
     def _project_value_through(end_date):
-        return float(Project.objects.filter(
-            approved=True,
+        qs = Project.objects.filter(
+            status='Active',
         ).filter(
             Q(launch__isnull=True) | Q(launch__lte=end_date)
-        ).aggregate(s=Sum('value'))['s'] or 0)
+        )
+        if vertical_id:
+            qs = qs.filter(vertical_id=vertical_id)
+        return float(qs.aggregate(s=Sum('value'))['s'] or 0)
 
     # MTD: use the final cumulative values (full month projection)
     mtd_actual_total = round(cumulative_actual, 2)
@@ -293,7 +346,7 @@ def _build_chart_data(year):
     qtd_forecast_base_total = 0
     qtd_project_value_total = 0
     for m in range(quarter_start_month, min(quarter_start_month + 3, 13)):
-        base, proj_uplift = calculate_forecast(year, m, return_components=True)
+        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
         qtd_forecast_base_total += float(base)
         qtd_project_value_total += float(proj_uplift)
     qtd_forecast_base_total = round(qtd_forecast_base_total, 2)
@@ -308,7 +361,7 @@ def _build_chart_data(year):
     ytd_forecast_base_total = 0
     ytd_project_value_total = 0
     for m in range(1, 13):
-        base, proj_uplift = calculate_forecast(year, m, return_components=True)
+        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
         ytd_forecast_base_total += float(base)
         ytd_project_value_total += float(proj_uplift)
     ytd_forecast_base_total = round(ytd_forecast_base_total, 2)
@@ -368,16 +421,27 @@ def _build_chart_data(year):
 # View All Projects Page
 @login_required
 def index(request):
+    vertical_id = request.GET.get('vertical', '')
+    try:
+        vertical_id = int(vertical_id) if vertical_id else None
+    except (ValueError, TypeError):
+        vertical_id = None
+
     # Show active projects on dashboard
     projects = Project.objects.filter(status='Active', archived=False).order_by('-normalized_score')
+    if vertical_id:
+        projects = projects.filter(vertical_id=vertical_id)
 
     # Dynamic Annual Rock tiles
     annual_rocks_data = []
     for rock in AnnualRock.objects.filter(year=date.today().year):
-        count = Project.objects.filter(annual_rock=rock, approved=True, archived=False).count()
-        value = Project.objects.filter(annual_rock=rock, approved=True, archived=False).aggregate(Sum('value'))
-        count_p = Project.objects.filter(annual_rock=rock, approved=False, archived=False).count()
-        value_p = Project.objects.filter(annual_rock=rock, approved=False, archived=False).aggregate(Sum('value'))
+        base_qs = Project.objects.filter(annual_rock=rock, archived=False)
+        if vertical_id:
+            base_qs = base_qs.filter(vertical_id=vertical_id)
+        count = base_qs.filter(status='Active').count()
+        value = base_qs.filter(status='Active').aggregate(Sum('value'))
+        count_p = base_qs.exclude(status='Active').count()
+        value_p = base_qs.exclude(status='Active').aggregate(Sum('value'))
         annual_rocks_data.append({
             'rock': rock,
             'count': count,
@@ -387,7 +451,7 @@ def index(request):
         })
 
     # Build revenue chart data
-    chart_data = _build_chart_data(date.today().year)
+    chart_data = _build_chart_data(date.today().year, vertical_id=vertical_id)
 
     return render(request, 'app/index2.html', {
         'projects': projects,
@@ -419,6 +483,22 @@ def edit_goals(request):
     last_year = year - 1
     prev_year = year - 2
 
+    vertical_id = request.GET.get('vertical', '')
+    try:
+        vertical_id = int(vertical_id) if vertical_id else None
+    except (ValueError, TypeError):
+        vertical_id = None
+
+    def _filter_goals(qs):
+        if vertical_id:
+            return qs.filter(vertical_id=vertical_id)
+        return qs
+
+    def _filter_actuals(qs):
+        if vertical_id:
+            return qs.filter(vertical_id=vertical_id)
+        return qs
+
     if request.method == 'POST':
         for m in range(1, 13):
             month_date = date(year, m, 1)
@@ -427,45 +507,48 @@ def edit_goals(request):
                 budget_val = Decimal(budget_val.replace(',', ''))
             except (InvalidOperation, ValueError):
                 budget_val = Decimal('0')
+            lookup = {'month': month_date}
+            if vertical_id:
+                lookup['vertical_id'] = vertical_id
+            else:
+                lookup['vertical__isnull'] = True
             MonthlyGoal.objects.update_or_create(
-                month=month_date,
+                **lookup,
                 defaults={'budget': budget_val}
             )
         messages.success(request, 'Budget goals saved successfully.')
+        if vertical_id:
+            return redirect(f'/app/goals/?vertical={vertical_id}')
         return redirect('app:edit_goals')
 
     # GET: build data for current year and historical years
     goals_data = []
     for m in range(1, 13):
-        # Current year goal
+        # Current year goal — aggregate across verticals when Summary
         month_date = date(year, m, 1)
-        goal, _ = MonthlyGoal.objects.get_or_create(
-            month=month_date,
-            defaults={'budget': 0}
-        )
+        goal_qs = _filter_goals(MonthlyGoal.objects.filter(month=month_date))
+        budget_agg = goal_qs.aggregate(s=Sum('budget'))['s'] or Decimal('0')
 
         # Last year data
-        ly_month = date(last_year, m, 1)
-        ly_goal = MonthlyGoal.objects.filter(month=ly_month).first()
-        ly_budget = float(ly_goal.budget) if ly_goal else 0
-        ly_actual = float(DailyActual.objects.filter(
+        ly_goal_qs = _filter_goals(MonthlyGoal.objects.filter(month=date(last_year, m, 1)))
+        ly_budget = float(ly_goal_qs.aggregate(s=Sum('budget'))['s'] or 0)
+        ly_actual = float(_filter_actuals(DailyActual.objects.filter(
             date__year=last_year, date__month=m
-        ).aggregate(s=Sum('revenue'))['s'] or 0)
+        )).aggregate(s=Sum('revenue'))['s'] or 0)
         ly_pct = ((ly_actual / ly_budget - 1) * 100) if ly_budget else 0
 
         # Previous year data
-        py_month = date(prev_year, m, 1)
-        py_goal = MonthlyGoal.objects.filter(month=py_month).first()
-        py_budget = float(py_goal.budget) if py_goal else 0
-        py_actual = float(DailyActual.objects.filter(
+        py_goal_qs = _filter_goals(MonthlyGoal.objects.filter(month=date(prev_year, m, 1)))
+        py_budget = float(py_goal_qs.aggregate(s=Sum('budget'))['s'] or 0)
+        py_actual = float(_filter_actuals(DailyActual.objects.filter(
             date__year=prev_year, date__month=m
-        ).aggregate(s=Sum('revenue'))['s'] or 0)
+        )).aggregate(s=Sum('revenue'))['s'] or 0)
         py_pct = ((py_actual / py_budget - 1) * 100) if py_budget else 0
 
         goals_data.append({
             'month': m,
             'month_name': month_date.strftime('%B'),
-            'budget': goal.budget,
+            'budget': budget_agg,
             'ly_budget': ly_budget,
             'ly_actual': ly_actual,
             'ly_pct': ly_pct,
@@ -504,10 +587,24 @@ def edit_goals(request):
 
 @login_required
 def upload_actuals(request):
+    verticals = Vertical.objects.all()
+
     if request.method == 'POST':
         csv_file = request.FILES.get('csv_file')
+        vertical_id = request.POST.get('vertical', '').strip()
+
         if not csv_file:
             messages.error(request, 'Please select a CSV file to upload.')
+            return redirect('app:upload_actuals')
+
+        if not vertical_id:
+            messages.error(request, 'Please select a Vertical.')
+            return redirect('app:upload_actuals')
+
+        try:
+            vertical_obj = Vertical.objects.get(pk=int(vertical_id))
+        except (Vertical.DoesNotExist, ValueError):
+            messages.error(request, 'Invalid vertical selected.')
             return redirect('app:upload_actuals')
 
         try:
@@ -547,6 +644,7 @@ def upload_actuals(request):
 
             DailyActual.objects.update_or_create(
                 date=parsed_date,
+                vertical=vertical_obj,
                 defaults={'revenue': revenue_val}
             )
             count += 1
@@ -557,7 +655,7 @@ def upload_actuals(request):
             messages.success(request, f'Successfully processed {count} rows.')
         return redirect('app:upload_actuals')
 
-    return render(request, 'app/upload_actuals.html')
+    return render(request, 'app/upload_actuals.html', {'verticals': verticals})
 
 
 @login_required
@@ -766,4 +864,59 @@ def settings_measurements(request):
     return render(request, 'app/settings_measurements.html', {
         'metrics': metrics,
         'kpis': kpis,
+    })
+
+
+@login_required
+def settings_users(request):
+    """Manage Users — restricted to admin and senior_leadership roles."""
+    profile = getattr(request.user, 'profile', None)
+    if not profile or profile.role not in ('admin', 'senior_leadership'):
+        return HttpResponseForbidden('You do not have permission to access this page.')
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'add_user':
+            username = request.POST.get('username', '').strip()
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            email = request.POST.get('email', '').strip()
+            role = request.POST.get('role', 'staff')
+            password = request.POST.get('password', '').strip()
+            if username and password:
+                user = User.objects.create_user(
+                    username=username,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    password=password,
+                )
+                user.profile.role = role
+                user.profile.save()
+
+        elif action == 'edit_user':
+            user_id = request.POST.get('item_id')
+            user = User.objects.filter(pk=user_id).first()
+            if user:
+                user.first_name = request.POST.get('first_name', user.first_name).strip()
+                user.last_name = request.POST.get('last_name', user.last_name).strip()
+                user.email = request.POST.get('email', user.email).strip()
+                user.save()
+                role = request.POST.get('role', '').strip()
+                if role:
+                    user.profile.role = role
+                    user.profile.save()
+
+        elif action == 'delete_user':
+            user_id = request.POST.get('item_id')
+            User.objects.filter(pk=user_id).delete()
+
+        return redirect('app:settings_users')
+
+    all_users = User.objects.select_related('profile').filter(is_active=True).order_by('username')
+
+    return render(request, 'app/settings_users.html', {
+        'all_users': all_users,
+        'role_choices': ROLE_CHOICES,
     })

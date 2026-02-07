@@ -6,6 +6,14 @@
 
     <ul class="nav navbar-nav navbar-right">
 	    {% if user.is_authenticated %}
+      <li style="padding: 13px 10px 0 0;">
+        <select id="verticalFilter" class="form-control input-sm" style="display:inline-block; width:auto; min-width:160px;">
+          <option value="">Summary</option>
+          {% for v in nav_verticals %}
+          <option value="{{ v.id }}" {% if selected_vertical == v.id %}selected{% endif %}>{{ v.name }}</option>
+          {% endfor %}
+        </select>
+      </li>
       <li class="">
         <a href="javascript:;" class="user-profile dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
 			{{ user.username }}
@@ -88,3 +96,19 @@
     </ul>
   </nav>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var sel = document.getElementById('verticalFilter');
+  if (sel) {
+    sel.addEventListener('change', function() {
+      var url = new URL(window.location.href);
+      if (this.value) {
+        url.searchParams.set('vertical', this.value);
+      } else {
+        url.searchParams.delete('vertical');
+      }
+      window.location.href = url.toString();
+    });
+  }
+});
+</script>

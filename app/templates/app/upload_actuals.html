@@ -34,10 +34,19 @@
                 <li><strong>Date</strong> - The date of revenue (e.g., 2026-01-15 or 01/15/2026)</li>
                 <li><strong>Actual Revenue</strong> - The revenue amount for that date (e.g., 15000.00)</li>
               </ul>
-              <p>Re-uploading a date will update the existing record (useful for handling returns).</p>
+              <p>Select the Vertical this data belongs to. Re-uploading a date for the same vertical will update the existing record.</p>
               <hr>
               <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
+                <div class="form-group">
+                  <label for="vertical">Vertical <span class="text-danger">*</span></label>
+                  <select name="vertical" id="vertical" class="form-control" required>
+                    <option value="">-- Select Vertical --</option>
+                    {% for v in verticals %}
+                    <option value="{{ v.id }}">{{ v.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
                 <div class="form-group">
                   <label for="csv_file">Select CSV File</label>
                   <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv">
