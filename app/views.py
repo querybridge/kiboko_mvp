@@ -499,7 +499,9 @@ def edit_goals(request):
             return qs.filter(vertical_id=vertical_id)
         return qs
 
-    if request.method == 'POST':
+    is_summary = vertical_id is None
+
+    if request.method == 'POST' and not is_summary:
         for m in range(1, 13):
             month_date = date(year, m, 1)
             budget_val = request.POST.get(f'budget_{m}', '0')
@@ -507,19 +509,13 @@ def edit_goals(request):
                 budget_val = Decimal(budget_val.replace(',', ''))
             except (InvalidOperation, ValueError):
                 budget_val = Decimal('0')
-            lookup = {'month': month_date}
-            if vertical_id:
-                lookup['vertical_id'] = vertical_id
-            else:
-                lookup['vertical__isnull'] = True
             MonthlyGoal.objects.update_or_create(
-                **lookup,
+                month=month_date,
+                vertical_id=vertical_id,
                 defaults={'budget': budget_val}
             )
         messages.success(request, 'Budget goals saved successfully.')
-        if vertical_id:
-            return redirect(f'/app/goals/?vertical={vertical_id}')
-        return redirect('app:edit_goals')
+        return redirect(f'/app/goals/?vertical={vertical_id}')
 
     # GET: build data for current year and historical years
     goals_data = []
@@ -582,6 +578,7 @@ def edit_goals(request):
         'year': year,
         'last_year': last_year,
         'prev_year': prev_year,
+        'is_summary': is_summary,
     })
 
 
