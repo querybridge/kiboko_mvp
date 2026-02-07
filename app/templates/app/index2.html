@@ -19,7 +19,11 @@
 
 	table>tbody>tr>td {
 		vertical-align: middle !important;
-	} 
+	}
+
+	#revenueChart-panel .x_content {
+		overflow: hidden !important;
+	}
 </style>
 
   <div class="right_col" role="main">
@@ -114,8 +118,7 @@
         {% for item in annual_rocks_data %}
         <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
           <div class="tile-stats">
-            <div class="icon"><i class="fa fa-bullseye fa-sm"></i></div>
-            <div class="x_title">
+            <div class="x_title" style="text-align:center;">
 			<h3>{{ item.rock.name }}</h3>
             <p>{{ item.rock.description }}</p>
 			</div>
@@ -128,9 +131,9 @@
           	</div>
 			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">
 				<div class="count pull-right">
-				${{ item.value.value__sum|intcomma }}
+				${{ item.value.value__sum|default_if_none:0|intcomma }}
 				<br>
-				<p>${{ item.value_p.value__sum|intcomma }}</p>
+				<p>${{ item.value_p.value__sum|default_if_none:0|intcomma }}</p>
 			</div>
 			</div>
           </div>
@@ -141,7 +144,7 @@
       <!-- Revenue Chart -->
       <div class="row">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-          <div class="x_panel">
+          <div class="x_panel" id="revenueChart-panel">
             <div class="x_title">
               <h3>Revenue</h3>
               <div class="pull-right">
