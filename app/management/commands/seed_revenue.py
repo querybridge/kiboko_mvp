@@ -249,18 +249,26 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'Created {total_rows} DailyActual rows.'))
 
-        # ---- 2026 Monthly budget ($250M with seasonal shape) ----
-        budget_total = 250_000_000
-        MonthlyGoal.objects.filter(month__year=2026).delete()
-        for m in range(1, 13):
-            month_budget = round(budget_total * MONTHLY_PCT[m], 2)
-            for vert_name, pct in VERTICAL_SPLITS.items():
-                vert_budget = Decimal(str(month_budget)) * pct
-                MonthlyGoal.objects.create(
-                    month=date(2026, m, 1),
-                    vertical=verticals[vert_name],
-                    budget=vert_budget.quantize(Decimal('0.01')),
-                )
-            self.stdout.write(f'  2026-{m:02d} budget: ${month_budget:,.2f} (split across 3 verticals)')
+        # ---- Monthly budgets by year by vertical ----
+        # Budgets are set as aspirational targets above actual revenue
+        ANNUAL_BUDGETS = {
+            2024: 120_000_000,   # ~4% above $115M actual
+            2025: 130_000_000,   # ~7% above $122M actual
+            2026: 250_000_000,   # stretch goal
+        }
+        total_goal_rows = 0
+        for year, budget_total in ANNUAL_BUDGETS.items():
+            MonthlyGoal.objects.filter(month__year=year).delete()
+            for m in range(1, 13):
+                month_budget = round(budget_total * MONTHLY_PCT[m], 2)
+                for vert_name, pct in VERTICAL_SPLITS.items():
+                    vert_budget = Decimal(str(month_budget)) * pct
+                    MonthlyGoal.objects.create(
+                        month=date(year, m, 1),
+                        vertical=verticals[vert_name],
+                        budget=vert_budget.quantize(Decimal('0.01')),
+                    )
+                    total_goal_rows += 1
+            self.stdout.write(f'  {year} budget: ${budget_total:,} (12 months x 3 verticals = {12*3} rows)')
 
-        self.stdout.write(self.style.SUCCESS('Created 2026 monthly budget goals ($250M total, split by vertical).'))
+        self.stdout.write(self.style.SUCCESS(f'Created {total_goal_rows} MonthlyGoal rows across {len(ANNUAL_BUDGETS)} years.'))
