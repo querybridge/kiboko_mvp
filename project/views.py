@@ -188,7 +188,7 @@ def loe(request):
 @login_required
 def approve(request):
     context = {}
-    projects = Project.objects.filter(approved__exact='False', normalized_score__gt=0)
+    projects = Project.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['Active', 'Pending Assignment'])
     title = "Approve and Prioritize"
     return render(request, 'project/approvals.html', {'projects': projects, 'title': title})
     
