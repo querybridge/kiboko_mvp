@@ -14,10 +14,13 @@ from django.db.models import Q, Sum, Count, F
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
+from django.contrib.auth.models import User
+
 from app.forms import StrategyForm
 from app.models import MonthlyGoal, DailyActual
+from business_unit.models import BusinessUnit, Vertical
 from project.models import Project
-from strategy.models import Strategy, AnnualRock
+from strategy.models import Strategy, AnnualRock, Metric, KPI
 from project.views import project_detail
 
 
@@ -562,3 +565,149 @@ def upload_actuals(request):
         return redirect('app:upload_actuals')
 
     return render(request, 'app/upload_actuals.html')
+
+
+@login_required
+def settings(request):
+    """View to manage all dynamic lists."""
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        # --- Departments ---
+        if action == 'add_department':
+            name = request.POST.get('dept_name', '').strip()
+            owner_id = request.POST.get('dept_owner', '').strip()
+            if name:
+                BusinessUnit.objects.create(
+                    name=name,
+                    owner_id=int(owner_id) if owner_id else None,
+                )
+
+        elif action == 'edit_department':
+            dept_id = request.POST.get('item_id')
+            dept = BusinessUnit.objects.filter(pk=dept_id).first()
+            if dept:
+                dept.name = request.POST.get('dept_name', dept.name).strip()
+                owner_id = request.POST.get('dept_owner', '').strip()
+                dept.owner_id = int(owner_id) if owner_id else None
+                dept.save()
+
+        elif action == 'delete_department':
+            item_id = request.POST.get('item_id')
+            BusinessUnit.objects.filter(pk=item_id).delete()
+
+        # --- Verticals ---
+        elif action == 'add_vertical':
+            name = request.POST.get('vert_name', '').strip()
+            gm_id = request.POST.get('vert_gm', '').strip()
+            if name:
+                Vertical.objects.create(
+                    name=name,
+                    general_manager_id=int(gm_id) if gm_id else None,
+                )
+
+        elif action == 'edit_vertical':
+            item_id = request.POST.get('item_id')
+            vert = Vertical.objects.filter(pk=item_id).first()
+            if vert:
+                vert.name = request.POST.get('vert_name', vert.name).strip()
+                gm_id = request.POST.get('vert_gm', '').strip()
+                vert.general_manager_id = int(gm_id) if gm_id else None
+                vert.save()
+
+        elif action == 'delete_vertical':
+            item_id = request.POST.get('item_id')
+            Vertical.objects.filter(pk=item_id).delete()
+
+        # --- Annual Rocks ---
+        elif action == 'add_annual_rock':
+            name = request.POST.get('ar_name', '').strip()
+            description = request.POST.get('ar_description', '').strip()
+            year = request.POST.get('ar_year', '').strip()
+            if name:
+                AnnualRock.objects.create(
+                    name=name,
+                    description=description,
+                    year=int(year) if year else None,
+                )
+
+        elif action == 'edit_annual_rock':
+            item_id = request.POST.get('item_id')
+            rock = AnnualRock.objects.filter(pk=item_id).first()
+            if rock:
+                rock.name = request.POST.get('ar_name', rock.name).strip()
+                rock.description = request.POST.get('ar_description', rock.description).strip()
+                year = request.POST.get('ar_year', '').strip()
+                rock.year = int(year) if year else None
+                rock.save()
+
+        elif action == 'delete_annual_rock':
+            item_id = request.POST.get('item_id')
+            AnnualRock.objects.filter(pk=item_id).delete()
+
+        # --- Metrics ---
+        elif action == 'add_metric':
+            name = request.POST.get('metric_name', '').strip()
+            if name:
+                Metric.objects.create(name=name, active=True)
+
+        elif action == 'edit_metric':
+            item_id = request.POST.get('item_id')
+            metric = Metric.objects.filter(pk=item_id).first()
+            if metric:
+                metric.name = request.POST.get('metric_name', metric.name).strip()
+                metric.save()
+
+        elif action == 'delete_metric':
+            item_id = request.POST.get('item_id')
+            Metric.objects.filter(pk=item_id).delete()
+
+        elif action == 'toggle_metric':
+            item_id = request.POST.get('item_id')
+            metric = Metric.objects.filter(pk=item_id).first()
+            if metric:
+                metric.active = not metric.active
+                metric.save()
+
+        # --- KPIs ---
+        elif action == 'add_kpi':
+            name = request.POST.get('kpi_name', '').strip()
+            if name:
+                KPI.objects.create(name=name, active=True)
+
+        elif action == 'edit_kpi':
+            item_id = request.POST.get('item_id')
+            kpi = KPI.objects.filter(pk=item_id).first()
+            if kpi:
+                kpi.name = request.POST.get('kpi_name', kpi.name).strip()
+                kpi.save()
+
+        elif action == 'delete_kpi':
+            item_id = request.POST.get('item_id')
+            KPI.objects.filter(pk=item_id).delete()
+
+        elif action == 'toggle_kpi':
+            item_id = request.POST.get('item_id')
+            kpi = KPI.objects.filter(pk=item_id).first()
+            if kpi:
+                kpi.active = not kpi.active
+                kpi.save()
+
+        return redirect('app:settings')
+
+    departments = BusinessUnit.objects.all()
+    verticals = Vertical.objects.all()
+    annual_rocks = AnnualRock.objects.all()
+    metrics = Metric.objects.all()
+    kpis = KPI.objects.all()
+    users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+
+    return render(request, 'app/settings.html', {
+        'departments': departments,
+        'verticals': verticals,
+        'annual_rocks': annual_rocks,
+        'metrics': metrics,
+        'kpis': kpis,
+        'users': users,
+    })

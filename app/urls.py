@@ -9,5 +9,6 @@ urlpatterns = [
     path('adl.html', views.adl, name='adl'),
     path('goals/', views.edit_goals, name='edit_goals'),
     path('actuals/', views.upload_actuals, name='upload_actuals'),
+    path('settings/', views.settings, name='settings'),
     path('', views.index, name='index'),
 ]

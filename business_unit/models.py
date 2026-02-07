@@ -10,6 +10,7 @@ import datetime
 
 class Vertical(models.Model):
     name = models.CharField(max_length=140)
+    general_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Vertical'
