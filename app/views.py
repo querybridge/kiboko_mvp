@@ -883,6 +883,7 @@ def settings_users(request):
             last_name = request.POST.get('last_name', '').strip()
             email = request.POST.get('email', '').strip()
             role = request.POST.get('role', 'staff')
+            dept_id = request.POST.get('department', '').strip()
             password = request.POST.get('password', '').strip()
             if username and password:
                 user = User.objects.create_user(
@@ -893,6 +894,7 @@ def settings_users(request):
                     password=password,
                 )
                 user.profile.role = role
+                user.profile.department_id = int(dept_id) if dept_id else None
                 user.profile.save()
 
         elif action == 'edit_user':
@@ -904,9 +906,11 @@ def settings_users(request):
                 user.email = request.POST.get('email', user.email).strip()
                 user.save()
                 role = request.POST.get('role', '').strip()
+                dept_id = request.POST.get('department', '').strip()
                 if role:
                     user.profile.role = role
-                    user.profile.save()
+                user.profile.department_id = int(dept_id) if dept_id else None
+                user.profile.save()
 
         elif action == 'delete_user':
             user_id = request.POST.get('item_id')
@@ -914,9 +918,11 @@ def settings_users(request):
 
         return redirect('app:settings_users')
 
-    all_users = User.objects.select_related('profile').filter(is_active=True).order_by('username')
+    all_users = User.objects.select_related('profile', 'profile__department').filter(is_active=True).order_by('username')
+    departments = BusinessUnit.objects.all()
 
     return render(request, 'app/settings_users.html', {
         'all_users': all_users,
         'role_choices': ROLE_CHOICES,
+        'departments': departments,
     })

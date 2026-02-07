@@ -1,17 +1,33 @@
 from django.db import models
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-from django import template
-from django.contrib.auth.models import Group
+from business_unit.models import BusinessUnit
 
-register = template.Library()
 
-@register.filter(name='has_group')
-def has_group(user, group_name):
-    group = Group.objects.get(name=group_name)
-    return True if group in user.groups.all() else False
+ROLE_CHOICES = [
+    ('admin', 'Admin'),
+    ('senior_leadership', 'Senior Leadership'),
+    ('supervisor', 'Supervisor'),
+    ('general_manager', 'General Manager'),
+    ('staff', 'Staff'),
+]
 
-class Meta:
-	verbose_name_plural = 'Projects'
-	
-def __str__(self):
-	return self.email
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='staff')
+    department = models.ForeignKey(BusinessUnit, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_role_display()}"
+
+
+@receiver(post_save, sender=User)
+def create_or_update_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.get_or_create(user=instance)
+    else:
+        if hasattr(instance, 'profile'):
+            instance.profile.save()
