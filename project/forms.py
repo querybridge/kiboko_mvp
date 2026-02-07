@@ -99,7 +99,7 @@ class ProjectEdit(ModelForm):
 class ProjectEditManager(ModelForm):
     class Meta:
         model = Project
-        fields = ['strategy', 'owner', 'name', 'impact', 'success', 'why', 'annual_rock']
+        fields = ['strategy', 'owner', 'name', 'impact', 'success', 'why', 'annual_rock', 'value']
         labels = {
             'strategy': 'Quarterly Rock',
             'annual_rock': 'Annual Rock',
@@ -112,6 +112,7 @@ class ProjectEditManager(ModelForm):
             'success': TextInput(attrs={'name': 'Definition of Success'}),
             'why': Textarea(attrs={'name': 'User Story'}),
             'annual_rock': Select(attrs={}),
+            'value': NumberInput(attrs={}),
         }
 
 class ProjectValue(ModelForm):

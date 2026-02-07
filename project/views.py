@@ -96,8 +96,11 @@ def project_edit_manager(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     ref_url = request.META['HTTP_REFERER']
     next = request.POST.get('next', '/')
+    is_admin = getattr(getattr(request.user, 'profile', None), 'role', '') == 'admin'
     if request.method == "POST":
         form = ProjectEditManager(request.POST, instance=project)
+        if not is_admin:
+            form.fields['value'].disabled = True
         if form.is_valid():
             project = form.save(commit=False)
             #project.author = request.user
@@ -107,7 +110,9 @@ def project_edit_manager(request, project_id):
     else:
         title = "Edit Project"
         form = ProjectEditManager(instance=project)
-    return render(request, 'project/edit_manager.html', {'form': form, 'title': title})    
+        if not is_admin:
+            form.fields['value'].disabled = True
+    return render(request, 'project/edit_manager.html', {'form': form, 'title': title})
 
 
    
