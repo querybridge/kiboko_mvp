@@ -46,6 +46,7 @@
                 {{ form|crispy }}
                 <input type="hidden" name="next" value="{{ request.GET.next }}">
                 <input type="submit" value="Submit" />
+                <button type="submit" name="approve" value="1" class="btn btn-success" style="margin-left:10px;">Approve</button>
               </form>
             </div>
           </div>

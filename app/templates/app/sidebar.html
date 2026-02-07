@@ -19,9 +19,9 @@
 		</ul>
 		</div>
 	<div class="menu_section">
-      <h3>New Work</h3>
+      <h3>Projects</h3>
       <ul class="nav side-menu">
-        <li><a><i class="fa fa-edit"></i> Add Work<span class="fa fa-chevron-down"></span></a>
+        <li><a><i class="fa fa-edit"></i> Add Project<span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
           {% for group in user.groups.all %}
 			    {% if group.name == 'A-Team' %}
@@ -48,7 +48,7 @@
         </li>
         {% endif %}
         {% endfor %}
-        <li><a><i class="fa fa-clone"></i>All Work <span class="fa fa-chevron-down"></span></a>
+        <li><a><i class="fa fa-clone"></i>All Projects <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
           	{% for group in user.groups.all %}
 		    {% if group.name == 'A-Team' %}
@@ -67,15 +67,9 @@
       <ul class="nav side-menu">
         <li><a><i class="fa fa-wrench"></i> Admin <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-            {% for group in user.groups.all %}
-            {% if group.name == 'A-Team' %}
-            <li><a href="/strategy/rocks/">Edit Rocks</a></li>
-            {% endif %}
-            {% endfor %}
-            {% if user.is_superuser %}
-            <li><a href="/strategy/measurement/">Measurements</a></li>
-            {% endif %}
-            <li><a href="{% url 'app:settings' %}">Settings</a></li>
+            <li><a href="{% url 'app:settings_company' %}">Company</a></li>
+            <li><a href="{% url 'app:settings_rocks' %}">Rocks</a></li>
+            <li><a href="{% url 'app:settings_measurements' %}">Measurements</a></li>
           </ul>
         </li>
       </ul>
@@ -86,17 +80,6 @@
         <li><a href="/app/goals/"><i class="fa fa-bullseye"></i> Edit Goals</a></li>
         <li><a href="/app/actuals/"><i class="fa fa-upload"></i> Update Actuals</a></li>
       </ul>
-    </div>
-    <div class="menu_section">
-      <h3>Business Impact</h3>
-      <ul class="nav side-menu">
-        <!-- <li><a href="#"><i class="fa fa-bar-chart-o"></i> Completed Projects Value</a></li> -->
-         <li><a><i class="fa fa-road"></i> Strategy Analysis <span class="fa fa-chevron-down"></span></a>
-		  <ul class="nav child_menu">
-            <li><a href="/app/adl.html">ADL Matrix</a></li>
-            <!-- <li><a href="#">Decision Matrix</a></li> -->
-          </ul>
-        </li>
     </div>
 	</div>
   <!-- /sidebar menu -->

@@ -6,9 +6,10 @@ app_name = 'app'
 
 urlpatterns = [
     # The home page
-    path('adl.html', views.adl, name='adl'),
     path('goals/', views.edit_goals, name='edit_goals'),
     path('actuals/', views.upload_actuals, name='upload_actuals'),
-    path('settings/', views.settings, name='settings'),
+    path('company/', views.settings_company, name='settings_company'),
+    path('rocks/', views.settings_rocks, name='settings_rocks'),
+    path('measurements/', views.settings_measurements, name='settings_measurements'),
     path('', views.index, name='index'),
 ]

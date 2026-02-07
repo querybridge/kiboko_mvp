@@ -368,12 +368,12 @@ def _build_chart_data(year):
 # View All Projects Page
 @login_required
 def index(request):
-    # Exclude archived projects from dashboard
-    projects = Project.objects.filter(approved=True, archived=False).order_by('-normalized_score')
+    # Show active projects on dashboard
+    projects = Project.objects.filter(status='Active', archived=False).order_by('-normalized_score')
 
     # Dynamic Annual Rock tiles
     annual_rocks_data = []
-    for rock in AnnualRock.objects.all():
+    for rock in AnnualRock.objects.filter(year=date.today().year):
         count = Project.objects.filter(annual_rock=rock, approved=True, archived=False).count()
         value = Project.objects.filter(annual_rock=rock, approved=True, archived=False).aggregate(Sum('value'))
         count_p = Project.objects.filter(annual_rock=rock, approved=False, archived=False).count()
@@ -396,13 +396,6 @@ def index(request):
         'chart_data_qtd': json.dumps(chart_data['qtd']),
         'chart_data_ytd': json.dumps(chart_data['ytd']),
     })
-
-
-@login_required
-def adl(request):
-    context = {}
-    template = loader.get_template('app/adl.html')
-    return HttpResponse(template.render(context, request))
 
 
 @login_required
@@ -568,13 +561,11 @@ def upload_actuals(request):
 
 
 @login_required
-def settings(request):
-    """View to manage all dynamic lists."""
-
+def settings_company(request):
+    """Manage Departments and Verticals."""
     if request.method == 'POST':
         action = request.POST.get('action', '')
 
-        # --- Departments ---
         if action == 'add_department':
             name = request.POST.get('dept_name', '').strip()
             owner_id = request.POST.get('dept_owner', '').strip()
@@ -597,7 +588,6 @@ def settings(request):
             item_id = request.POST.get('item_id')
             BusinessUnit.objects.filter(pk=item_id).delete()
 
-        # --- Verticals ---
         elif action == 'add_vertical':
             name = request.POST.get('vert_name', '').strip()
             gm_id = request.POST.get('vert_gm', '').strip()
@@ -620,8 +610,26 @@ def settings(request):
             item_id = request.POST.get('item_id')
             Vertical.objects.filter(pk=item_id).delete()
 
-        # --- Annual Rocks ---
-        elif action == 'add_annual_rock':
+        return redirect('app:settings_company')
+
+    departments = BusinessUnit.objects.all()
+    verticals = Vertical.objects.all()
+    users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+
+    return render(request, 'app/settings_company.html', {
+        'departments': departments,
+        'verticals': verticals,
+        'users': users,
+    })
+
+
+@login_required
+def settings_rocks(request):
+    """Manage Annual Rocks and Quarterly Rocks."""
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'add_annual_rock':
             name = request.POST.get('ar_name', '').strip()
             description = request.POST.get('ar_description', '').strip()
             year = request.POST.get('ar_year', '').strip()
@@ -646,8 +654,65 @@ def settings(request):
             item_id = request.POST.get('item_id')
             AnnualRock.objects.filter(pk=item_id).delete()
 
-        # --- Metrics ---
-        elif action == 'add_metric':
+        elif action == 'add_quarterly_rock':
+            name = request.POST.get('qr_name', '').strip()
+            if name:
+                ar_id = request.POST.get('qr_annual_rock', '').strip()
+                dept_id = request.POST.get('qr_department', '').strip()
+                year = request.POST.get('qr_year', '').strip()
+                quarter = request.POST.get('qr_quarter', '').strip()
+                target = request.POST.get('qr_target_completion', '').strip()
+                Strategy.objects.create(
+                    name=name,
+                    annual_rock_id=int(ar_id) if ar_id else None,
+                    department_id=int(dept_id) if dept_id else None,
+                    year=int(year) if year else None,
+                    quarter=int(quarter) if quarter else None,
+                    target_completion=target if target else None,
+                    why='',
+                )
+
+        elif action == 'edit_quarterly_rock':
+            item_id = request.POST.get('item_id')
+            rock = Strategy.objects.filter(pk=item_id).first()
+            if rock:
+                rock.name = request.POST.get('qr_name', rock.name).strip()
+                ar_id = request.POST.get('qr_annual_rock', '').strip()
+                rock.annual_rock_id = int(ar_id) if ar_id else None
+                dept_id = request.POST.get('qr_department', '').strip()
+                rock.department_id = int(dept_id) if dept_id else None
+                year = request.POST.get('qr_year', '').strip()
+                rock.year = int(year) if year else None
+                quarter = request.POST.get('qr_quarter', '').strip()
+                rock.quarter = int(quarter) if quarter else None
+                target = request.POST.get('qr_target_completion', '').strip()
+                rock.target_completion = target if target else None
+                rock.save()
+
+        elif action == 'delete_quarterly_rock':
+            item_id = request.POST.get('item_id')
+            Strategy.objects.filter(pk=item_id).delete()
+
+        return redirect('app:settings_rocks')
+
+    annual_rocks = AnnualRock.objects.order_by('year', 'name')
+    quarterly_rocks = Strategy.objects.order_by('date_created')
+    departments = BusinessUnit.objects.all()
+
+    return render(request, 'app/settings_rocks.html', {
+        'annual_rocks': annual_rocks,
+        'quarterly_rocks': quarterly_rocks,
+        'departments': departments,
+    })
+
+
+@login_required
+def settings_measurements(request):
+    """Manage Metrics and KPIs."""
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'add_metric':
             name = request.POST.get('metric_name', '').strip()
             if name:
                 Metric.objects.create(name=name, active=True)
@@ -670,7 +735,6 @@ def settings(request):
                 metric.active = not metric.active
                 metric.save()
 
-        # --- KPIs ---
         elif action == 'add_kpi':
             name = request.POST.get('kpi_name', '').strip()
             if name:
@@ -694,20 +758,12 @@ def settings(request):
                 kpi.active = not kpi.active
                 kpi.save()
 
-        return redirect('app:settings')
+        return redirect('app:settings_measurements')
 
-    departments = BusinessUnit.objects.all()
-    verticals = Vertical.objects.all()
-    annual_rocks = AnnualRock.objects.all()
     metrics = Metric.objects.all()
     kpis = KPI.objects.all()
-    users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
 
-    return render(request, 'app/settings.html', {
-        'departments': departments,
-        'verticals': verticals,
-        'annual_rocks': annual_rocks,
+    return render(request, 'app/settings_measurements.html', {
         'metrics': metrics,
         'kpis': kpis,
-        'users': users,
     })

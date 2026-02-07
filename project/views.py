@@ -20,12 +20,19 @@ def view(request):
     context = {}
     title = ""
     # Exclude archived projects
-    approved_projects = Project.objects.filter(approved=True, archived=False)
+    # Projects that are approved OR have status Pending Assignment/Active go in the approved table
+    approved_projects = Project.objects.filter(
+        archived=False,
+    ).filter(
+        Q(approved=True) | Q(status__in=['Pending Assignment', 'Active'])
+    )
     owned_bus = BusinessUnit.objects.filter(owner=request.user)
+    # Pending = not approved AND not Pending Assignment/Active status
+    pending_filter = Q(approved=False, archived=False) & ~Q(status__in=['Pending Assignment', 'Active'])
     if owned_bus.exists():
-        pending_projects = Project.objects.filter(approved=False, archived=False, business_unit__in=owned_bus)
+        pending_projects = Project.objects.filter(pending_filter, business_unit__in=owned_bus)
     else:
-        pending_projects = Project.objects.filter(approved=False, archived=False)
+        pending_projects = Project.objects.filter(pending_filter)
     return render(request, 'project/view.html', {
         'approved_projects': approved_projects,
         'pending_projects': pending_projects,
@@ -71,9 +78,13 @@ def project_edit(request, project_id):
         form = ProjectEdit(request.POST, instance=project)
         if form.is_valid():
             project = form.save(commit=False)
-            #project.author = request.user
             project.modified_date = timezone.now()
+            if 'approve' in request.POST:
+                project.approved = True
+                project.status = 'Pending Assignment'
             project.save()
+            if 'approve' in request.POST:
+                return redirect('project:all')
             return HttpResponseRedirect(next)
     else:
         title = "Edit Project"
