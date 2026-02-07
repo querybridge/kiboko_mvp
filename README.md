@@ -48,7 +48,7 @@ Vertical-level management.
 
 - **Dashboard** -- View dashboard filtered by vertical.
 - **Projects** -- Create Projects. View all projects.
-- **Revenue** -- View budget goals.
+- **Revenue** -- Edit budget goals per vertical. Upload daily actuals via CSV.
 
 ### Staff
 Base-level access.
