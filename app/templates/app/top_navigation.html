@@ -1,7 +1,7 @@
 <div class="nav_menu">
   <nav>
     <div class="nav toggle">
-      <a id="menu_toggle"><i class="fa fa-chevron-left"></i></a>
+      <a id="back_button" href="javascript:void(0);" onclick="if (document.referrer && history.length > 1) { history.back(); } else { window.location.href = '/app/'; }" title="Back"><i class="fa fa-chevron-left"></i></a>
     </div>
 
     <ul class="nav navbar-nav navbar-right">

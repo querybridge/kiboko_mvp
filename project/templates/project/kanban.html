@@ -1,0 +1,439 @@
+{% extends "app/base_site.html" %}
+{% load humanize %}
+{% block title %} Kanban Board {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  <style>
+    /* ── Layout ── */
+    .kanban-wrapper {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      align-items: flex-start;
+    }
+    .kanban-lane {
+      flex: 1 1 0;
+      min-width: 200px;
+      max-width: 280px;
+      background: #f7f7f7;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+    }
+    .lane-header {
+      padding: 10px 12px 6px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: #fff;
+      border-radius: 4px 4px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .lane-header .badge {
+      font-size: 11px;
+      background: rgba(255,255,255,.25);
+      border-radius: 10px;
+      padding: 2px 8px;
+    }
+    /* Lane header colours */
+    .lane-blocked .lane-header          { background: #e74c3c; }
+    .lane-incomplete_entry .lane-header { background: #f39c12; }
+    .lane-ready_to_score .lane-header   { background: #3498db; }
+    .lane-scored .lane-header           { background: #8e44ad; }
+    .lane-on_deck .lane-header          { background: #2c3e50; }
+    .lane-active .lane-header           { background: #27ae60; }
+
+    .lane-body {
+      padding: 8px;
+      min-height: 120px;
+      flex: 1;
+    }
+
+    /* ── Cards ── */
+    .kanban-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: grab;
+      transition: box-shadow .15s;
+      position: relative;
+    }
+    .kanban-card:active { cursor: grabbing; }
+    .kanban-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+    .kanban-card .card-title {
+      font-weight: 600;
+      font-size: 13px;
+      margin: 0 0 4px;
+      padding-right: 36px;
+      color: #2a3f54;
+    }
+    .kanban-card .card-title a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .kanban-card .card-title a:hover { text-decoration: underline; }
+    .kanban-card .card-score {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #2a3f54;
+    }
+    .kanban-card .card-score.na { color: #aaa; font-size: 12px; }
+    .kanban-card .card-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #27ae60;
+      margin: 6px 0;
+    }
+    .kanban-card .card-metric {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    .kanban-card .card-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      color: #fff;
+    }
+    .tag-expand-selection   { background: #3498db; }
+    .tag-improve-experience { background: #27ae60; }
+    .tag-increase-urgency   { background: #e74c3c; }
+    .tag-top-of-mind        { background: #f39c12; }
+
+    /* ── KPI Summary ── */
+    .kpi-summary-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+    }
+    .kpi-summary-row.collapsed .kpi-tile-body { display: none; }
+    .kpi-summary-row.collapsed .kpi-tile { min-height: auto; }
+    .kpi-tile {
+      flex: 1 1 0;
+      min-width: 200px;
+      max-width: 280px;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 0;
+    }
+    .kpi-tile-header {
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #555;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+    }
+    .kpi-tile-header .collapse-btn {
+      font-size: 10px;
+      cursor: pointer;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .kpi-tile-header .collapse-btn:hover { color: #333; }
+    .kpi-tile-body {
+      padding: 10px 12px;
+    }
+    .kpi-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 3px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .kpi-row:last-child { border-bottom: none; font-weight: 700; }
+    .kpi-label { color: #777; }
+    .kpi-value { font-weight: 600; color: #2a3f54; }
+
+    /* Sortable ghost */
+    .sortable-ghost {
+      opacity: .4;
+      background: #e8f4fd;
+    }
+    .sortable-chosen {
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    }
+
+    /* FAB */
+    .kanban-fab {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 1000;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #27ae60;
+      color: #fff;
+      border: none;
+      font-size: 26px;
+      line-height: 52px;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,.25);
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .kanban-fab:hover { background: #219a52; }
+
+    /* Toast */
+    .kanban-toast {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      z-index: 9999;
+      min-width: 280px;
+      padding: 12px 18px;
+      background: #e74c3c;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 13px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.2);
+      display: none;
+    }
+    .kanban-toast.show { display: block; }
+  </style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Kanban Board</h3>
+      </div>
+      <div class="clearfix"></div>
+    </div>
+
+    <!-- KPI Summary Row -->
+    <div class="kpi-summary-row" id="kpiSummaryRow">
+      {% for lane in lanes_data %}
+      <div class="kpi-tile" data-lane="{{ lane.key }}">
+        <div class="kpi-tile-header">
+          <span>{{ lane.label }}</span>
+          <span class="collapse-btn" id="collapseBtn">COLLAPSE</span>
+        </div>
+        <div class="kpi-tile-body">
+          <div class="kpi-row">
+            <span class="kpi-label">Visits Impact</span>
+            <span class="kpi-value" data-kpi="visits">
+              {% if lane.totals.visits %}${{ lane.totals.visits|floatformat:0|intcomma }}{% else %}&mdash;{% endif %}
+            </span>
+          </div>
+          <div class="kpi-row">
+            <span class="kpi-label">Close Rate Impact</span>
+            <span class="kpi-value" data-kpi="close_rate">
+              {% if lane.totals.close_rate %}${{ lane.totals.close_rate|floatformat:0|intcomma }}{% else %}&mdash;{% endif %}
+            </span>
+          </div>
+          <div class="kpi-row">
+            <span class="kpi-label">AOV Impact</span>
+            <span class="kpi-value" data-kpi="aov">
+              {% if lane.totals.aov %}${{ lane.totals.aov|floatformat:0|intcomma }}{% else %}&mdash;{% endif %}
+            </span>
+          </div>
+          <div class="kpi-row">
+            <span class="kpi-label">Sales</span>
+            <span class="kpi-value" data-kpi="sales">
+              {% if lane.totals.sales %}${{ lane.totals.sales|floatformat:0|intcomma }}{% else %}&mdash;{% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Kanban Lanes -->
+    <div class="kanban-wrapper">
+      {% for lane in lanes_data %}
+      <div class="kanban-lane lane-{{ lane.key }}" data-lane="{{ lane.key }}">
+        <div class="lane-header">
+          <span>{{ lane.label }}</span>
+          <span class="badge lane-count" data-lane="{{ lane.key }}">{{ lane.count }}</span>
+        </div>
+        <div class="lane-body" id="lane-{{ lane.key }}">
+          {% for project in lane.projects %}
+          <div class="kanban-card" data-project-id="{{ project.pk }}">
+            <div class="card-title">
+              <a href="{% url 'project:project_detail' project.pk %}">{{ project.name }}</a>
+            </div>
+            {% if project.normalized_score and project.normalized_score > 0 %}
+              <div class="card-score">{{ project.normalized_score|floatformat:0 }}</div>
+            {% else %}
+              <div class="card-score na">n/a</div>
+            {% endif %}
+            <div class="card-value">
+              {% if project.project_value_total %}
+                ${{ project.project_value_total|floatformat:0|intcomma }}
+              {% elif project.value %}
+                ${{ project.value|floatformat:0|intcomma }}
+              {% else %}
+                $0
+              {% endif %}
+            </div>
+            {% if project.metric %}
+              <div class="card-metric">{{ project.metric.name }}</div>
+            {% elif project.kpi %}
+              <div class="card-metric">{{ project.kpi.name }}</div>
+            {% endif %}
+            {% if project.strategy_tag %}
+              <span class="card-tag tag-{{ project.strategy_tag|slugify }}">{{ project.strategy_tag }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- FAB: Add Project -->
+<a href="{% url 'project:project' %}" class="kanban-fab" title="New Project">+</a>
+
+<!-- Toast for error messages -->
+<div class="kanban-toast" id="kanbanToast"></div>
+
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <!-- SortableJS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script>
+  (function() {
+    var csrfToken = '{{ csrf_token }}';
+    var moveUrl = '{% url "project:kanban_move" %}';
+    var verticalId = new URLSearchParams(window.location.search).get('vertical') || '';
+
+    // ── Collapse behaviour ──
+    var summaryRow = document.getElementById('kpiSummaryRow');
+    var COLLAPSE_KEY = 'kanban_kpi_collapsed';
+
+    function applyCollapse() {
+      if (localStorage.getItem(COLLAPSE_KEY) === '1') {
+        summaryRow.classList.add('collapsed');
+        document.querySelectorAll('.collapse-btn').forEach(function(btn) {
+          btn.textContent = 'EXPAND';
+        });
+      }
+    }
+    applyCollapse();
+
+    document.querySelectorAll('.collapse-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var isCollapsed = summaryRow.classList.toggle('collapsed');
+        localStorage.setItem(COLLAPSE_KEY, isCollapsed ? '1' : '0');
+        document.querySelectorAll('.collapse-btn').forEach(function(b) {
+          b.textContent = isCollapsed ? 'EXPAND' : 'COLLAPSE';
+        });
+      });
+    });
+
+    // ── Toast helper ──
+    var toastEl = document.getElementById('kanbanToast');
+    var toastTimer = null;
+    function showToast(msg, duration) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() {
+        toastEl.classList.remove('show');
+      }, duration || 3000);
+    }
+
+    // ── Format currency ──
+    function fmtCurrency(val) {
+      if (!val) return '\u2014';
+      return '$' + Number(val).toLocaleString('en-US', {maximumFractionDigits: 0});
+    }
+
+    // ── Update KPI summary tiles from JSON ──
+    function updateSummary(laneTotals, laneCounts) {
+      document.querySelectorAll('.kpi-tile').forEach(function(tile) {
+        var lane = tile.getAttribute('data-lane');
+        var totals = laneTotals[lane];
+        if (!totals) return;
+        tile.querySelector('[data-kpi="visits"]').textContent = fmtCurrency(totals.visits);
+        tile.querySelector('[data-kpi="close_rate"]').textContent = fmtCurrency(totals.close_rate);
+        tile.querySelector('[data-kpi="aov"]').textContent = fmtCurrency(totals.aov);
+        tile.querySelector('[data-kpi="sales"]').textContent = fmtCurrency(totals.sales);
+      });
+      if (laneCounts) {
+        document.querySelectorAll('.lane-count').forEach(function(badge) {
+          var lane = badge.getAttribute('data-lane');
+          if (laneCounts[lane] !== undefined) {
+            badge.textContent = laneCounts[lane];
+          }
+        });
+      }
+    }
+
+    // ── SortableJS on each lane ──
+    document.querySelectorAll('.lane-body').forEach(function(el) {
+      new Sortable(el, {
+        group: 'kanban',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: function(evt) {
+          var cardEl = evt.item;
+          var projectId = cardEl.getAttribute('data-project-id');
+          var targetLane = evt.to.closest('.kanban-lane').getAttribute('data-lane');
+          var sourceLane = evt.from.closest('.kanban-lane').getAttribute('data-lane');
+
+          if (targetLane === sourceLane) return;
+
+          fetch(moveUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+              project_id: parseInt(projectId),
+              target_lane: targetLane,
+              vertical_id: verticalId || null,
+            }),
+          })
+          .then(function(resp) { return resp.json().then(function(data) { return {status: resp.status, data: data}; }); })
+          .then(function(result) {
+            if (!result.data.ok) {
+              // Revert: move card back to source lane
+              evt.from.insertBefore(cardEl, evt.from.children[evt.oldIndex] || null);
+              showToast(result.data.error || 'Move failed');
+              return;
+            }
+            // Update summary tiles and counts
+            updateSummary(result.data.lane_totals, result.data.lane_counts);
+          })
+          .catch(function(err) {
+            evt.from.insertBefore(cardEl, evt.from.children[evt.oldIndex] || null);
+            showToast('Network error. Please try again.');
+          });
+        }
+      });
+    });
+  })();
+  </script>
+{% endblock javascripts %}

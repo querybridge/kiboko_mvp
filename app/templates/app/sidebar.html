@@ -1,6 +1,12 @@
 <div class="left_col scroll-view">
   <div class="navbar nav_title" style="border: 0;">
-    <a href="/app/" class="site_title" style="height: auto; line-height: 1.2; margin-top: 15px; display: flex; align-items: flex-start;"><i class="fa fa-tasks" style="margin-right: 8px;"></i><span style="display: flex; flex-direction: column; text-align: left;"><strong>Belami</strong><span style="font-size: 11px;">Project Prioritization</span></span></a>
+    <a href="/app/" class="site_title" style="height: auto; line-height: 1.2; margin-top: 15px; display: flex; align-items: flex-start;"><i class="fa fa-tasks" style="margin-right: 8px;"></i><span class="site_title_text" style="display: flex; flex-direction: column; text-align: left;"><strong>Belami</strong><span style="font-size: 11px;">Project Prioritization</span></span></a>
+    <style>
+      body.nav-sm .site_title .site_title_text { display: none !important; }
+      body.nav-sm .site_title { justify-content: center; }
+      body.nav-sm .site_title i { margin-right: 0 !important; }
+      body.nav-sm .sidebar-collapse-toggle .fa-chevron-left:before { content: "\f054"; }
+    </style>
   </div>
 
   <div class="clearfix"></div>
@@ -16,6 +22,8 @@
 	  <ul class="nav side-menu">
         <li><a href="/app/"><i class="fa fa-dashboard"></i> Dashboard </a>
         </li>
+        <li><a href="{% url 'project:kanban' %}"><i class="fa fa-columns"></i> Kanban </a>
+        </li>
 		</ul>
 		</div>
 	<div class="menu_section">
@@ -23,45 +31,35 @@
       <ul class="nav side-menu">
         <li><a><i class="fa fa-edit"></i> Add Project<span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-          {% for group in user.groups.all %}
-			    {% if group.name == 'A-Team' %}
+            {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
             <li><a href="/strategy/add.html">New Quarterly Rock</a></li>
-            {% else %}
             {% endif %}
-            {% endfor %}
             <li><a href="/project/add.html">New Project</a></li>
           </ul>
         </li>
-        {% for group in user.groups.all %}
-        {% if group.name == 'VP' %}
+        {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' or user.profile.role == 'department_owner' %}
         <li><a><i class="fa fa-calculator"></i> Estimate Value &amp; LOE <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-          {% for group in user.groups.all %}
-			    {% if group.name == 'A-Team' %}
+            {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
             <li><a href="/project/value.html">Estimate Value</a></li>
-            {% else %}
             {% endif %}
-            {% endfor %}
             <li><a href="/project/loe.html">Estimate LOE</a></li>
             <li><a href="/project/approvals.html">Approve Projects</a></li>
           </ul>
         </li>
         {% endif %}
-        {% endfor %}
         <li><a><i class="fa fa-clone"></i>All Projects <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-          	{% for group in user.groups.all %}
-		    {% if group.name == 'A-Team' %}
+            {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
             <li><a href="/strategy/view.html">Quarterly Rocks</a></li>
-            {% else %}
             {% endif %}
-			{% endfor %}
             <li><a href="/project/view.html">Projects</a></li>
             <li><a href="/project/archive/">Archive</a></li>
           </ul>
         </li>
       </ul>
     </div>
+    {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
     <div class="menu_section">
       <h3>Admin</h3>
       <ul class="nav side-menu">
@@ -70,10 +68,12 @@
             <li><a href="{% url 'app:settings_company' %}">Company</a></li>
             <li><a href="{% url 'app:settings_rocks' %}">Rocks</a></li>
             <li><a href="{% url 'app:settings_measurements' %}">Measurements</a></li>
+            <li><a href="{% url 'app:settings_users' %}">Users</a></li>
           </ul>
         </li>
       </ul>
     </div>
+    {% endif %}
     <div class="menu_section">
       <h3>Revenue</h3>
       <ul class="nav side-menu">
@@ -81,8 +81,20 @@
         <li><a href="/app/actuals/"><i class="fa fa-upload"></i> Update Actuals</a></li>
       </ul>
     </div>
+    <div class="menu_section">
+      <ul class="nav side-menu">
+        <li><a href="{% url 'app:help' %}"><i class="fa fa-question-circle"></i> Help</a></li>
+      </ul>
+    </div>
 	</div>
   <!-- /sidebar menu -->
+
+  <!-- Sidebar collapse/expand toggle -->
+  <div class="sidebar-collapse-toggle" style="text-align: center; padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 8px;">
+    <a id="menu_toggle" href="javascript:void(0);" title="Collapse / Expand sidebar" style="color: #fff; font-size: 16px; cursor: pointer; display: inline-block; padding: 6px 10px;">
+      <i class="fa fa-chevron-left"></i>
+    </a>
+  </div>
 
   <!-- /menu footer buttons -->
   <!--<div class="sidebar-footer hidden-small">
