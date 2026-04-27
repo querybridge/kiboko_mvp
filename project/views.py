@@ -1,15 +1,21 @@
+import json
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.template import loader
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.urls import reverse
 from django.core.paginator import Paginator
+from django.views.decorators.http import require_POST
 from .models import Project, Strategy
 from .forms import ProjectAdd, ProjectEdit, CommentForm, ProjectValue, ProjectLoe, ProjectEditManager
 from business_unit.models import BusinessUnit
 from django.contrib.auth.decorators import login_required
 from django.db.models import F, Q
+from .services.kanban import (
+    LANES, group_projects, compute_all_lane_totals, validate_move, apply_move,
+)
 
 
 def _get_vertical_id(request):
@@ -261,4 +267,75 @@ def archive(request):
     return render(request, 'project/archive.html', {
         'page_obj': page_obj,
         'title': 'Archived Projects',
+    })
+
+
+@login_required
+def kanban_view(request):
+    """Render the Kanban board."""
+    vertical_id = _get_vertical_id(request)
+    projects = Project.objects.filter(archived=False).select_related(
+        'strategy', 'business_unit', 'vertical', 'owner',
+    )
+    if vertical_id:
+        projects = projects.filter(vertical_id=vertical_id)
+
+    grouped = group_projects(projects)
+    lane_totals = compute_all_lane_totals(grouped)
+
+    lanes_data = []
+    for key, label in LANES.items():
+        lanes_data.append({
+            'key': key,
+            'label': label,
+            'projects': grouped[key],
+            'totals': lane_totals[key],
+            'count': len(grouped[key]),
+        })
+
+    return render(request, 'project/kanban.html', {
+        'lanes_data': lanes_data,
+        'lane_totals_json': json.dumps(lane_totals),
+        'title': 'Kanban Board',
+    })
+
+
+@require_POST
+@login_required
+def kanban_move(request):
+    """AJAX endpoint: move a project to a new Kanban lane."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
+
+    project_id = data.get('project_id')
+    target_lane = data.get('target_lane')
+
+    if not project_id or not target_lane:
+        return JsonResponse({'ok': False, 'error': 'Missing project_id or target_lane'}, status=400)
+
+    project = get_object_or_404(Project, pk=project_id)
+    ok, err = apply_move(project, target_lane)
+
+    if not ok:
+        return JsonResponse({'ok': False, 'error': err}, status=422)
+
+    # Recompute all lane totals after the move
+    vertical_id = data.get('vertical_id')
+    qs = Project.objects.filter(archived=False)
+    if vertical_id:
+        try:
+            qs = qs.filter(vertical_id=int(vertical_id))
+        except (ValueError, TypeError):
+            pass
+
+    grouped = group_projects(qs)
+    lane_totals = compute_all_lane_totals(grouped)
+    lane_counts = {key: len(projects) for key, projects in grouped.items()}
+
+    return JsonResponse({
+        'ok': True,
+        'lane_totals': lane_totals,
+        'lane_counts': lane_counts,
     })

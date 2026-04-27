@@ -1,10 +1,10 @@
-# Belami PPM
+# Kiboko PPM
 
-Project Portfolio Management tool for Belami. Helps teams propose, score, prioritize, and track e-commerce projects against revenue goals across multiple business verticals.
+Project Portfolio Management tool. Helps teams propose, score, prioritize, and track e-commerce projects against revenue goals across multiple business verticals.
 
 ## Overview
 
-Belami PPM connects project work to revenue outcomes. Projects flow through a structured lifecycle (proposal, scoring, approval, execution, launch) while the dashboard visualizes how active projects contribute to monthly, quarterly, and annual revenue forecasts. A global vertical filter (Lighting, Patio, Bailey Street Home) lets users drill into any business unit.
+Kiboko PPM connects project work to revenue outcomes. Projects flow through a structured lifecycle (proposal, scoring, approval, execution, launch) while the dashboard visualizes how active projects contribute to monthly, quarterly, and annual revenue forecasts. A global vertical filter (Lighting, Patio, Bailey Street Home) lets users drill into any business unit.
 
 ## Project Lifecycle
 
@@ -84,6 +84,19 @@ Projects are scored on six weighted criteria (0-10 each):
 | Business Risk | 5% |
 
 The weighted average produces a normalized score (0-10) used for stack-ranking projects.
+
+### Kanban Board
+A drag-and-drop Kanban view (`/project/kanban/`) groups active projects into lanes (Blocked, Incomplete Entry, Ready to Score, Scored, On Deck, Active). KPI summary tiles show aggregate impact totals (Visits, Close Rate, AOV, Sales) per lane, and a vertical filter narrows the board to a single business unit.
+
+### Theming
+Dark and light themes ship out of the box, anchored on a monochrome purple palette (`#5C3C9F`). A toggle at the bottom of the left panel switches modes; the preference persists in `localStorage` and is applied before first paint to avoid a flash.
+
+### Help Page
+An in-app Help page is available at the bottom of the left sidebar. It covers:
+- **Platform Overview** -- What Kiboko PPM does and the four main areas (Dashboard, Projects, Revenue, Admin).
+- **Initial Setup** -- Step-by-step guide for configuring departments, verticals, annual/quarterly rocks, measurements, users, and budget goals.
+- **Add a Project** -- How to submit a project, score it, get it approved, and track it on the dashboard.
+- **Update Actuals** -- How to prepare a CSV, upload daily revenue, and verify the data on the dashboard.
 
 ## Setup
 

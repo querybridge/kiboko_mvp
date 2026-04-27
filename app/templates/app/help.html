@@ -1,0 +1,172 @@
+{% extends "app/base_site.html" %}
+{% block title %} Help {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  <style>
+    .help-section { margin-bottom: 30px; }
+    .help-section h4 { margin-top: 0; color: #2a3f54; }
+    .help-section ol, .help-section ul { padding-left: 20px; }
+    .help-section li { margin-bottom: 6px; }
+    .step-label { font-weight: 600; }
+  </style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Help &amp; Getting Started</h3>
+      </div>
+      <div class="clearfix"></div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-10 col-sm-12 col-xs-12">
+
+        <!-- Platform Overview -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Platform Overview</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <p>
+              <strong>Kiboko Project Prioritization Manager (PPM)</strong> helps your team plan, prioritize, and
+              track ecommerce projects against revenue goals. The platform connects strategic
+              Annual Rocks to actionable Quarterly Rocks and individual Projects, then measures
+              their impact on revenue through budget goals, daily actuals, and forecasts.
+            </p>
+            <p>Key areas of the application:</p>
+            <ul>
+              <li><strong>Dashboard</strong> &mdash; Month-to-date, quarter-to-date, and year-to-date revenue charts comparing actuals, forecasts, and budget targets.</li>
+              <li><strong>Kanban</strong> &mdash; A drag-and-drop board for tracking active projects across lanes (Blocked, Incomplete Entry, Ready to Score, Scored, On Deck, Active) with KPI rollups per lane.</li>
+              <li><strong>Projects</strong> &mdash; Submit, score, estimate, and approve projects. Each project is linked to a Quarterly Rock and can contribute projected revenue uplift to your forecast.</li>
+              <li><strong>Revenue</strong> &mdash; Set monthly budget goals per vertical and upload daily actual revenue from CSV files.</li>
+              <li><strong>Admin</strong> &mdash; Configure company structure (departments, verticals), rocks, measurements, and users.</li>
+            </ul>
+            <p><strong>Theme:</strong> Use the sun/moon icon at the bottom of the left sidebar to switch between dark and light modes. Your preference is remembered across sessions.</p>
+          </div>
+        </div>
+
+        <!-- Initial Setup -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Workflow: Initial Setup</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <p>Complete these steps before adding projects or tracking revenue.</p>
+            <ol>
+              <li>
+                <span class="step-label">Create Departments</span> &mdash;
+                Go to <strong>Admin &rarr; Company</strong> and add each department (e.g., Marketing, Merchandising). Assign a department owner.
+              </li>
+              <li>
+                <span class="step-label">Create Verticals</span> &mdash;
+                On the same Company page, add your revenue verticals (e.g., Lighting, Furniture). Assign a General Manager to each.
+              </li>
+              <li>
+                <span class="step-label">Add Annual Rocks</span> &mdash;
+                Go to <strong>Admin &rarr; Rocks</strong> and create the Annual Rocks for the current year. These represent your top strategic priorities.
+              </li>
+              <li>
+                <span class="step-label">Add Quarterly Rocks</span> &mdash;
+                Still on the Rocks page, create Quarterly Rocks linked to an Annual Rock. Assign a department, year, and quarter.
+              </li>
+              <li>
+                <span class="step-label">Configure Measurements</span> &mdash;
+                Go to <strong>Admin &rarr; Measurements</strong> to define the Metrics and KPIs used when scoring projects.
+              </li>
+              <li>
+                <span class="step-label">Add Users</span> &mdash;
+                Go to <strong>Admin &rarr; Users</strong> to create accounts and assign roles (admin, senior_leadership, department_owner, or staff).
+              </li>
+              <li>
+                <span class="step-label">Set Budget Goals</span> &mdash;
+                Go to <strong>Revenue &rarr; Edit Goals</strong>, select a vertical, and enter monthly budget targets for the year.
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Add a Project -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Workflow: Add a Project</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <ol>
+              <li>
+                <span class="step-label">Navigate to Add Project</span> &mdash;
+                In the left sidebar click <strong>Add Project &rarr; New Project</strong>.
+              </li>
+              <li>
+                <span class="step-label">Fill in Project Details</span> &mdash;
+                Enter the project name, select the linked Quarterly Rock, department, vertical, and provide a description. Set the estimated annual revenue value and planned launch date.
+              </li>
+              <li>
+                <span class="step-label">Submit for Scoring</span> &mdash;
+                Once submitted, the project enters the scoring pipeline where leadership can estimate value and level of effort (LOE).
+              </li>
+              <li>
+                <span class="step-label">Estimate Value &amp; LOE</span> &mdash;
+                Authorized users go to <strong>Estimate Value &amp; LOE</strong> to score projects. Value estimates are set by senior leadership; LOE estimates can be provided by department owners.
+              </li>
+              <li>
+                <span class="step-label">Approve</span> &mdash;
+                Go to <strong>Estimate Value &amp; LOE &rarr; Approve Projects</strong> to approve or reject scored projects. Approved projects become Active and appear on the Dashboard.
+              </li>
+              <li>
+                <span class="step-label">Track on Dashboard</span> &mdash;
+                Active projects contribute a projected revenue uplift to the forecast charts, based on their estimated value and launch date.
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Updating Actuals -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Workflow: Updating Actuals</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <ol>
+              <li>
+                <span class="step-label">Prepare your CSV</span> &mdash;
+                Create a CSV file with two columns: <strong>Date</strong> and <strong>Actual Revenue</strong>.
+                Supported date formats include <code>YYYY-MM-DD</code>, <code>MM/DD/YYYY</code>, and <code>MM/DD/YY</code>.
+              </li>
+              <li>
+                <span class="step-label">Go to Update Actuals</span> &mdash;
+                In the left sidebar click <strong>Revenue &rarr; Update Actuals</strong>.
+              </li>
+              <li>
+                <span class="step-label">Select a Vertical</span> &mdash;
+                Choose the vertical this revenue data belongs to from the dropdown.
+              </li>
+              <li>
+                <span class="step-label">Upload the File</span> &mdash;
+                Select your CSV file and click <strong>Upload</strong>. The system will create or update daily revenue records. Any parsing errors are reported after upload.
+              </li>
+              <li>
+                <span class="step-label">Verify on Dashboard</span> &mdash;
+                Return to the Dashboard to see updated actuals reflected in the MTD, QTD, and YTD charts. The forecast automatically adjusts based on new actual data.
+              </li>
+            </ol>
+            <p><strong>Tip:</strong> Re-uploading a date for the same vertical will overwrite the previous value, so you can correct mistakes by uploading a corrected CSV.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+{% endblock javascripts %}

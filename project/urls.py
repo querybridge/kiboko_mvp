@@ -11,6 +11,8 @@ urlpatterns = [
     path('loe.html', views.loe, name='loe'),
     path('approvals.html', views.approve, name='approvals'),
     path('archive/', views.archive, name='archive'),
+    path('kanban/', views.kanban_view, name='kanban'),
+    path('kanban/move/', views.kanban_move, name='kanban_move'),
     #Project Detail Page
     path('<int:project_id>/', views.project_detail, name='project_detail'),
     path('<int:project_id>/edit/', views.project_edit, name='project_edit'),

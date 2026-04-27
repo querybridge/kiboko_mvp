@@ -12,14 +12,17 @@ from users.forms import UserRegistrationForm
 def logout_view(request):
 	logout(request)
 	return HttpResponseRedirect(reverse('app:index'))
-	
+
 
 #Registration Page
 def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
+            # Set the role on the auto-created profile
+            user.profile.role = form.cleaned_data['role']
+            user.profile.save()
             username = form.cleaned_data.get('username')
             raw_password = form.cleaned_data.get('password1')
             user = authenticate(username=username, password=raw_password)

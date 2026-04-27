@@ -13,7 +13,16 @@ locations = (
 status_options = (
 		('Pending Approval', 'Pending Approval'),
 		('Pending Assignment', 'Pending Assignment'),
+		('On Deck', 'On Deck'),
 		('Active', 'Active'),
 		('Complete', 'Complete'),
 		('Launched', 'Launched'),
 	)
+
+STRATEGY_TAG_CHOICES = (
+	('', '---------'),
+	('Expand Selection', 'Expand Selection'),
+	('Improve Experience', 'Improve Experience'),
+	('Increase Urgency', 'Increase Urgency'),
+	('Top of Mind', 'Top of Mind'),
+)

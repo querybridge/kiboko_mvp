@@ -109,3 +109,32 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Editor / tooling
+.vscode/
+.idea/
+*.iml
+
+# Project local
+claude_prompt_context.txt
+*.sqlite3
+*.sqlite3-journal
+media/
+staticfiles/
+
+# Logs
+*.log
+logs/
+
+# Node (if any tooling lands here)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

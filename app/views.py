@@ -450,6 +450,18 @@ def index(request):
             'value_p': value_p,
         })
 
+    # Enforce display order: Shopper Volume, Average Order Value, Purchase Frequency
+    _rock_order_keywords = ['shopper', 'order value', 'purchase']
+
+    def _rock_sort_key(item):
+        name = (item['rock'].name or '').lower()
+        for idx, kw in enumerate(_rock_order_keywords):
+            if kw in name:
+                return idx
+        return len(_rock_order_keywords)
+
+    annual_rocks_data.sort(key=_rock_sort_key)
+
     # Build revenue chart data
     chart_data = _build_chart_data(date.today().year, vertical_id=vertical_id)
 
@@ -862,6 +874,11 @@ def settings_measurements(request):
         'metrics': metrics,
         'kpis': kpis,
     })
+
+
+@login_required
+def help_page(request):
+    return render(request, 'app/help.html')
 
 
 @login_required

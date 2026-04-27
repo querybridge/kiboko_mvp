@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from multiselectfield import MultiSelectField
 from strategy.models import Strategy, AnnualRock, Metric, KPI
 from business_unit.models import BusinessUnit, Vertical
-from .project_field_options import locations, status_options
+from .project_field_options import locations, status_options, STRATEGY_TAG_CHOICES
 from .scoring import CRITERIA, weighted_score
 
 # Create your all your models here
@@ -48,6 +48,17 @@ class Project(models.Model):
 	operational_cost = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
 	business_risk = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
 	level_of_effort = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+
+	# Kanban fields
+	is_blocked = models.BooleanField(default=False)
+	strategy_tag = models.CharField(max_length=50, choices=STRATEGY_TAG_CHOICES, blank=True, default='')
+	impact_visits_value = models.IntegerField(default=0, null=True, blank=True)
+	impact_close_rate_value = models.IntegerField(default=0, null=True, blank=True)
+	impact_aov_value = models.IntegerField(default=0, null=True, blank=True)
+
+	@property
+	def project_value_total(self):
+		return (self.impact_visits_value or 0) + (self.impact_close_rate_value or 0) + (self.impact_aov_value or 0)
 
 	def save(self, *args, **kwargs):
 		# Compute weighted score from 6 criteria -> 0-10 scale

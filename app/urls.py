@@ -11,5 +11,7 @@ urlpatterns = [
     path('company/', views.settings_company, name='settings_company'),
     path('rocks/', views.settings_rocks, name='settings_rocks'),
     path('measurements/', views.settings_measurements, name='settings_measurements'),
+    path('users/', views.settings_users, name='settings_users'),
+    path('help/', views.help_page, name='help'),
     path('', views.index, name='index'),
 ]
