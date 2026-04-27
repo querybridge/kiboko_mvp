@@ -213,7 +213,9 @@ body.nav-sm .container.body .col-md-3.left_col {
 }
 
 /* ----- Cards / Panels (60% neutral) ----- */
-.x_panel {
+.x_panel,
+.panel,
+.panel-default {
   background: var(--bg-surface) !important;
   border: 1px solid var(--border-subtle) !important;
   border-radius: var(--radius-card);
@@ -221,6 +223,15 @@ body.nav-sm .container.body .col-md-3.left_col {
   color: var(--text-primary);
   padding: 16px 18px;
 }
+.panel-body,
+.panel-heading,
+.panel-footer {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+.project_detail p { color: var(--text-secondary) !important; }
+.project_detail p.title { color: var(--text-muted) !important; }
 .x_title {
   border-bottom: 1px solid var(--border-subtle) !important;
   padding-bottom: 10px;
