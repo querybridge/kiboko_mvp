@@ -30,3 +30,15 @@ class BusinessUnit(models.Model):
 
 	def __str__(self):
 		return self.name
+
+
+class Team(models.Model):
+	name = models.CharField(max_length=140, unique=True)
+
+	class Meta:
+		verbose_name = 'Team'
+		verbose_name_plural = 'Teams'
+		ordering = ['name']
+
+	def __str__(self):
+		return self.name

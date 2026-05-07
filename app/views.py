@@ -465,13 +465,60 @@ def index(request):
     # Build revenue chart data
     chart_data = _build_chart_data(date.today().year, vertical_id=vertical_id)
 
+    # Build gantt chart data for active projects
+    gantt_data = _build_gantt_data(projects)
+
     return render(request, 'app/index2.html', {
         'projects': projects,
         'annual_rocks_data': annual_rocks_data,
         'chart_data_mtd': json.dumps(chart_data['mtd']),
         'chart_data_qtd': json.dumps(chart_data['qtd']),
         'chart_data_ytd': json.dumps(chart_data['ytd']),
+        'gantt_data': json.dumps(gantt_data),
     })
+
+
+def _build_gantt_data(active_projects):
+    """Serialize active projects + MTD/QTD/YTD period bounds for the gantt chart."""
+    today = date.today()
+    year = today.year
+    month = today.month
+
+    mtd_start = date(year, month, 1)
+    mtd_end = date(year, month, calendar.monthrange(year, month)[1])
+
+    quarter_start_month = ((month - 1) // 3) * 3 + 1
+    quarter_end_month = min(quarter_start_month + 2, 12)
+    qtd_start = date(year, quarter_start_month, 1)
+    qtd_end = date(year, quarter_end_month, calendar.monthrange(year, quarter_end_month)[1])
+
+    ytd_start = date(year, 1, 1)
+    ytd_end = date(year, 12, 31)
+
+    items = []
+    for p in active_projects:
+        start = p.active_date or p.date_created
+        items.append({
+            'id': p.id,
+            'name': p.name or f'Project {p.id}',
+            'value': float(p.value or 0),
+            'progress': max(0, min(100, int(p.progress or 0))),
+            'team': p.team.name if p.team_id and p.team else 'Unassigned',
+            'quarterly_rock': p.strategy.name if p.strategy_id and p.strategy else '',
+            'annual_rock': str(p.annual_rock) if p.annual_rock_id and p.annual_rock else '',
+            'start': start.isoformat() if start else None,
+            'end': p.launch.isoformat() if p.launch else None,
+        })
+
+    return {
+        'projects': items,
+        'today': today.isoformat(),
+        'periods': {
+            'mtd': {'start': mtd_start.isoformat(), 'end': mtd_end.isoformat()},
+            'qtd': {'start': qtd_start.isoformat(), 'end': qtd_end.isoformat()},
+            'ytd': {'start': ytd_start.isoformat(), 'end': ytd_end.isoformat()},
+        },
+    }
 
 
 @login_required

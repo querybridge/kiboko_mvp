@@ -1,10 +1,11 @@
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 from multiselectfield import MultiSelectField
 from strategy.models import Strategy, AnnualRock, Metric, KPI
-from business_unit.models import BusinessUnit, Vertical
+from business_unit.models import BusinessUnit, Vertical, Team
 from .project_field_options import locations, status_options, STRATEGY_TAG_CHOICES
 from .scoring import CRITERIA, weighted_score
 
@@ -29,6 +30,7 @@ class Project(models.Model):
 	value = models.IntegerField(blank=True, null=True, default=0)
 	progress = models.IntegerField(blank=True, null=True, default=0)
 	launch = models.DateField(null=True, blank=True)
+	active_date = models.DateField(null=True, blank=True, editable=False)
 	normalized_score = models.DecimalField(max_digits=4, decimal_places=1, editable=False, null=True, default=0)
 	approved = models.BooleanField(default=False)
 	status = models.CharField(choices=status_options, max_length=350, null=True, default='Pending Approval')
@@ -40,6 +42,7 @@ class Project(models.Model):
 	vertical = models.ForeignKey(Vertical, on_delete=models.SET_NULL, null=True, blank=True)
 	metric = models.ForeignKey(Metric, on_delete=models.SET_NULL, null=True, blank=True)
 	kpi = models.ForeignKey(KPI, on_delete=models.SET_NULL, null=True, blank=True)
+	team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True)
 
 	# --- 6 scoring criteria (each 0-10) ---
 	customer_value = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
@@ -60,17 +63,30 @@ class Project(models.Model):
 	def project_value_total(self):
 		return (self.impact_visits_value or 0) + (self.impact_close_rate_value or 0) + (self.impact_aov_value or 0)
 
+	@classmethod
+	def from_db(cls, db, field_names, values):
+		instance = super().from_db(db, field_names, values)
+		instance._db_status = instance.status
+		return instance
+
 	def save(self, *args, **kwargs):
 		# Compute weighted score from 6 criteria -> 0-10 scale
 		values = {c: getattr(self, c, 0) or 0 for c in CRITERIA}
 		score = weighted_score(values)
 		self.normalized_score = Decimal(str(score)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
 
+		# Stamp active_date the first time status transitions to Active
+		previous_status = getattr(self, '_db_status', None)
+		became_active = self.status == 'Active' and previous_status != 'Active'
+		if became_active and not self.active_date:
+			self.active_date = date.today()
+
 		# Auto-archive when status is Launched
 		if self.status == 'Launched':
 			self.archived = True
 
 		super().save(*args, **kwargs)
+		self._db_status = self.status
 
 	def approve(self):
 		self.approved_score = True
