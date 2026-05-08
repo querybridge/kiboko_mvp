@@ -10,7 +10,8 @@ from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, redirect
 from django.template import loader
 from django.http import HttpResponse, HttpResponseRedirect
-from django.db.models import Q, Sum, Count, F
+from django.db import models
+from django.db.models import Q, Sum, Count, F, Avg
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
@@ -468,14 +469,213 @@ def index(request):
     # Build gantt chart data for active projects
     gantt_data = _build_gantt_data(projects)
 
+    # Build performance scorecard data
+    performance_data = _build_performance_data(date.today(), vertical_id=vertical_id)
+
+    # Build initiatives summary
+    initiatives = _build_initiatives_summary(vertical_id=vertical_id)
+
     return render(request, 'app/index2.html', {
-        'projects': projects,
         'annual_rocks_data': annual_rocks_data,
         'chart_data_mtd': json.dumps(chart_data['mtd']),
         'chart_data_qtd': json.dumps(chart_data['qtd']),
         'chart_data_ytd': json.dumps(chart_data['ytd']),
         'gantt_data': json.dumps(gantt_data),
+        'performance_data': json.dumps(performance_data),
+        'initiatives': initiatives,
     })
+
+
+PURPOSE_COLORS = {
+    'New Growth':       '#1a7a5c',  # green
+    'Hold Position':    '#337ab7',  # blue
+    'Defend Position':  '#f0ad4e',  # amber
+    'Reverse Decay':    '#d9534f',  # red
+}
+
+
+PIPELINE_EXCLUDED_STATUSES = ['Launched', 'Complete']
+
+
+def _build_initiatives_summary(vertical_id=None):
+    """Annotate quarterly rocks (Strategies) with project rollups for the
+    Initiatives summary table. Excludes projects in final states (Launched,
+    Complete) since the panel surfaces work that will produce future value.
+    """
+    from django.db.models.functions import Coalesce
+    from django.db.models import IntegerField
+
+    pipeline_filter = ~Q(projects__status__in=PIPELINE_EXCLUDED_STATUSES)
+    if vertical_id:
+        pipeline_filter &= Q(projects__vertical_id=vertical_id)
+
+    qs = (
+        Strategy.objects
+        .select_related('annual_rock', 'department')
+        .annotate(
+            project_count=Count('projects', distinct=True, filter=pipeline_filter),
+            active_count=Count(
+                'projects', distinct=True,
+                filter=pipeline_filter & Q(projects__status='Active'),
+            ),
+            active_value=Coalesce(
+                Sum('projects__value', filter=pipeline_filter & Q(projects__status='Active')),
+                0, output_field=IntegerField(),
+            ),
+            inactive_value=Coalesce(
+                Sum('projects__value', filter=pipeline_filter & ~Q(projects__status='Active')),
+                0, output_field=IntegerField(),
+            ),
+            avg_progress=Avg('projects__progress', filter=pipeline_filter),
+        )
+        .order_by('purpose', 'name')
+    )
+
+    project_qs = Project.objects.exclude(status__in=PIPELINE_EXCLUDED_STATUSES)
+    if vertical_id:
+        project_qs = project_qs.filter(vertical_id=vertical_id)
+    qs = qs.prefetch_related(models.Prefetch('projects', queryset=project_qs.order_by('-normalized_score')))
+
+    rows = []
+    for s in qs:
+        if (s.project_count or 0) == 0:
+            continue
+
+        projects = [{
+            'id': p.id,
+            'name': p.name or f'Project {p.id}',
+            'score': float(p.normalized_score) if p.normalized_score is not None else 0.0,
+            'progress': p.progress or 0,
+            'value': int(p.value or 0),
+            'launch': p.launch.isoformat() if p.launch else '',
+            'status': p.status or '',
+        } for p in s.projects.all()]
+
+        rows.append({
+            'id': s.id,
+            'name': s.name or f'Initiative {s.id}',
+            'purpose': s.purpose or '',
+            'purpose_color': PURPOSE_COLORS.get(s.purpose, '#888'),
+            'objective': s.annual_rock.name if s.annual_rock_id and s.annual_rock else '',
+            'level': s.level or '',
+            'business_unit': s.department.name if s.department_id and s.department else '',
+            'project_count': s.project_count or 0,
+            'active_count': s.active_count or 0,
+            'active_value': int(s.active_value or 0),
+            'inactive_value': int(s.inactive_value or 0),
+            'avg_progress': int(round(s.avg_progress)) if s.avg_progress is not None else None,
+            'projects': projects,
+        })
+    return rows
+
+
+PERFORMANCE_AOV_GOAL = 475.0           # target average order value ($)
+PERFORMANCE_CLOSE_RATE_GOAL = 0.0150   # target close rate (1.5%)
+
+
+def _build_performance_data(today, vertical_id=None):
+    """Aggregate Sales / Visits / Close Rate / AOV per period (MTD/QTD/YTD)
+    with deltas vs same period last year and vs prorated goal.
+    """
+    year = today.year
+    month = today.month
+    quarter_start_month = ((month - 1) // 3) * 3 + 1
+
+    periods = {
+        'mtd': (date(year, month, 1), today),
+        'qtd': (date(year, quarter_start_month, 1), today),
+        'ytd': (date(year, 1, 1), today),
+    }
+
+    def _ly_bound(d):
+        try:
+            return date(d.year - 1, d.month, d.day)
+        except ValueError:
+            # Feb 29 -> Feb 28
+            return date(d.year - 1, d.month, d.day - 1)
+
+    def _aggregate(start, end):
+        qs = DailyActual.objects.filter(date__gte=start, date__lte=end)
+        if vertical_id:
+            qs = qs.filter(vertical_id=vertical_id)
+        agg = qs.aggregate(rev=Sum('revenue'), v=Sum('visits'), o=Sum('orders'))
+        revenue = float(agg['rev'] or 0)
+        visits = int(agg['v'] or 0)
+        orders = int(agg['o'] or 0)
+        return {
+            'sales': revenue,
+            'visits': visits,
+            'close_rate': (orders / visits) if visits else 0,
+            'aov': (revenue / orders) if orders else 0,
+        }
+
+    def _sales_goal_for(start, end):
+        """Sum prorated daily budget across [start, end]."""
+        total = Decimal('0')
+        cur = date(start.year, start.month, 1)
+        while cur <= end:
+            days_in_month = calendar.monthrange(cur.year, cur.month)[1]
+            month_end = date(cur.year, cur.month, days_in_month)
+            qs = MonthlyGoal.objects.filter(month=cur)
+            if vertical_id:
+                qs = qs.filter(vertical_id=vertical_id)
+            month_budget = qs.aggregate(s=Sum('budget'))['s'] or Decimal('0')
+            daily = month_budget / Decimal(days_in_month) if days_in_month else Decimal('0')
+
+            slice_start = max(start, cur)
+            slice_end = min(end, month_end)
+            days_in_slice = (slice_end - slice_start).days + 1
+            if days_in_slice > 0:
+                total += daily * Decimal(days_in_slice)
+
+            # advance to next month
+            if cur.month == 12:
+                cur = date(cur.year + 1, 1, 1)
+            else:
+                cur = date(cur.year, cur.month + 1, 1)
+        return float(total)
+
+    def _delta(actual, baseline):
+        if baseline is None or baseline == 0:
+            return None
+        return (actual - baseline) / baseline
+
+    result = {}
+    for key, (start, end) in periods.items():
+        cur = _aggregate(start, end)
+        ly = _aggregate(_ly_bound(start), _ly_bound(end))
+
+        sales_goal = _sales_goal_for(start, end)
+        visits_goal = (sales_goal / PERFORMANCE_AOV_GOAL / PERFORMANCE_CLOSE_RATE_GOAL) if sales_goal else 0
+
+        cards = {
+            'sales': {
+                'value': cur['sales'],
+                'unit': 'currency',
+                'delta_ly': _delta(cur['sales'], ly['sales']),
+                'delta_goal': _delta(cur['sales'], sales_goal),
+            },
+            'visits': {
+                'value': cur['visits'],
+                'unit': 'integer',
+                'delta_ly': _delta(cur['visits'], ly['visits']),
+                'delta_goal': _delta(cur['visits'], visits_goal) if visits_goal else None,
+            },
+            'close_rate': {
+                'value': cur['close_rate'],
+                'unit': 'percent',
+                'delta_ly': _delta(cur['close_rate'], ly['close_rate']),
+                'delta_goal': _delta(cur['close_rate'], PERFORMANCE_CLOSE_RATE_GOAL),
+            },
+            'aov': {
+                'value': cur['aov'],
+                'unit': 'currency',
+                'delta_ly': _delta(cur['aov'], ly['aov']),
+                'delta_goal': _delta(cur['aov'], PERFORMANCE_AOV_GOAL),
+            },
+        }
+        result[key] = cards
+    return result
 
 
 def _build_gantt_data(active_projects):

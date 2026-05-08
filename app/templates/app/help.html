@@ -5,10 +5,46 @@
   {{ block.super }}
   <style>
     .help-section { margin-bottom: 30px; }
-    .help-section h4 { margin-top: 0; color: #2a3f54; }
+    .help-section h4 { margin-top: 18px; color: var(--text-primary, #2a3f54); font-weight: 700; }
+    .help-section h5 { margin-top: 14px; font-weight: 700; color: var(--text-secondary, #4a1f8a); }
     .help-section ol, .help-section ul { padding-left: 20px; }
     .help-section li { margin-bottom: 6px; }
     .step-label { font-weight: 600; }
+    .help-section .panel-name { color: var(--text-primary, #1d1147); font-weight: 700; }
+    .help-section dl.field-list { margin-top: 8px; }
+    .help-section dl.field-list dt {
+      font-weight: 700;
+      color: var(--text-primary, #1d1147);
+      margin-top: 6px;
+    }
+    .help-section dl.field-list dd {
+      margin-left: 18px;
+      margin-bottom: 4px;
+      color: var(--text-secondary, #555);
+    }
+    .help-section table.dict-table {
+      width: 100%;
+      margin: 10px 0 14px;
+      border-collapse: collapse;
+    }
+    .help-section table.dict-table th,
+    .help-section table.dict-table td {
+      border: 1px solid var(--border-subtle, #e5e5e5);
+      padding: 8px 10px;
+      vertical-align: top;
+      font-size: 13px;
+    }
+    .help-section table.dict-table th {
+      background: var(--bg-surface-muted, #f4f4f4);
+      text-align: left;
+      font-weight: 700;
+    }
+    .help-section code {
+      background: var(--bg-surface-muted, #f4f4f4);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
   </style>
 {% endblock stylesheets %}
 
@@ -158,6 +194,177 @@
               </li>
             </ol>
             <p><strong>Tip:</strong> Re-uploading a date for the same vertical will overwrite the previous value, so you can correct mistakes by uploading a corrected CSV.</p>
+          </div>
+        </div>
+
+        <!-- Dashboard Panels -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Dashboard Panels</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <p>The dashboard is read top-to-bottom, with each panel zooming progressively from strategy to execution. The MTD / QTD / YTD buttons in the Revenue panel drive every panel below — switching the period updates Revenue, Performance, the Gantt timeline, and the Initiatives Summary in lockstep.</p>
+
+            <h4><span class="panel-name">Annual Rocks Tiles</span></h4>
+            <p>One tile per Annual Rock for the current year. Each tile is a strategic scorecard: name and description across the top, then a count of Active projects driving that rock and the total Active project value. The smaller second line shows pre-Active pipeline (count and value) — i.e., what is queued up but not yet in flight.</p>
+
+            <h4><span class="panel-name">Revenue</span></h4>
+            <p>Period revenue chart with three stacked bar components:</p>
+            <ul>
+              <li><strong>Actual</strong> (dark green) &mdash; real revenue from <code>DailyActual</code> records.</li>
+              <li><strong>Forecast</strong> (medium green) &mdash; day-of-week-weighted projection for the remainder of the period.</li>
+              <li><strong>Project Value Add</strong> (light green) &mdash; incremental uplift from Active projects (each project's annual value spread over 365 days, applied from launch date forward).</li>
+            </ul>
+            <p>The line overlay is the Budget. The right-hand summary table shows Actual, Forecast, Project Value, End-of-Period Total, Budget, and Delta to Budget.</p>
+
+            <h4><span class="panel-name">Performance</span></h4>
+            <p>Four scorecards in order: <strong>Sales</strong>, <strong>Visits</strong>, <strong>Close Rate</strong>, and <strong>Avg Order Value</strong>. Each card shows the period value plus two deltas in smaller font: <em>vs LY</em> (same calendar-day range last year) and <em>vs Goal</em>. Traffic-light coloring uses a <strong>±5% neutral band</strong>: green = better than +5%, red = worse than &minus;5%, amber = within the neutral band. Color-coded chevrons indicate direction (up / down). The card's left border picks the worse of the two deltas so you can scan the row at a glance.</p>
+
+            <h4><span class="panel-name">Work in Progress (Gantt)</span></h4>
+            <p>Active projects laid out on the period's date axis. Bars start at the date the project's status became <em>Active</em> and end at the planned launch date. The bar is a light-green track with a dark-green fill sized to the project's percent complete; the percentage is labeled at the bar's right edge. Open-ended (no launch) projects use a striped pattern. Rows are grouped by <strong>Team</strong>, sorted with the densest team first, so you can see workload concentration at a glance. The vertical red line is today.</p>
+
+            <h4><span class="panel-name">Initiatives Summary</span></h4>
+            <p>Forward-looking rollup of Quarterly Rocks and their pipeline projects. <strong>Excludes Complete and Launched projects</strong> — those are already producing value; this panel surfaces what <em>will</em>. Columns:</p>
+            <ul>
+              <li><strong>Initiative</strong> &mdash; composite cell with name, expand chevron, total Projects count, Active count, and a left accent bar color-coded by Purpose.</li>
+              <li><strong>Purpose</strong> badge &mdash; New Growth, Hold Position, Defend Position, Reverse Decay.</li>
+              <li><strong>Objective</strong> &mdash; the linked Annual Rock (e.g., Increase Average Order Value).</li>
+              <li><strong>Avg Progress</strong> &mdash; mean percent complete across the initiative's pipeline projects.</li>
+              <li><strong>Active Value</strong> / <strong>Inactive Value</strong> &mdash; sum of project values currently Active vs in pre-Active pipeline.</li>
+              <li><strong>Level</strong> &mdash; Corporate / Department / Team scope.</li>
+              <li><strong>Business Unit</strong> &mdash; owning department.</li>
+            </ul>
+            <p>Click the chevron in any row to expand and see the underlying projects with score, progress, value, launch date, and status.</p>
+          </div>
+        </div>
+
+        <!-- Data Dictionary -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Data Dictionary</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+
+            <h4>Strategic Hierarchy</h4>
+            <table class="dict-table">
+              <thead>
+                <tr><th>Term</th><th>Definition</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Annual Rock</strong></td>
+                  <td>Top-level strategic priority for the year (e.g., "Increase Average Order Value"). Has a name, description, and year. Drives the Annual Rocks tiles and serves as the <em>Objective</em> on initiatives.</td>
+                </tr>
+                <tr>
+                  <td><strong>Quarterly Rock <span class="text-muted">(Initiative / Strategy)</span></strong></td>
+                  <td>A focused initiative supporting an Annual Rock during a specific quarter. Carries Purpose, Level, Department (Business Unit), Year, Quarter. Surfaced as a row in the Initiatives Summary panel.</td>
+                </tr>
+                <tr>
+                  <td><strong>Project</strong></td>
+                  <td>An individual unit of work tied to a Quarterly Rock. The smallest tracked piece — gets scored, prioritized, executed, and launched.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h4>Project Status Flow</h4>
+            <p>A project moves through these states in order. Only <strong>Active</strong> projects contribute Project Value Add to the Revenue forecast and appear on the Gantt.</p>
+            <table class="dict-table">
+              <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+              <tbody>
+                <tr><td>Pending Approval</td><td>Submitted; awaiting executive approval.</td></tr>
+                <tr><td>Pending Assignment</td><td>Approved; needs an owner.</td></tr>
+                <tr><td>On Deck</td><td>Assigned but not yet started.</td></tr>
+                <tr><td><strong>Active</strong></td><td>In flight. Stamps <code>active_date</code> on first transition. Drives Gantt bar and forecast uplift.</td></tr>
+                <tr><td>Complete</td><td>Finished but not yet launched to production. Excluded from the Initiatives Summary.</td></tr>
+                <tr><td>Launched</td><td>Live and producing value. Auto-archives. Excluded from the Initiatives Summary.</td></tr>
+              </tbody>
+            </table>
+
+            <h4>Project Fields</h4>
+            <dl class="field-list">
+              <dt>Name</dt><dd>Short title used in lists, the gantt label, and the kanban card.</dd>
+              <dt>Owner</dt><dd>User responsible for delivering the project.</dd>
+              <dt>Strategy</dt><dd>Linked Quarterly Rock (Initiative).</dd>
+              <dt>Annual Rock</dt><dd>Linked top-level priority — typically inherited from the Strategy.</dd>
+              <dt>Business Unit (Department)</dt><dd>Owning organizational unit.</dd>
+              <dt>Team</dt><dd>Functional execution team — Marketing, IT, Merchandising, UI/UX, Analytics, Operations, Content, or Customer Service. Used to group rows on the gantt.</dd>
+              <dt>Vertical</dt><dd>Revenue line of business the project benefits (e.g., Lighting, Patio).</dd>
+              <dt>Value</dt><dd>Estimated annual revenue uplift in dollars. Daily uplift = value &divide; 365.</dd>
+              <dt>Progress</dt><dd>0&ndash;100 percent complete. Drives the gantt bar fill and the initiative <em>Avg Progress</em>.</dd>
+              <dt>Launch</dt><dd>Planned go-live date. Used as the gantt bar end and the cutoff for forecast uplift.</dd>
+              <dt>Active Date</dt><dd>Auto-stamped the first time status transitions to Active. Used as the gantt bar start.</dd>
+              <dt>Score (normalized)</dt><dd>0&ndash;10 weighted score derived from the six scoring criteria. Primary sort within an initiative.</dd>
+            </dl>
+
+            <h5>Six Scoring Criteria (each 0&ndash;10)</h5>
+            <table class="dict-table">
+              <thead><tr><th>Criterion</th><th>Polarity</th><th>Definition</th></tr></thead>
+              <tbody>
+                <tr><td>Customer Value</td><td>Positive</td><td>Direct customer impact / experience benefit.</td></tr>
+                <tr><td>Business Value</td><td>Positive</td><td>Strategic and financial impact to the business.</td></tr>
+                <tr><td>Cost Savings</td><td>Positive</td><td>Reductions in operating cost.</td></tr>
+                <tr><td>Operational Cost</td><td>Penalty</td><td>Additional ongoing operational expense.</td></tr>
+                <tr><td>Business Risk</td><td>Penalty</td><td>Risk exposure introduced by the project.</td></tr>
+                <tr><td>Level of Effort (LOE)</td><td>Penalty</td><td>Engineering / time cost.</td></tr>
+              </tbody>
+            </table>
+
+            <h4>Organization</h4>
+            <dl class="field-list">
+              <dt>Department / Business Unit</dt><dd>Owning organizational unit (Marketing, IT, Merchandising, etc.).</dd>
+              <dt>Team</dt><dd>Functional execution unit; distinct from Department. Multiple teams can sit inside a single department.</dd>
+              <dt>Vertical</dt><dd>A revenue line of business with its own GM and budget targets (Lighting, Patio, Bailey Street Home).</dd>
+              <dt>User Roles</dt><dd><code>admin</code>, <code>senior_leadership</code>, <code>department_owner</code>, <code>staff</code>. Roles control which edit affordances appear.</dd>
+            </dl>
+
+            <h4>Revenue Data</h4>
+            <table class="dict-table">
+              <thead><tr><th>Entity</th><th>Fields</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><strong>DailyActual</strong></td>
+                  <td><code>date</code>, <code>vertical</code>, <code>revenue</code>, <code>visits</code>, <code>orders</code></td>
+                  <td>One row per (date, vertical). Loaded via CSV upload or seed. Drives Revenue actuals and Performance card values.</td>
+                </tr>
+                <tr>
+                  <td><strong>MonthlyGoal</strong></td>
+                  <td><code>month</code>, <code>vertical</code>, <code>budget</code></td>
+                  <td>Budget target for a given month + vertical. The <code>month</code> field stores the first day of the month.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h5>Performance Targets (constants used by the Performance panel)</h5>
+            <ul>
+              <li><strong>AOV target</strong> &mdash; $475</li>
+              <li><strong>Close Rate target</strong> &mdash; 1.5%</li>
+              <li><strong>Visits goal</strong> &mdash; derived: <code>sales_budget &divide; AOV target &divide; close-rate target</code>.</li>
+              <li><strong>Sales goal</strong> &mdash; sum of <code>MonthlyGoal.budget</code>, prorated daily across the selected period.</li>
+            </ul>
+
+            <h4>Periods</h4>
+            <dl class="field-list">
+              <dt>MTD</dt><dd>First of current month through end of current month.</dd>
+              <dt>QTD</dt><dd>First day of current quarter (Jan&nbsp;1 / Apr&nbsp;1 / Jul&nbsp;1 / Oct&nbsp;1) through last day of current quarter.</dd>
+              <dt>YTD</dt><dd>January&nbsp;1 through December&nbsp;31 of the current year.</dd>
+            </dl>
+            <p>For "vs Last Year" comparisons the same calendar-day range is used in the prior year (e.g., MTD May&nbsp;1&ndash;May&nbsp;7 of 2026 vs May&nbsp;1&ndash;May&nbsp;7 of 2025).</p>
+
+            <h4>Computed &amp; Derived Values</h4>
+            <dl class="field-list">
+              <dt>Forecast (base)</dt><dd>Day-of-week-weighted projection of remaining-month revenue plus actuals to date. For future months with no actuals, falls back to prior-year same-month scaled by <em>(this year's budget &divide; last year's actual)</em>.</dd>
+              <dt>Project Value Add</dt><dd>For each Active project, daily uplift = annual value &divide; 365, applied from launch date forward and summed across all Active projects.</dd>
+              <dt>End of Period Total</dt><dd>Forecast + Project Value Add.</dd>
+              <dt>Delta to Budget</dt><dd>Budget &minus; End of Period Total. Positive (red) = forecasted miss; negative (green) = beat.</dd>
+              <dt>Avg Progress (Initiatives)</dt><dd>Mean of <code>progress</code> across the initiative's pipeline projects, excluding Launched and Complete.</dd>
+              <dt>Active / Inactive Value (Initiatives)</dt><dd>Sum of <code>value</code> for projects in <em>Active</em> status vs in pre-Active pipeline (Pending Approval, Pending Assignment, On Deck).</dd>
+              <dt>Performance Sales</dt><dd>Sum of <code>DailyActual.revenue</code> for the period.</dd>
+              <dt>Performance Visits</dt><dd>Sum of <code>DailyActual.visits</code>.</dd>
+              <dt>Performance Close Rate</dt><dd>Sum of orders &divide; sum of visits.</dd>
+              <dt>Performance AOV</dt><dd>Sum of revenue &divide; sum of orders.</dd>
+            </dl>
           </div>
         </div>
 

@@ -277,6 +277,8 @@ class DailyActual(models.Model):
     date = models.DateField()
     vertical = models.ForeignKey(Vertical, on_delete=models.CASCADE, null=True, blank=True)
     revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    visits = models.IntegerField(default=0)
+    orders = models.IntegerField(default=0)
 
     class Meta:
         ordering = ['date']
