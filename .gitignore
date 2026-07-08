@@ -124,6 +124,9 @@ Thumbs.db
 
 # Project local
 claude_prompt_context.txt
+.claude/
+to_do.txt
+wakanda_dark.png
 *.sqlite3
 *.sqlite3-journal
 media/
