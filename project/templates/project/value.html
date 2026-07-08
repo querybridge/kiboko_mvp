@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Project Needing Valued {% endblock title %}
+{% block title %} Action Needing Valued {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
 <!-- Ion.RangeSlider -->
@@ -50,7 +50,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                          <td>All Projects Valued</td>
+                          <td>All Actions Valued</td>
                         </tr>
                         {% endfor %}
                       </tbody>

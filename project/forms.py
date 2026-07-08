@@ -1,6 +1,6 @@
 from django.forms import ModelForm, Textarea, TextInput, CheckboxSelectMultiple, RadioSelect, Select, DateField, DateInput, NumberInput
-from .models import Project, Comment
-from strategy.models import Metric, KPI
+from .models import Action, ActionComment
+from strategy.models import Measure
 from django import forms
 from django.forms import widgets
 from crispy_forms.helper import FormHelper
@@ -10,33 +10,30 @@ from crispy_forms.layout import Submit
 class ProjectAdd(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['metric'].queryset = Metric.objects.filter(active=True)
-        self.fields['kpi'].queryset = KPI.objects.filter(active=True)
+        self.fields['measure'].queryset = Measure.objects.filter(active=True)
 
     class Meta:
-        model = Project
+        model = Action
         fields = [
-            'annual_rock', 'strategy', 'business_unit', 'team', 'vertical',
-            'owner', 'name', 'why', 'impact', 'metric', 'kpi',
+            'objective', 'project', 'business_unit', 'team', 'vertical',
+            'owner', 'name', 'why', 'impact', 'measure',
         ]
         labels = {
-            'strategy': 'Quarterly Rock',
+            'project': 'Project',
             'business_unit': 'Department',
             'team': 'Team',
-            'annual_rock': 'Annual Rock',
+            'objective': 'Objective',
             'vertical': 'Vertical',
-            'name': 'Project Name',
-            'metric': 'Metric',
-            'kpi': 'KPI',
+            'name': 'Action Name',
+            'measure': 'Measure',
         }
         help_texts = {
-            'metric': 'Quantifiable data points and performance indicators such as conversion rates, customer acquisition costs, or average order value',
-            'kpi': 'Quantifiable data points measuring performance against strategic goals, such as profitability, growth, and customer satisfaction',
-            'team': 'Functional team executing the project (e.g. Marketing, IT, Merchandising)',
+            'measure': 'Quantifiable data points used to track progress and performance against the parent metric',
+            'team': 'Functional team executing the action (e.g. Marketing, IT, Merchandising)',
         }
         widgets = {
-            'annual_rock': Select(attrs={}),
-            'strategy': Select(attrs={}),
+            'objective': Select(attrs={}),
+            'project': Select(attrs={}),
             'business_unit': Select(attrs={}),
             'team': Select(attrs={}),
             'vertical': Select(attrs={}),
@@ -44,41 +41,37 @@ class ProjectAdd(ModelForm):
             'name': TextInput(attrs={}),
             'why': Textarea(attrs={'name': 'User Story'}),
             'impact': TextInput(attrs={'name': 'Definition of Done'}),
-            'metric': Select(attrs={}),
-            'kpi': Select(attrs={}),
+            'measure': Select(attrs={}),
         }
 
 
 class ProjectEdit(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['metric'].queryset = Metric.objects.filter(active=True)
-        self.fields['kpi'].queryset = KPI.objects.filter(active=True)
+        self.fields['measure'].queryset = Measure.objects.filter(active=True)
 
     class Meta:
-        model = Project
+        model = Action
         fields = [
-            'name', 'strategy', 'owner', 'status', 'progress', 'launch',
+            'name', 'project', 'owner', 'status', 'progress', 'launch',
             'impact', 'success', 'why', 'value',
-            'business_unit', 'team', 'annual_rock', 'vertical', 'metric', 'kpi',
+            'business_unit', 'team', 'objective', 'vertical', 'measure',
             'customer_value', 'business_value', 'cost_savings',
             'operational_cost', 'business_risk', 'level_of_effort',
         ]
         labels = {
-            'strategy': 'Quarterly Rock',
+            'project': 'Project',
             'business_unit': 'Department',
             'team': 'Team',
-            'annual_rock': 'Annual Rock',
+            'objective': 'Objective',
             'vertical': 'Vertical',
-            'metric': 'Metric',
-            'kpi': 'KPI',
+            'measure': 'Measure',
         }
         help_texts = {
-            'metric': 'Quantifiable data points and performance indicators such as conversion rates, customer acquisition costs, or average order value',
-            'kpi': 'Quantifiable data points measuring performance against strategic goals, such as profitability, growth, and customer satisfaction',
+            'measure': 'Quantifiable data points used to track progress and performance against the parent metric',
         }
         widgets = {
-            'strategy': Select(attrs={}),
+            'project': Select(attrs={}),
             'owner': Select(attrs={}),
             'name': TextInput(attrs={}),
             'launch': DateInput(attrs={'class': 'datepicker', 'id': 'datepicker', 'type': 'date'}),
@@ -89,10 +82,9 @@ class ProjectEdit(ModelForm):
             'value': NumberInput(attrs={}),
             'business_unit': Select(attrs={}),
             'team': Select(attrs={}),
-            'annual_rock': Select(attrs={}),
+            'objective': Select(attrs={}),
             'vertical': Select(attrs={}),
-            'metric': Select(attrs={}),
-            'kpi': Select(attrs={}),
+            'measure': Select(attrs={}),
             'customer_value': NumberInput(attrs={'min': 0, 'max': 10}),
             'business_value': NumberInput(attrs={'min': 0, 'max': 10}),
             'cost_savings': NumberInput(attrs={'min': 0, 'max': 10}),
@@ -103,32 +95,32 @@ class ProjectEdit(ModelForm):
 
 class ProjectEditManager(ModelForm):
     class Meta:
-        model = Project
-        fields = ['strategy', 'owner', 'name', 'impact', 'success', 'why', 'annual_rock', 'value']
+        model = Action
+        fields = ['project', 'owner', 'name', 'impact', 'success', 'why', 'objective', 'value']
         labels = {
-            'strategy': 'Quarterly Rock',
-            'annual_rock': 'Annual Rock',
+            'project': 'Project',
+            'objective': 'Objective',
         }
         widgets = {
-            'strategy': Select(attrs={}),
+            'project': Select(attrs={}),
             'owner': Select(attrs={}),
             'name': TextInput(attrs={}),
             'impact': TextInput(attrs={'name': 'Definition of Done'}),
             'success': TextInput(attrs={'name': 'Definition of Success'}),
             'why': Textarea(attrs={'name': 'User Story'}),
-            'annual_rock': Select(attrs={}),
+            'objective': Select(attrs={}),
             'value': NumberInput(attrs={}),
         }
 
 class ProjectValue(ModelForm):
 	class Meta:
-	    model = Project
-	    fields = ['strategy', 'name', 'impact', 'value']
+	    model = Action
+	    fields = ['project', 'name', 'impact', 'value']
 	    labels = {
-	        'strategy': 'Quarterly Rock',
+	        'project': 'Project',
 	    }
 	    widgets = {
-	        'strategy': Select(attrs={'readonly':'readonly'}),
+	        'project': Select(attrs={'readonly':'readonly'}),
 	        'name': TextInput(attrs={'readonly':'readonly'}),
 	        'impact': TextInput(attrs={'name': 'Desired Impact', 'readonly':'readonly'}),
 	        'value': NumberInput(attrs={}),
@@ -136,13 +128,13 @@ class ProjectValue(ModelForm):
 
 class ProjectLoe(ModelForm):
 	class Meta:
-	    model = Project
-	    fields = ['strategy', 'name', 'impact', 'value', 'level_of_effort']
+	    model = Action
+	    fields = ['project', 'name', 'impact', 'value', 'level_of_effort']
 	    labels = {
-	        'strategy': 'Quarterly Rock',
+	        'project': 'Project',
 	    }
 	    widgets = {
-	        'strategy': Select(attrs={'readonly':'readonly'}),
+	        'project': Select(attrs={'readonly':'readonly'}),
 	        'name': TextInput(attrs={'readonly':'readonly'}),
 	        'impact': TextInput(attrs={'name': 'Desired Impact', 'readonly':'readonly'}),
 	        'value': NumberInput(attrs={'readonly':'readonly'}),
@@ -152,7 +144,7 @@ class ProjectLoe(ModelForm):
 
 class CommentForm(forms.ModelForm):
 	class Meta:
-		model = Comment
+		model = ActionComment
 		fields = ('text',)
 		widgets = {
 			'text': Textarea(attrs={})

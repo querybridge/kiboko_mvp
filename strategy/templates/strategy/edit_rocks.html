@@ -13,12 +13,12 @@
       <div class="clearfix"></div>
     </div>
 
-    <!-- Annual Rocks Section -->
+    <!-- Objectives Section -->
     <div class="row">
       <div class="col-md-12 col-sm-12 col-xs-12">
         <div class="x_panel">
           <div class="x_title">
-            <h2>Annual Rocks</h2>
+            <h2>Objectives</h2>
             <div class="clearfix"></div>
           </div>
           <div class="x_content">
@@ -48,16 +48,16 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="delete_annual_rock">
                     <input type="hidden" name="rock_id" value="{{ rock.id }}">
-                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this Annual Rock?')">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this Objective?')">Delete</button>
                   </form>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="4" style="text-align:center;">No Annual Rocks yet.</td>
+                  <td colspan="4" style="text-align:center;">No Objectives yet.</td>
                 </tr>
                 {% endfor %}
-                <!-- Add New Annual Rock Row -->
+                <!-- Add New Objective Row -->
                 <tr>
                   <form method="post">
                     {% csrf_token %}
@@ -65,7 +65,7 @@
                     <td><input type="text" name="ar_name" placeholder="Name" class="form-control" required></td>
                     <td><input type="text" name="ar_description" placeholder="Description" class="form-control"></td>
                     <td><input type="number" name="ar_year" placeholder="Year" class="form-control" style="width:100px"></td>
-                    <td><button type="submit" class="btn btn-success btn-xs">Add Annual Rock</button></td>
+                    <td><button type="submit" class="btn btn-success btn-xs">Add Objective</button></td>
                   </form>
                 </tr>
               </tbody>
@@ -75,14 +75,14 @@
       </div>
     </div>
 
-    <!-- Quarterly Rocks Section -->
+    <!-- Projects Section -->
     <div class="row">
       <div class="col-md-12 col-sm-12 col-xs-12">
         <div class="x_panel">
           <div class="x_title">
-            <h2>Quarterly Rocks</h2>
+            <h2>Projects</h2>
             <ul class="nav navbar-right project_action">
-              <li style="display:inline-block"><a href="/strategy/add.html" class="btn btn-sm btn-info">Add Quarterly Rock</a></li>
+              <li style="display:inline-block"><a href="/strategy/add.html" class="btn btn-sm btn-info">Add Project</a></li>
             </ul>
             <div class="clearfix"></div>
           </div>
@@ -91,7 +91,7 @@
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Annual Rock</th>
+                  <th>Objective</th>
                   <th>Department</th>
                   <th>Year</th>
                   <th>Quarter</th>
@@ -103,7 +103,7 @@
                 {% for rock in quarterly_rocks %}
                 <tr>
                   <td>{{ rock.name }}</td>
-                  <td>{{ rock.annual_rock|default:"-" }}</td>
+                  <td>{{ rock.objective|default:"-" }}</td>
                   <td>{{ rock.department|default:"-" }}</td>
                   <td>{{ rock.year|default:"-" }}</td>
                   <td>{{ rock.get_quarter_display|default:"-" }}</td>
@@ -115,7 +115,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="7" style="text-align:center;">No Quarterly Rocks yet.</td>
+                  <td colspan="7" style="text-align:center;">No Projects yet.</td>
                 </tr>
                 {% endfor %}
               </tbody>

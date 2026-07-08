@@ -536,13 +536,13 @@
         {% for item in annual_rocks_data %}
         <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
           <div class="tile-stats">
-            <div class="x_title" style="text-align:center;">
-			<h3>{{ item.rock.name }}</h3>
-            <p>{{ item.rock.description }}</p>
+            <div class="x_title" style="text-align:center; background: {{ item.color }}; border-radius:6px 6px 0 0; padding:12px 8px; border-bottom:none;">
+			<h3 style="color:#fff; margin-top:4px;">{{ item.rock.name }}</h3>
+            <p style="color:rgba(255,255,255,0.88); margin-bottom:0;">{{ item.rock.description }}</p>
 			</div>
               <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">
               	<div class="count">
-              	{{ item.count }} Projects
+              	{{ item.count }} Actions
               	<br>
               	<p>{{ item.count_p }} Inactive</p>
               </div>
@@ -628,7 +628,7 @@
         </div>
       </div>
 
-      <!-- Active Projects Gantt -->
+      <!-- Active Actions Gantt -->
       <div class="row">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
           <div class="x_panel" id="gantt-panel">
@@ -648,20 +648,20 @@
         </div>
       </div>
 
-      <!-- Initiatives Summary -->
+      <!-- Projects Summary -->
       <div class="row">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
           <div class="x_panel" id="initiatives-panel">
             <div class="x_title">
-              <h3>Initiatives Summary</h3>
-              <h5>Strategic rollups by Quarterly Rock</h5>
+              <h3>Projects Summary</h3>
+              <h5>Action rollups by Project</h5>
               <div class="clearfix"></div>
             </div>
             <div class="x_content">
               <table id="initiatives-summary-table">
                 <thead>
                   <tr>
-                    <th class="col-initiative">INITIATIVES</th>
+                    <th class="col-initiative">PROJECTS</th>
                     <th>Purpose</th>
                     <th>Objective</th>
                     <th>Avg Progress</th>
@@ -679,7 +679,7 @@
                           <span class="initiative-name">{{ init.name }}</span>
                           <button type="button" class="initiative-chevron" aria-label="Expand"><i class="fa fa-chevron-right"></i></button>
                           <div class="mini-stat">
-                            <span class="label">Projects</span>
+                            <span class="label">Actions</span>
                             <span class="value">{{ init.project_count }}</span>
                           </div>
                           <div class="mini-stat active">
@@ -722,7 +722,7 @@
                         <table class="children-table">
                           <thead>
                             <tr>
-                              <th>Project</th>
+                              <th>Action</th>
                               <th>Score</th>
                               <th>Progress</th>
                               <th class="text-right">Value</th>
@@ -746,7 +746,7 @@
                                 <td><span class="status-pill status-{{ p.status|lower }}">{{ p.status|default:"—" }}</span></td>
                               </tr>
                             {% empty %}
-                              <tr><td class="empty-children" colspan="6">No projects associated with this initiative.</td></tr>
+                              <tr><td class="empty-children" colspan="6">No actions associated with this project.</td></tr>
                             {% endfor %}
                           </tbody>
                         </table>
@@ -1139,7 +1139,7 @@
       });
 
       if (teamNames.length === 0) {
-        $rows.html('<div class="gantt-empty">No active projects in this period.</div>');
+        $rows.html('<div class="gantt-empty">No active actions in this period.</div>');
         return;
       }
 
@@ -1149,7 +1149,7 @@
 
         var $header = $('<div class="gantt-team-header"></div>')
           .append($('<span></span>').text(team))
-          .append($('<span class="team-count"></span>').text(entries.length + (entries.length === 1 ? ' project' : ' projects')))
+          .append($('<span class="team-count"></span>').text(entries.length + (entries.length === 1 ? ' action' : ' actions')))
           .append($('<span class="team-value"></span>').text(fmtCurrency(totalValue) + ' total value'));
         $rows.append($header);
 
@@ -1170,8 +1170,18 @@
           var $bar = $('<div class="gantt-bar' + (entry.end ? '' : ' no-end') + '"></div>')
             .css({left: leftPct + '%', width: widthPct + '%'});
 
+          // Color the bar by its Objective (AOV=green, Close Rate=yellow, Visits=blue)
+          var track = proj.objective_track || '#e2e2e2';
+          var stripe = proj.objective_stripe || '#efefef';
+          var fill = proj.objective_fill || '#888888';
+          if (entry.end) {
+            $bar.css('background', track);
+          } else {
+            $bar.css('background', 'repeating-linear-gradient(45deg, ' + track + ', ' + track + ' 6px, ' + stripe + ' 6px, ' + stripe + ' 12px)');
+          }
+
           var pct = Math.max(0, Math.min(100, Number(proj.progress) || 0));
-          $('<div class="gantt-bar-fill"></div>').css('width', pct + '%').appendTo($bar);
+          $('<div class="gantt-bar-fill"></div>').css({width: pct + '%', background: fill}).appendTo($bar);
           $('<span class="gantt-bar-pct"></span>').text(pct + '%').appendTo($bar);
 
           $track.append($bar);
@@ -1185,8 +1195,8 @@
             var html = '<div class="tt-name">' + proj.name + '</div>'
               + '<div class="tt-row"><span class="tt-key">Value</span><span>' + fmtCurrency(proj.value) + '</span></div>'
               + '<div class="tt-row"><span class="tt-key">Team</span><span>' + (proj.team || '—') + '</span></div>'
-              + '<div class="tt-row"><span class="tt-key">Quarterly Rock</span><span>' + (proj.quarterly_rock || '—') + '</span></div>'
-              + '<div class="tt-row"><span class="tt-key">Annual Rock</span><span>' + (proj.annual_rock || '—') + '</span></div>';
+              + '<div class="tt-row"><span class="tt-key">Project</span><span>' + (proj.quarterly_rock || '—') + '</span></div>'
+              + '<div class="tt-row"><span class="tt-key">Objective</span><span>' + (proj.annual_rock || '—') + '</span></div>';
             $tooltip.html(html).css({display: 'block'});
           });
           $label.on('mousemove', function(e) {

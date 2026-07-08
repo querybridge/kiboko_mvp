@@ -1,5 +1,5 @@
 {% extends "app/base_site.html" %}
-{% block title %} Project Needing Approved {% endblock title %}
+{% block title %} Action Needing Approved {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
 {% load humanize %}
@@ -14,7 +14,7 @@
   <div class="">
     <div class="page-title">
       <div class="title_left">
-        <h3>Projects Requiring Approval</h3>
+        <h3>Actions Requiring Approval</h3>
       </div>
       <div class="clearfix"></div>
       <div class="row">
@@ -83,7 +83,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                          <td colspan="12" style="text-align: center">All Projects Approved</td>
+                          <td colspan="12" style="text-align: center">All Actions Approved</td>
                         </tr>
                         {% endfor %}
                       </tbody>

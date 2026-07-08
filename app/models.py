@@ -18,7 +18,7 @@ from business_unit.models import Vertical
 alignment_options = (
 		('increase_customers', 'Increase Customers'),
 		('increase_aov', 'Increase AOV'),
-		('increase_purchase_frequency', 'Increase Purchase Frequency'),
+		('increase_purchase_frequency', 'Increase Close Rate'),
 	)
 
 level_options = (

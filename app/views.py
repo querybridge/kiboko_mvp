@@ -22,8 +22,8 @@ from app.forms import StrategyForm
 from users.models import ROLE_CHOICES, UserProfile
 from app.models import MonthlyGoal, DailyActual
 from business_unit.models import BusinessUnit, Vertical
-from project.models import Project
-from strategy.models import Strategy, AnnualRock, Metric, KPI
+from project.models import Action
+from strategy.models import Project, Objective, Metric, KPI
 from project.views import project_detail
 
 
@@ -108,9 +108,9 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None):
                 growth_scale = this_year_budget / py_year_total
                 base_forecast = py_month_total * growth_scale
 
-    # Add active project uplift — each project contributes its daily value
+    # Add active action uplift — each action contributes its daily value
     # only for days in this month on or after its launch date
-    projects = Project.objects.filter(
+    projects = Action.objects.filter(
         status='Active',
     ).filter(
         Q(launch__isnull=True) | Q(launch__lte=last_of_month)
@@ -263,7 +263,7 @@ def _build_chart_data(year, vertical_id=None):
 
     # Pre-compute per-project daily rates for MTD forecast
     last_of_current_month = date(year, current_month, days_in_current_month)
-    project_qs = Project.objects.filter(
+    project_qs = Action.objects.filter(
         status='Active',
     ).filter(
         Q(launch__isnull=True) | Q(launch__lte=last_of_current_month)
@@ -326,7 +326,7 @@ def _build_chart_data(year, vertical_id=None):
     # --- Summary totals for each period ---
 
     def _project_value_through(end_date):
-        qs = Project.objects.filter(
+        qs = Action.objects.filter(
             status='Active',
         ).filter(
             Q(launch__isnull=True) | Q(launch__lte=end_date)
@@ -428,15 +428,15 @@ def index(request):
     except (ValueError, TypeError):
         vertical_id = None
 
-    # Show active projects on dashboard
-    projects = Project.objects.filter(status='Active', archived=False).order_by('-normalized_score')
+    # Show active actions on dashboard
+    projects = Action.objects.filter(status='Active', archived=False).order_by('-normalized_score')
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
 
-    # Dynamic Annual Rock tiles
+    # Dynamic Objective tiles
     annual_rocks_data = []
-    for rock in AnnualRock.objects.filter(year=date.today().year):
-        base_qs = Project.objects.filter(annual_rock=rock, archived=False)
+    for rock in Objective.objects.filter(year=date.today().year):
+        base_qs = Action.objects.filter(objective=rock, archived=False)
         if vertical_id:
             base_qs = base_qs.filter(vertical_id=vertical_id)
         count = base_qs.filter(status='Active').count()
@@ -449,10 +449,12 @@ def index(request):
             'value': value,
             'count_p': count_p,
             'value_p': value_p,
+            'color': _objective_bar_colors(rock.name)['fill'],
         })
 
-    # Enforce display order: Shopper Volume, Average Order Value, Purchase Frequency
-    _rock_order_keywords = ['shopper', 'order value', 'purchase']
+    # Enforce display order: Shopper Volume, Close Rate, Average Order Value
+    # (drive more orders first, then grow order size)
+    _rock_order_keywords = ['shopper', 'close', 'order value']
 
     def _rock_sort_key(item):
         name = (item['rock'].name or '').lower()
@@ -498,43 +500,43 @@ PIPELINE_EXCLUDED_STATUSES = ['Launched', 'Complete']
 
 
 def _build_initiatives_summary(vertical_id=None):
-    """Annotate quarterly rocks (Strategies) with project rollups for the
-    Initiatives summary table. Excludes projects in final states (Launched,
-    Complete) since the panel surfaces work that will produce future value.
+    """Annotate Projects with action rollups for the Projects summary table.
+    Excludes actions in final states (Launched, Complete) since the panel
+    surfaces work that will produce future value.
     """
     from django.db.models.functions import Coalesce
     from django.db.models import IntegerField
 
-    pipeline_filter = ~Q(projects__status__in=PIPELINE_EXCLUDED_STATUSES)
+    pipeline_filter = ~Q(actions__status__in=PIPELINE_EXCLUDED_STATUSES)
     if vertical_id:
-        pipeline_filter &= Q(projects__vertical_id=vertical_id)
+        pipeline_filter &= Q(actions__vertical_id=vertical_id)
 
     qs = (
-        Strategy.objects
-        .select_related('annual_rock', 'department')
+        Project.objects
+        .select_related('objective', 'department')
         .annotate(
-            project_count=Count('projects', distinct=True, filter=pipeline_filter),
+            project_count=Count('actions', distinct=True, filter=pipeline_filter),
             active_count=Count(
-                'projects', distinct=True,
-                filter=pipeline_filter & Q(projects__status='Active'),
+                'actions', distinct=True,
+                filter=pipeline_filter & Q(actions__status='Active'),
             ),
             active_value=Coalesce(
-                Sum('projects__value', filter=pipeline_filter & Q(projects__status='Active')),
+                Sum('actions__value', filter=pipeline_filter & Q(actions__status='Active')),
                 0, output_field=IntegerField(),
             ),
             inactive_value=Coalesce(
-                Sum('projects__value', filter=pipeline_filter & ~Q(projects__status='Active')),
+                Sum('actions__value', filter=pipeline_filter & ~Q(actions__status='Active')),
                 0, output_field=IntegerField(),
             ),
-            avg_progress=Avg('projects__progress', filter=pipeline_filter),
+            avg_progress=Avg('actions__progress', filter=pipeline_filter),
         )
         .order_by('purpose', 'name')
     )
 
-    project_qs = Project.objects.exclude(status__in=PIPELINE_EXCLUDED_STATUSES)
+    project_qs = Action.objects.exclude(status__in=PIPELINE_EXCLUDED_STATUSES)
     if vertical_id:
         project_qs = project_qs.filter(vertical_id=vertical_id)
-    qs = qs.prefetch_related(models.Prefetch('projects', queryset=project_qs.order_by('-normalized_score')))
+    qs = qs.prefetch_related(models.Prefetch('actions', queryset=project_qs.order_by('-normalized_score')))
 
     rows = []
     for s in qs:
@@ -543,20 +545,20 @@ def _build_initiatives_summary(vertical_id=None):
 
         projects = [{
             'id': p.id,
-            'name': p.name or f'Project {p.id}',
+            'name': p.name or f'Action {p.id}',
             'score': float(p.normalized_score) if p.normalized_score is not None else 0.0,
             'progress': p.progress or 0,
             'value': int(p.value or 0),
             'launch': p.launch.isoformat() if p.launch else '',
             'status': p.status or '',
-        } for p in s.projects.all()]
+        } for p in s.actions.all()]
 
         rows.append({
             'id': s.id,
-            'name': s.name or f'Initiative {s.id}',
+            'name': s.name or f'Project {s.id}',
             'purpose': s.purpose or '',
             'purpose_color': PURPOSE_COLORS.get(s.purpose, '#888'),
-            'objective': s.annual_rock.name if s.annual_rock_id and s.annual_rock else '',
+            'objective': s.objective.name if s.objective_id and s.objective else '',
             'level': s.level or '',
             'business_unit': s.department.name if s.department_id and s.department else '',
             'project_count': s.project_count or 0,
@@ -678,8 +680,32 @@ def _build_performance_data(today, vertical_id=None):
     return result
 
 
+# Gantt bar colors keyed on the Action's Objective. Each entry provides the bar
+# track color, the lighter stripe used for no-end (open-ended) bars, and the
+# saturated progress-fill color.
+OBJECTIVE_BAR_COLORS = {
+    'aov':       {'track': '#c5f0e0', 'stripe': '#d8f3e8', 'fill': '#1a7a5c'},  # green
+    'close':     {'track': '#fbe9b0', 'stripe': '#fdf3d2', 'fill': '#d4a017'},  # yellow
+    'visits':    {'track': '#cfe2f3', 'stripe': '#e3eef9', 'fill': '#337ab7'},  # blue
+    'default':   {'track': '#e2e2e2', 'stripe': '#efefef', 'fill': '#888888'},  # neutral
+}
+
+
+def _objective_bar_colors(objective_name):
+    """Map an Objective name to a gantt color set (AOV=green, Close Rate=yellow,
+    Shopper Volume/Visits=blue, anything else=neutral)."""
+    name = (objective_name or '').lower()
+    if 'order value' in name or 'aov' in name:
+        return OBJECTIVE_BAR_COLORS['aov']
+    if 'close' in name:
+        return OBJECTIVE_BAR_COLORS['close']
+    if 'shopper' in name or 'visit' in name:
+        return OBJECTIVE_BAR_COLORS['visits']
+    return OBJECTIVE_BAR_COLORS['default']
+
+
 def _build_gantt_data(active_projects):
-    """Serialize active projects + MTD/QTD/YTD period bounds for the gantt chart."""
+    """Serialize active actions + MTD/QTD/YTD period bounds for the gantt chart."""
     today = date.today()
     year = today.year
     month = today.month
@@ -698,14 +724,19 @@ def _build_gantt_data(active_projects):
     items = []
     for p in active_projects:
         start = p.active_date or p.date_created
+        objective_name = str(p.objective) if p.objective_id and p.objective else ''
+        colors = _objective_bar_colors(objective_name)
         items.append({
             'id': p.id,
-            'name': p.name or f'Project {p.id}',
+            'name': p.name or f'Action {p.id}',
             'value': float(p.value or 0),
             'progress': max(0, min(100, int(p.progress or 0))),
             'team': p.team.name if p.team_id and p.team else 'Unassigned',
-            'quarterly_rock': p.strategy.name if p.strategy_id and p.strategy else '',
-            'annual_rock': str(p.annual_rock) if p.annual_rock_id and p.annual_rock else '',
+            'quarterly_rock': p.project.name if p.project_id and p.project else '',
+            'annual_rock': objective_name,
+            'objective_track': colors['track'],
+            'objective_stripe': colors['stripe'],
+            'objective_fill': colors['fill'],
             'start': start.isoformat() if start else None,
             'end': p.launch.isoformat() if p.launch else None,
         })
@@ -732,7 +763,7 @@ def gentella_html(request):
 @login_required
 def project_detail(request, project_id):
     from django.shortcuts import get_object_or_404
-    project = get_object_or_404(Project, pk=project_id)
+    project = get_object_or_404(Action, pk=project_id)
     return render(request, 'project/detail.html', {'project': project})
 
 
@@ -988,7 +1019,7 @@ def settings_rocks(request):
             description = request.POST.get('ar_description', '').strip()
             year = request.POST.get('ar_year', '').strip()
             if name:
-                AnnualRock.objects.create(
+                Objective.objects.create(
                     name=name,
                     description=description,
                     year=int(year) if year else None,
@@ -996,7 +1027,7 @@ def settings_rocks(request):
 
         elif action == 'edit_annual_rock':
             item_id = request.POST.get('item_id')
-            rock = AnnualRock.objects.filter(pk=item_id).first()
+            rock = Objective.objects.filter(pk=item_id).first()
             if rock:
                 rock.name = request.POST.get('ar_name', rock.name).strip()
                 rock.description = request.POST.get('ar_description', rock.description).strip()
@@ -1006,7 +1037,7 @@ def settings_rocks(request):
 
         elif action == 'delete_annual_rock':
             item_id = request.POST.get('item_id')
-            AnnualRock.objects.filter(pk=item_id).delete()
+            Objective.objects.filter(pk=item_id).delete()
 
         elif action == 'add_quarterly_rock':
             name = request.POST.get('qr_name', '').strip()
@@ -1016,9 +1047,9 @@ def settings_rocks(request):
                 year = request.POST.get('qr_year', '').strip()
                 quarter = request.POST.get('qr_quarter', '').strip()
                 target = request.POST.get('qr_target_completion', '').strip()
-                Strategy.objects.create(
+                Project.objects.create(
                     name=name,
-                    annual_rock_id=int(ar_id) if ar_id else None,
+                    objective_id=int(ar_id) if ar_id else None,
                     department_id=int(dept_id) if dept_id else None,
                     year=int(year) if year else None,
                     quarter=int(quarter) if quarter else None,
@@ -1028,11 +1059,11 @@ def settings_rocks(request):
 
         elif action == 'edit_quarterly_rock':
             item_id = request.POST.get('item_id')
-            rock = Strategy.objects.filter(pk=item_id).first()
+            rock = Project.objects.filter(pk=item_id).first()
             if rock:
                 rock.name = request.POST.get('qr_name', rock.name).strip()
                 ar_id = request.POST.get('qr_annual_rock', '').strip()
-                rock.annual_rock_id = int(ar_id) if ar_id else None
+                rock.objective_id = int(ar_id) if ar_id else None
                 dept_id = request.POST.get('qr_department', '').strip()
                 rock.department_id = int(dept_id) if dept_id else None
                 year = request.POST.get('qr_year', '').strip()
@@ -1045,12 +1076,12 @@ def settings_rocks(request):
 
         elif action == 'delete_quarterly_rock':
             item_id = request.POST.get('item_id')
-            Strategy.objects.filter(pk=item_id).delete()
+            Project.objects.filter(pk=item_id).delete()
 
         return redirect('app:settings_rocks')
 
-    annual_rocks = AnnualRock.objects.order_by('year', 'name')
-    quarterly_rocks = Strategy.objects.order_by('date_created')
+    annual_rocks = Objective.objects.order_by('year', 'name')
+    quarterly_rocks = Project.objects.order_by('date_created')
     departments = BusinessUnit.objects.all()
 
     return render(request, 'app/settings_rocks.html', {

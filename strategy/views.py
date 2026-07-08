@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.http import HttpResponseRedirect
 from django.utils import timezone
 from .forms import StrategyAdd, StrategyEdit, CommentForm
-from .models import Strategy, AnnualRock, Metric, KPI
+from .models import Project, Objective, Metric, KPI
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 
@@ -28,7 +28,7 @@ def strategy(request):
 #Edit Quarterly Rock
 @login_required
 def strategy_edit(request, strategy_id):
-    strategy = get_object_or_404(Strategy, pk=strategy_id)
+    strategy = get_object_or_404(Project, pk=strategy_id)
     if request.method == "POST":
         form = StrategyEdit(request.POST, instance=strategy)
         if form.is_valid():
@@ -44,25 +44,25 @@ def strategy_edit(request, strategy_id):
 @login_required
 def strategy_view(request):
     context = {}
-    strategies = Strategy.objects.all()
+    strategies = Project.objects.all()
     return render(request, 'strategy/view.html', {'strategies': strategies})
 
 
 #View Quarterly Rock Detail
 @login_required
 def strategy_detail(request, strategy_id):
-	strategy = get_object_or_404(Strategy, pk=strategy_id)
+	strategy = get_object_or_404(Project, pk=strategy_id)
 	return render(request, 'strategy/detail.html', {'strategy': strategy})
 
 @login_required
 def add_comment_to_strategy(request, strategy_id):
-    strategy = get_object_or_404(Strategy, pk=strategy_id)
+    strategy = get_object_or_404(Project, pk=strategy_id)
     if request.method == "POST":
         form = CommentForm(request.POST)
         if form.is_valid():
             comment = form.save(commit=False)
             comment.author = request.user
-            comment.strategy = strategy
+            comment.project = strategy
             comment.save()
             return render(request, 'strategy/detail.html', {'strategy': strategy})
     else:
@@ -84,7 +84,7 @@ def edit_rocks(request):
             description = request.POST.get('ar_description', '').strip()
             year = request.POST.get('ar_year', '').strip()
             if name:
-                AnnualRock.objects.create(
+                Objective.objects.create(
                     name=name,
                     description=description,
                     year=int(year) if year else None,
@@ -92,11 +92,11 @@ def edit_rocks(request):
 
         elif action == 'delete_annual_rock':
             rock_id = request.POST.get('rock_id')
-            AnnualRock.objects.filter(pk=rock_id).delete()
+            Objective.objects.filter(pk=rock_id).delete()
 
         elif action == 'edit_annual_rock':
             rock_id = request.POST.get('rock_id')
-            rock = get_object_or_404(AnnualRock, pk=rock_id)
+            rock = get_object_or_404(Objective, pk=rock_id)
             rock.name = request.POST.get('ar_name', rock.name).strip()
             rock.description = request.POST.get('ar_description', rock.description).strip()
             year = request.POST.get('ar_year', '').strip()
@@ -105,8 +105,8 @@ def edit_rocks(request):
 
         return redirect('strategy:edit_rocks')
 
-    annual_rocks = AnnualRock.objects.all()
-    quarterly_rocks = Strategy.objects.all()
+    annual_rocks = Objective.objects.all()
+    quarterly_rocks = Project.objects.all()
     return render(request, 'strategy/edit_rocks.html', {
         'annual_rocks': annual_rocks,
         'quarterly_rocks': quarterly_rocks,

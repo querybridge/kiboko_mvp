@@ -18,7 +18,7 @@ LANES = OrderedDict([
 
 # Fields required before a project can be scored
 REQUIRED_FOR_SCORING = [
-    'name', 'strategy_id', 'business_unit_id', 'owner_id', 'why',
+    'name', 'project_id', 'business_unit_id', 'owner_id', 'why',
 ]
 
 # Transitions: which lanes can a card be dragged INTO

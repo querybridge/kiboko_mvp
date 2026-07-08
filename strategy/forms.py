@@ -1,5 +1,5 @@
 from django.forms import ModelForm, Textarea, TextInput, CheckboxSelectMultiple, RadioSelect, Select, DateInput, NumberInput
-from .models import Strategy, StrategyComment
+from .models import Project, ProjectComment
 from django import forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
@@ -14,21 +14,23 @@ class StrategyAdd(ModelForm):
         self.fields['purpose'].required = False
 
     class Meta:
-        model = Strategy
+        model = Project
         fields = [
-            'name', 'annual_rock', 'department', 'year', 'quarter',
+            'name', 'objective', 'metric', 'department', 'year', 'quarter',
             'impact', 'goal', 'definition_of_done', 'target_completion',
             'level', 'competitive_position', 'purpose', 'why',
         ]
         labels = {
-            'annual_rock': 'Annual Rock',
+            'objective': 'Objective',
+            'metric': 'Metric',
             'department': 'Department',
             'definition_of_done': 'Definition of Done',
             'target_completion': 'Target Completion',
         }
         widgets = {
             'name': TextInput(attrs={}),
-            'annual_rock': Select(attrs={}),
+            'objective': Select(attrs={}),
+            'metric': Select(attrs={}),
             'department': Select(attrs={}),
             'year': NumberInput(attrs={}),
             'quarter': Select(attrs={}),
@@ -45,19 +47,21 @@ class StrategyAdd(ModelForm):
 
 class StrategyEdit(ModelForm):
     class Meta:
-        model = Strategy
+        model = Project
         fields = [
-            'name', 'annual_rock', 'department', 'year', 'quarter',
+            'name', 'objective', 'metric', 'department', 'year', 'quarter',
             'impact', 'goal', 'definition_of_done', 'target_completion',
             'level', 'competitive_position', 'purpose', 'why',
         ]
         labels = {
-            'annual_rock': 'Annual Rock',
+            'objective': 'Objective',
+            'metric': 'Metric',
             'department': 'Department',
             'definition_of_done': 'Definition of Done',
             'target_completion': 'Target Completion',
         }
         widgets = {
+            'metric': Select(attrs={}),
             'target_completion': DateInput(attrs={'type': 'date'}),
         }
         helper = FormHelper()
@@ -65,7 +69,7 @@ class StrategyEdit(ModelForm):
 
 class CommentForm(forms.ModelForm):
     class Meta:
-        model = StrategyComment
+        model = ProjectComment
         fields = ('text',)
         widgets = {
         'text': Textarea(attrs={}),

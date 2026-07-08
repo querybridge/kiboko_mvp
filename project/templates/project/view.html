@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Projects {% endblock title %}
+{% block title %} Actions {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
 <!-- Ion.RangeSlider -->
@@ -27,7 +27,7 @@
 				<li style="display: inline-block"><a href="/project/add.html?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Add</a></li>
               </ul>
             <div class="x_title">
-			<h3>Approved Projects</h3>
+			<h3>Approved Actions</h3>
             </div>
             <div class="x_content">
 
@@ -80,7 +80,7 @@
                         </tr>
                         {% empty %}
                         <tr >
-                          <td colspan="18" style="text-align: center;">No Approved Projects</td>
+                          <td colspan="18" style="text-align: center;">No Approved Actions</td>
                         </tr>
                         
                         {% endfor %}
@@ -95,7 +95,7 @@
         <div class="col-md-12 col-sm-12 col-xs-12">
           <div class="x_panel">
             <div class="x_title">
-			<h3>Projects To Be Approved</h3>
+			<h3>Actions To Be Approved</h3>
             </div>
             <div class="x_content">
 
@@ -148,7 +148,7 @@
                         </tr>
                         {% empty %}
                         <tr >
-                          <td colspan="18" style="text-align: center;">No Projects To Be Approved</td>
+                          <td colspan="18" style="text-align: center;">No Actions To Be Approved</td>
                         </tr>
 
                         {% endfor %}

@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Archived Projects {% endblock title %}
+{% block title %} Archived Actions {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
 {% endblock stylesheets %}
@@ -9,14 +9,14 @@
   <div class="">
     <div class="page-title">
       <div class="title_left">
-        <h3>Archived Projects</h3>
+        <h3>Archived Actions</h3>
       </div>
       <div class="clearfix"></div>
       <div class="row">
         <div class="col-md-12 col-sm-12 col-xs-12">
           <div class="x_panel">
             <div class="x_title">
-              <h2>Launched Projects</h2>
+              <h2>Launched Actions</h2>
               <div class="clearfix"></div>
             </div>
             <div class="x_content">
@@ -24,7 +24,7 @@
                 <thead>
                   <tr>
                     <th>Name</th>
-                    <th>Quarterly Rock</th>
+                    <th>Project</th>
                     <th>Owner</th>
                     <th>Launch Date</th>
                     <th>Value</th>
@@ -43,7 +43,7 @@
                   {% for project in page_obj %}
                   <tr>
                     <td><a href="/project/{{ project.id }}/">{{ project.name }}</a></td>
-                    <td>{{ project.strategy.name }}</td>
+                    <td>{{ project.project.name }}</td>
                     <td>{{ project.owner }}</td>
                     <td>{{ project.launch }}</td>
                     <td>${{ project.value|intcomma }}</td>
@@ -61,7 +61,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="14" style="text-align: center;">No archived projects</td>
+                    <td colspan="14" style="text-align: center;">No archived actions</td>
                   </tr>
                   {% endfor %}
                 </tbody>

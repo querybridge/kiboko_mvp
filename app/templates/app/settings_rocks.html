@@ -13,12 +13,13 @@
       <div class="clearfix"></div>
     </div>
 
-    <!-- Annual Rocks -->
+    <!-- Objectives -->
     <div class="row">
       <div class="col-md-12 col-sm-12 col-xs-12">
         <div class="x_panel">
           <div class="x_title">
-            <h2>Annual Rocks</h2>
+            <h2>Objectives</h2>
+            <small class="text-muted">Annual goals, each measured by a KPI.</small>
             <div class="clearfix"></div>
           </div>
           <div class="x_content">
@@ -48,13 +49,13 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="delete_annual_rock">
                     <input type="hidden" name="item_id" value="{{ rock.id }}">
-                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this Annual Rock?')">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this Objective?')">Delete</button>
                   </form>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="4" style="text-align:center;">No Annual Rocks yet.</td>
+                  <td colspan="4" style="text-align:center;">No Objectives yet.</td>
                 </tr>
                 {% endfor %}
                 <!-- Add New -->
@@ -65,7 +66,7 @@
                     <td><input type="text" name="ar_name" placeholder="Name" class="form-control" required></td>
                     <td><input type="text" name="ar_description" placeholder="Description" class="form-control"></td>
                     <td><input type="number" name="ar_year" placeholder="Year" class="form-control" style="width:100px"></td>
-                    <td><button type="submit" class="btn btn-success btn-xs">Add Annual Rock</button></td>
+                    <td><button type="submit" class="btn btn-success btn-xs">Add Objective</button></td>
                   </form>
                 </tr>
               </tbody>
@@ -75,12 +76,13 @@
       </div>
     </div>
 
-    <!-- Quarterly Rocks -->
+    <!-- Projects -->
     <div class="row">
       <div class="col-md-12 col-sm-12 col-xs-12">
         <div class="x_panel">
           <div class="x_title">
-            <h2>Quarterly Rocks</h2>
+            <h2>Projects</h2>
+            <small class="text-muted">Quarterly initiatives, each measured by a Metric.</small>
             <div class="clearfix"></div>
           </div>
           <div class="x_content">
@@ -88,7 +90,7 @@
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Annual Rock</th>
+                  <th>Objective</th>
                   <th>Department</th>
                   <th>Year</th>
                   <th>Quarter</th>
@@ -108,7 +110,7 @@
                       <select name="qr_annual_rock" class="form-control">
                         <option value="">---------</option>
                         {% for ar in annual_rocks %}
-                        <option value="{{ ar.id }}" {% if rock.annual_rock_id == ar.id %}selected{% endif %}>{{ ar }}</option>
+                        <option value="{{ ar.id }}" {% if rock.objective_id == ar.id %}selected{% endif %}>{{ ar }}</option>
                         {% endfor %}
                       </select>
                     </td>
@@ -138,13 +140,13 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="delete_quarterly_rock">
                     <input type="hidden" name="item_id" value="{{ rock.id }}">
-                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this Quarterly Rock?')">Delete</button>
+                    <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this Project?')">Delete</button>
                   </form>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="7" style="text-align:center;">No Quarterly Rocks yet.</td>
+                  <td colspan="7" style="text-align:center;">No Projects yet.</td>
                 </tr>
                 {% endfor %}
                 <!-- Add New -->
@@ -180,7 +182,7 @@
                       </select>
                     </td>
                     <td><input type="date" name="qr_target_completion" class="form-control"></td>
-                    <td><button type="submit" class="btn btn-success btn-xs">Add Quarterly Rock</button></td>
+                    <td><button type="submit" class="btn btn-success btn-xs">Add Project</button></td>
                   </form>
                 </tr>
               </tbody>

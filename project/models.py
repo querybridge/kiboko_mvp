@@ -4,7 +4,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 from multiselectfield import MultiSelectField
-from strategy.models import Strategy, AnnualRock, Metric, KPI
+from strategy.models import Project, Objective, Measure
 from business_unit.models import BusinessUnit, Vertical, Team
 from .project_field_options import locations, status_options, STRATEGY_TAG_CHOICES
 from .scoring import CRITERIA, weighted_score
@@ -12,13 +12,16 @@ from .scoring import CRITERIA, weighted_score
 # Create your all your models here
 
 ########################################
-## Project DB Model                   ##
+## Action DB Model                    ##
 ########################################
+#
+# An Action is the execution unit. It rolls up to a quarterly Project (which
+# rolls up to an annual Objective). An Action is measured by a Measure, owned by
+# one accountable Owner, and resourced by a Team -- the Owner/Team distinction
+# drives the gantt chart's grouping (Team) and accountability (Owner).
 
-#Project Class
-
-class Project(models.Model):
-	strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, blank=True, related_name='projects')
+class Action(models.Model):
+	project = models.ForeignKey(Project, on_delete=models.CASCADE, blank=True, related_name='actions')
 	owner = models.ForeignKey(User, on_delete=models.CASCADE)
 	date_created = models.DateField(auto_now_add=True, editable=False)
 	date_modified = models.DateField(auto_now=True, editable=False)
@@ -37,11 +40,10 @@ class Project(models.Model):
 	archived = models.BooleanField(default=False)
 	business_unit = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE)
 
-	# New fields
-	annual_rock = models.ForeignKey(AnnualRock, on_delete=models.SET_NULL, null=True, blank=True)
+	# Hierarchy + measurement
+	objective = models.ForeignKey(Objective, on_delete=models.SET_NULL, null=True, blank=True)
 	vertical = models.ForeignKey(Vertical, on_delete=models.SET_NULL, null=True, blank=True)
-	metric = models.ForeignKey(Metric, on_delete=models.SET_NULL, null=True, blank=True)
-	kpi = models.ForeignKey(KPI, on_delete=models.SET_NULL, null=True, blank=True)
+	measure = models.ForeignKey(Measure, on_delete=models.SET_NULL, null=True, blank=True)
 	team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True)
 
 	# --- 6 scoring criteria (each 0-10) ---
@@ -93,15 +95,16 @@ class Project(models.Model):
 		self.save()
 
 	class Meta:
-		verbose_name_plural = 'Projects'
+		verbose_name = 'Action'
+		verbose_name_plural = 'Actions'
 		ordering = ['-normalized_score']
 
 	def __str__(self):
 		return self.name
 
 
-class Comment(models.Model):
-	project = models.ForeignKey('project.Project', on_delete=models.CASCADE, related_name='comments')
+class ActionComment(models.Model):
+	action = models.ForeignKey('project.Action', on_delete=models.CASCADE, related_name='comments')
 	author = models.ForeignKey(User, on_delete=models.CASCADE)
 	text = models.TextField()
 	created_date = models.DateTimeField(auto_now_add=True, editable=False)

@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Project Details {% endblock title %}
+{% block title %} Action Details {% endblock title %}
 
 {% block sidebar_class %}menu_fixed{% endblock sidebar_class %}
 
@@ -54,7 +54,7 @@
 				<!--<li style="display: inline-block"><a href="#" class="btn btn-sm btn-danger">Delete</a></li>-->
               </ul>
             <div class="x_title">
-              <h1><strong>Project: </strong>{{ project.name }}<br/><small><strong>Quarterly Rock: </strong>{{ project.strategy.name }}</small></h1>
+              <h1><strong>Action: </strong>{{ project.name }}<br/><small><strong>Project: </strong>{{ project.project.name }}</small></h1>
               <div class="clearfix"></div>
             </div>
 
@@ -76,7 +76,7 @@
                     <span class="value text-success">{{  project.launch }} </span>
                   </li>
                   <li style="display: inline-block">
-                    <span class="name"> Project Progress </span>
+                    <span class="name"> Action Progress </span>
                     <span class="value text-success">
 					<!-- <span class="project_progress"> -->
                       <div class="progress progress_sm center-block" style="width:75%;"> 
@@ -145,25 +145,23 @@
                 <section class="panel">
 
                   <div class="x_title">
-                    <h2>Project Description</h2>
+                    <h2>Action Description</h2>
                     <div class="clearfix"></div>
                   </div>
                   <div class="panel-body">
                     <!-- </div><h3 class="green"><i class="fa fa-paint-brush"></i> Gentelella</h3> -->
 
                     <div class="project_detail">
-                    <p class="title">Project Owner</p>
+                    <p class="title">Action Owner</p>
                     <p>{{ project.owner }}</p>
                     <p class="title">Department</p>
                     <p>{{ project.business_unit|default:"-" }}</p>
-                    <p class="title">Annual Rock</p>
-                    <p>{{ project.annual_rock|default:"-" }}</p>
+                    <p class="title">Objective</p>
+                    <p>{{ project.objective|default:"-" }}</p>
                     <p class="title">Vertical</p>
                     <p>{{ project.vertical|default:"-" }}</p>
-                    <p class="title">Metric</p>
-                    <p>{{ project.metric|default:"-" }}{% if project.metric %} <i class="fa fa-info-circle" title="Quantifiable data points and performance indicators such as conversion rates, customer acquisition costs, or average order value"></i>{% endif %}</p>
-                    <p class="title">KPI</p>
-                    <p>{{ project.kpi|default:"-" }}{% if project.kpi %} <i class="fa fa-info-circle" title="Quantifiable data points measuring performance against strategic goals, such as profitability, growth, and customer satisfaction"></i>{% endif %}</p>
+                    <p class="title">Measure</p>
+                    <p>{{ project.measure|default:"-" }}{% if project.measure %} <i class="fa fa-info-circle" title="Quantifiable data points used to track progress and performance against the parent metric"></i>{% endif %}</p>
                     <p class="title">Created:</p>
                     <p>{{ project.date_created }}</p>
                     <p class="title">Modified:</p>

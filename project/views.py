@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.urls import reverse
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
-from .models import Project, Strategy
+from .models import Action
 from .forms import ProjectAdd, ProjectEdit, CommentForm, ProjectValue, ProjectLoe, ProjectEditManager
 from business_unit.models import BusinessUnit
 from django.contrib.auth.decorators import login_required
@@ -38,7 +38,7 @@ def view(request):
     vertical_id = _get_vertical_id(request)
     # Exclude archived projects
     # Projects that are approved OR have status Pending Assignment/Active go in the approved table
-    approved_projects = Project.objects.filter(
+    approved_projects = Action.objects.filter(
         archived=False,
     ).filter(
         Q(approved=True) | Q(status__in=['Pending Assignment', 'Active'])
@@ -49,9 +49,9 @@ def view(request):
     # Pending = not approved AND not Pending Assignment/Active status
     pending_filter = Q(approved=False, archived=False) & ~Q(status__in=['Pending Assignment', 'Active'])
     if owned_bus.exists():
-        pending_projects = Project.objects.filter(pending_filter, business_unit__in=owned_bus)
+        pending_projects = Action.objects.filter(pending_filter, business_unit__in=owned_bus)
     else:
-        pending_projects = Project.objects.filter(pending_filter)
+        pending_projects = Action.objects.filter(pending_filter)
     if vertical_id:
         pending_projects = pending_projects.filter(vertical_id=vertical_id)
     return render(request, 'project/view.html', {
@@ -79,10 +79,10 @@ def project(request):
         'form': form 
     })
 
-#Edit Strategy
+#Action Detail
 @login_required
 def project_detail(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
+    project = get_object_or_404(Action, pk=project_id)
     return render(request, 'project/detail.html', {'project': project})
 
 #Edit Project
@@ -92,8 +92,8 @@ def get_absolute_url(self):
 
 @login_required
 def project_edit(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    ref_url = request.META['HTTP_REFERER']
+    project = get_object_or_404(Action, pk=project_id)
+    ref_url = request.META.get('HTTP_REFERER', '/')
     next = request.POST.get('next', '/')
     if request.method == "POST":
         form = ProjectEdit(request.POST, instance=project)
@@ -114,8 +114,8 @@ def project_edit(request, project_id):
 
 @login_required
 def project_edit_manager(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    ref_url = request.META['HTTP_REFERER']
+    project = get_object_or_404(Action, pk=project_id)
+    ref_url = request.META.get('HTTP_REFERER', '/')
     next = request.POST.get('next', '/')
     is_admin = getattr(getattr(request.user, 'profile', None), 'role', '') == 'admin'
     if request.method == "POST":
@@ -139,12 +139,12 @@ def project_edit_manager(request, project_id):
    
 @login_required
 def project_value(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    ref_url = request.META['HTTP_REFERER']
+    project = get_object_or_404(Action, pk=project_id)
+    ref_url = request.META.get('HTTP_REFERER', '/')
     next = request.POST.get('next', '/')
     if request.method == "POST":
         form = ProjectValue(request.POST, instance=project)
-        form.fields['strategy'].disabled = True
+        form.fields['project'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
         if form.is_valid():
@@ -155,7 +155,7 @@ def project_value(request, project_id):
     else:
         title = "Value Project"
         form = ProjectValue(instance=project)
-        form.fields['strategy'].disabled = True
+        form.fields['project'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
     return render(request, 'project/add_value.html', {'form': form, 'title': title})
@@ -164,12 +164,12 @@ def project_value(request, project_id):
 
 @login_required
 def project_loe(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    ref_url = request.META['HTTP_REFERER']
+    project = get_object_or_404(Action, pk=project_id)
+    ref_url = request.META.get('HTTP_REFERER', '/')
     next = request.POST.get('next', '/')
     if request.method == "POST":
         form = ProjectLoe(request.POST, instance=project)
-        form.fields['strategy'].disabled = True
+        form.fields['project'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
         form.fields['value'].disabled = True
@@ -181,7 +181,7 @@ def project_loe(request, project_id):
     else:
         title = "Estimate Level of Effort"
         form = ProjectLoe(instance=project)
-        form.fields['strategy'].disabled = True
+        form.fields['project'].disabled = True
         form.fields['name'].disabled = True
         form.fields['impact'].disabled = True
         form.fields['value'].disabled = True
@@ -193,7 +193,7 @@ def project_loe(request, project_id):
 @login_required
 def value(request):
     vertical_id = _get_vertical_id(request)
-    projects = Project.objects.filter(value=0)
+    projects = Action.objects.filter(value=0)
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
     title = "Assign Value"
@@ -203,7 +203,7 @@ def value(request):
 @login_required
 def loe(request):
     vertical_id = _get_vertical_id(request)
-    projects = Project.objects.filter(level_of_effort=0)
+    projects = Action.objects.filter(level_of_effort=0)
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
     title = "Assign Level of Effort"
@@ -213,7 +213,7 @@ def loe(request):
 @login_required
 def approve(request):
     vertical_id = _get_vertical_id(request)
-    projects = Project.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['Active', 'Pending Assignment'])
+    projects = Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['Active', 'Pending Assignment'])
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
     title = "Approve and Prioritize"
@@ -222,15 +222,15 @@ def approve(request):
     
 @login_required
 def add_comment_to_project(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    ref_url = request.META['HTTP_REFERER']
+    project = get_object_or_404(Action, pk=project_id)
+    ref_url = request.META.get('HTTP_REFERER', '/')
     next = request.POST.get('next', '/')
     if request.method == "POST":
         form = CommentForm(request.POST)
         if form.is_valid():
             comment = form.save(commit=False)
             comment.author = request.user
-            comment.project = project
+            comment.action = project
             comment.save()
         #return redirect(ref_url, {'project': project})    
     #return render(request, 'project/detail.html', {'project': project})
@@ -242,14 +242,14 @@ def add_comment_to_project(request, project_id):
 
 
 def approve_project(request, project_id):
-    project = Project.objects.get(pk=project_id)
+    project = Action.objects.get(pk=project_id)
     next_url = request.GET.get('next', request.POST.get('next', '/project/approvals.html'))
     project.approved = not project.approved
     project.save()
     return HttpResponseRedirect(next_url)
 
 def delete(request, project_id):
-    object = Project.objects.get(pk=project_id)
+    object = Action.objects.get(pk=project_id)
     object.delete()
     return redirect("view.html")
 
@@ -258,7 +258,7 @@ def delete(request, project_id):
 def archive(request):
     """View archived (launched) projects with pagination."""
     vertical_id = _get_vertical_id(request)
-    archived_projects = Project.objects.filter(archived=True).order_by('-launch', '-date_modified')
+    archived_projects = Action.objects.filter(archived=True).order_by('-launch', '-date_modified')
     if vertical_id:
         archived_projects = archived_projects.filter(vertical_id=vertical_id)
     paginator = Paginator(archived_projects, 10)
@@ -274,8 +274,8 @@ def archive(request):
 def kanban_view(request):
     """Render the Kanban board."""
     vertical_id = _get_vertical_id(request)
-    projects = Project.objects.filter(archived=False).select_related(
-        'strategy', 'business_unit', 'vertical', 'owner',
+    projects = Action.objects.filter(archived=False).select_related(
+        'project', 'business_unit', 'vertical', 'owner',
     )
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
@@ -315,7 +315,7 @@ def kanban_move(request):
     if not project_id or not target_lane:
         return JsonResponse({'ok': False, 'error': 'Missing project_id or target_lane'}, status=400)
 
-    project = get_object_or_404(Project, pk=project_id)
+    project = get_object_or_404(Action, pk=project_id)
     ok, err = apply_move(project, target_lane)
 
     if not ok:
@@ -323,7 +323,7 @@ def kanban_move(request):
 
     # Recompute all lane totals after the move
     vertical_id = data.get('vertical_id')
-    qs = Project.objects.filter(archived=False)
+    qs = Action.objects.filter(archived=False)
     if vertical_id:
         try:
             qs = qs.filter(vertical_id=int(vertical_id))

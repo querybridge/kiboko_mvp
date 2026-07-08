@@ -1,5 +1,5 @@
 {% extends "app/base_site.html" %}
-{% block title %} All Quarterly Rocks {% endblock title %}
+{% block title %} All Projects {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
 
@@ -16,7 +16,7 @@
 		</ul>
     <div class="page-title">
       <div class="title_left">
-        <h3>All Quarterly Rocks</h3>
+        <h3>All Projects</h3>
       </div>
       <div class="clearfix"></div>
       <div class="row">
@@ -34,7 +34,8 @@
                           <th>Date Created</th>
                           <th>Date Modified</th>
                           <th>Name</th>
-                          <th>Annual Rock</th>
+                          <th>Objective</th>
+                          <th>Metric</th>
                           <th>Department</th>
                           <th>Year</th>
                           <th>Quarter</th>
@@ -52,7 +53,8 @@
                           <td><a href="{{ strategy.id}}/" >{{ strategy.date_created }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.date_modified }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.name }}</a></td>
-                          <td><a href="{{ strategy.id}}/" >{{ strategy.annual_rock|default:"-" }}</a></td>
+                          <td><a href="{{ strategy.id}}/" >{{ strategy.objective|default:"-" }}</a></td>
+                          <td><a href="{{ strategy.id}}/" >{{ strategy.metric|default:"-" }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.department|default:"-" }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.year|default:"-" }}</a></td>
                           <td><a href="{{ strategy.id}}/" >{{ strategy.get_quarter_display|default:"-" }}</a></td>
@@ -65,7 +67,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                          <td colspan="13" style="text-align:center;">No Quarterly Rocks yet.</td>
+                          <td colspan="14" style="text-align:center;">No Projects yet.</td>
                         </tr>
                         {% endfor %}
                       </tbody>

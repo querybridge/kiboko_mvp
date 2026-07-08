@@ -1,9 +1,9 @@
 """
-Seed dummy Quarterly Rocks and Projects for UX pressure testing.
+Seed dummy Projects (quarterly) and Actions (execution) for UX pressure testing.
 
-Creates 6 Quarterly Rocks spread across annual rocks / departments,
-then 20 Projects with varying statuses, scores (some zeroed out),
-values, progress, launch dates, and verticals.
+Creates 6 Projects spread across Objectives / departments, then 20 Actions with
+varying statuses, scores (some zeroed out), values, progress, launch dates, and
+verticals.
 """
 import random
 from datetime import date, timedelta
@@ -11,12 +11,20 @@ from datetime import date, timedelta
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
-from business_unit.models import BusinessUnit, Vertical
-from project.models import Project
-from strategy.models import Strategy, AnnualRock, Metric, KPI
+from business_unit.models import BusinessUnit, Vertical, Team
+from project.models import Action
+from strategy.models import Project, Objective, Metric, Measure
 
 
-QUARTERLY_ROCKS = [
+def _rand_date(rng, start, end):
+    """Return a random date in [start, end] (inclusive); start if end <= start."""
+    span = (end - start).days
+    if span <= 0:
+        return start
+    return start + timedelta(days=rng.randint(0, span))
+
+
+PROJECTS = [
     {'name': 'Redesign Product Detail Pages', 'quarter': 1, 'why': 'Improve conversion on high-traffic PDPs'},
     {'name': 'Launch Loyalty Program MVP', 'quarter': 1, 'why': 'Drive repeat purchase frequency'},
     {'name': 'Migrate to Headless CMS', 'quarter': 2, 'why': 'Improve site speed and developer velocity'},
@@ -25,7 +33,7 @@ QUARTERLY_ROCKS = [
     {'name': 'Holiday Campaign Automation', 'quarter': 3, 'why': 'Scale holiday marketing with less manual effort'},
 ]
 
-PROJECTS = [
+ACTIONS = [
     # (name, status, has_scores, value, progress, why)
     ('PDP image zoom & 360 viewer', 'Active', True, 450000, 65, 'As a shopper I want to zoom and rotate product images so I can inspect details before buying'),
     ('Add size/finish filter to PLP', 'Active', True, 120000, 30, 'Enable shoppers to narrow results by product attributes'),
@@ -51,17 +59,19 @@ PROJECTS = [
 
 
 class Command(BaseCommand):
-    help = 'Seed 6 Quarterly Rocks and 20 dummy Projects for UX testing.'
+    help = 'Seed 6 Projects and 20 dummy Actions for UX testing.'
 
     def handle(self, *args, **options):
         rng = random.Random(42)
 
         users = list(User.objects.all())
+        today = date.today()
         departments = list(BusinessUnit.objects.all())
         verticals = list(Vertical.objects.all())
-        annual_rocks = list(AnnualRock.objects.filter(year=2026))
+        teams = list(Team.objects.all())
+        objectives = list(Objective.objects.filter(year=2026))
         metrics = list(Metric.objects.filter(active=True))
-        kpis = list(KPI.objects.filter(active=True))
+        measures = list(Measure.objects.filter(active=True))
 
         if not users:
             self.stderr.write('No users found. Create at least one user first.')
@@ -70,43 +80,42 @@ class Command(BaseCommand):
             self.stderr.write('No departments found. Create at least one department first.')
             return
 
-        # ---- Quarterly Rocks ----
-        rocks_created = 0
-        strategies = []
-        for i, qr in enumerate(QUARTERLY_ROCKS):
-            strat, created = Strategy.objects.get_or_create(
-                name=qr['name'],
+        # ---- Projects (quarterly) ----
+        projects_created = 0
+        for i, pr in enumerate(PROJECTS):
+            proj, created = Project.objects.get_or_create(
+                name=pr['name'],
                 defaults={
-                    'why': qr['why'],
-                    'quarter': qr['quarter'],
+                    'why': pr['why'],
+                    'quarter': pr['quarter'],
                     'year': 2026,
-                    'annual_rock': annual_rocks[i % len(annual_rocks)] if annual_rocks else None,
+                    'objective': objectives[i % len(objectives)] if objectives else None,
+                    'metric': rng.choice(metrics) if metrics else None,
                     'department': departments[i % len(departments)],
                 },
             )
-            strategies.append(strat)
             if created:
-                rocks_created += 1
-                self.stdout.write(f'  QR: {strat.name}')
+                projects_created += 1
+                self.stdout.write(f'  Project: {proj.name}')
 
-        # Include any pre-existing strategies too
-        all_strategies = list(Strategy.objects.all())
-        self.stdout.write(self.style.SUCCESS(f'Created {rocks_created} Quarterly Rocks ({len(all_strategies)} total).'))
+        all_projects = list(Project.objects.all())
+        self.stdout.write(self.style.SUCCESS(f'Created {projects_created} Projects ({len(all_projects)} total).'))
 
-        # ---- Projects ----
-        projects_created = 0
-        for i, (name, status, has_scores, value, progress, why) in enumerate(PROJECTS):
-            if Project.objects.filter(name=name).exists():
+        # ---- Actions (execution) ----
+        actions_created = 0
+        for i, (name, status, has_scores, value, progress, why) in enumerate(ACTIONS):
+            if Action.objects.filter(name=name).exists():
                 self.stdout.write(f'  Skip (exists): {name}')
                 continue
 
             owner = rng.choice(users)
             dept = rng.choice(departments)
             vert = rng.choice(verticals) if verticals else None
-            rock = all_strategies[i % len(all_strategies)]
-            ar = annual_rocks[i % len(annual_rocks)] if annual_rocks else None
+            team = rng.choice(teams) if teams else None
+            parent = all_projects[i % len(all_projects)]
+            obj = objectives[i % len(objectives)] if objectives else None
 
-            # Scores — some projects get full scores, some get zeros
+            # Scores — some actions get full scores, some get zeros
             if has_scores:
                 cv = rng.randint(3, 10)
                 bv = rng.randint(3, 10)
@@ -125,8 +134,8 @@ class Command(BaseCommand):
 
             approved = status in ('Active', 'Complete', 'Launched', 'Pending Assignment')
 
-            p = Project(
-                strategy=rock,
+            s = Action(
+                project=parent,
                 owner=owner,
                 name=name,
                 why=why,
@@ -139,9 +148,9 @@ class Command(BaseCommand):
                 archived=(status == 'Launched'),
                 business_unit=dept,
                 vertical=vert,
-                annual_rock=ar,
-                metric=rng.choice(metrics) if metrics else None,
-                kpi=rng.choice(kpis) if kpis else None,
+                team=team,
+                objective=obj,
+                measure=rng.choice(measures) if measures else None,
                 customer_value=cv,
                 business_value=bv,
                 cost_savings=cs,
@@ -149,9 +158,22 @@ class Command(BaseCommand):
                 business_risk=br,
                 level_of_effort=loe,
             )
-            p.save()
-            projects_created += 1
-            score_label = f'score={p.normalized_score}' if has_scores else 'NO SCORES'
-            self.stdout.write(f'  [{status:20s}] {name} ({score_label}, ${value:,})')
+            s.save()
 
-        self.stdout.write(self.style.SUCCESS(f'Created {projects_created} Projects.'))
+            # Randomize the submission date earlier in the year. date_created uses
+            # auto_now_add (forced to today on save), so override it via update(),
+            # which bypasses auto_now_add. Keep created <= active_date <= launch.
+            year_start = date(2026, 1, 1)
+            created_cap = launch if (launch and launch < today) else today
+            created = _rand_date(rng, year_start, created_cap)
+            Action.objects.filter(pk=s.pk).update(date_created=created)
+            if status == 'Active':
+                active_cap = min(launch or today, today)
+                active_date = _rand_date(rng, created, active_cap)
+                Action.objects.filter(pk=s.pk).update(active_date=active_date)
+
+            actions_created += 1
+            score_label = f'score={s.normalized_score}' if has_scores else 'NO SCORES'
+            self.stdout.write(f'  [{status:20s}] {name} ({score_label}, ${value:,}, created {created.isoformat()})')
+
+        self.stdout.write(self.style.SUCCESS(f'Created {actions_created} Actions.'))

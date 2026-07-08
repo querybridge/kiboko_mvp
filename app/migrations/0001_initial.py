@@ -78,7 +78,7 @@ class Migration(migrations.Migration):
                 ('desired_impact', models.CharField(max_length=75, null=True)),
                 ('def_of_success', models.CharField(max_length=75, null=True)),
                 ('next_launch', models.DateField(null=True)),
-                ('alignment', models.CharField(choices=[('increase_customers', 'Increase Customers'), ('increase_aov', 'Increase AOV'), ('increase_purchase_frequency', 'Increase Purchase Frequency')], max_length=75, null=True)),
+                ('alignment', models.CharField(choices=[('increase_customers', 'Increase Customers'), ('increase_aov', 'Increase AOV'), ('increase_purchase_frequency', 'Increase Close Rate')], max_length=75, null=True)),
                 ('level', models.CharField(choices=[('corporate', 'Corporate'), ('business_unit', 'Business Unit'), ('team', 'Team')], max_length=75, null=True)),
                 ('purpose', models.CharField(choices=[('new_growth', 'New Growth'), ('hold_position', 'Hold Position'), ('defend_position', 'Defend Position'), ('reverse_decay', 'Reverse Decay')], max_length=75, null=True)),
                 ('score', models.IntegerField(null=True)),

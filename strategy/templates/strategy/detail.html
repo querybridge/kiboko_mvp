@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Quarterly Rock Details {% endblock title %}
+{% block title %} Project Details {% endblock title %}
 
 {% block sidebar_class %}menu_fixed{% endblock sidebar_class %}
 
@@ -13,7 +13,7 @@
     <div class="">
       <div class="page-title">
         <div class="title_left">
-          <h3>Quarterly Rock Detail</h3>
+          <h3>Project Detail</h3>
         </div>
 
         <div class="title_right">
@@ -27,7 +27,7 @@
         <div class="col-md-12">
           <div class="x_panel">
             <div class="x_title">
-              <h1><strong>Quarterly Rock #{{ strategy.id }}: </strong>{{ strategy.name }}</h1>
+              <h1><strong>Project #{{ strategy.id }}: </strong>{{ strategy.name }}</h1>
               <ul class="nav navbar-right project_action">
 				<li><a href="edit/" class="btn btn-sm btn-info">Edit</a></li>
                 <li><a href="#" class="btn btn-sm btn-danger">Delete</a></li>
@@ -121,14 +121,16 @@
                 <section class="panel">
 
                   <div class="x_title">
-                    <h2>Quarterly Rock Description</h2>
+                    <h2>Project Description</h2>
                     <div class="clearfix"></div>
                   </div>
                   <div class="panel-body">
 
                     <div class="project_detail">
-                      <p class="title">Annual Rock</p>
-                      <p>{{ strategy.annual_rock|default:"-" }}</p>
+                      <p class="title">Objective</p>
+                      <p>{{ strategy.objective|default:"-" }}</p>
+                      <p class="title">Metric</p>
+                      <p>{{ strategy.metric|default:"-" }}</p>
                       <p class="title">Department</p>
                       <p>{{ strategy.department|default:"-" }}</p>
                       <p class="title">Year</p>

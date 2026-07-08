@@ -89,7 +89,7 @@ python manage.py migrate
 python manage.py createsuperuser
 # Optional seed data:
 python manage.py seed_revenue   # 2024-2026 actuals + budgets per vertical
-python manage.py seed_projects  # 6 quarterly rocks + 20 dummy projects
+python manage.py seed_projects  # 6 Projects + 20 dummy Actions
 ```
 
 > **Got `ModuleNotFoundError: No module named 'django_tables2'` (or any other dependency)?**  
@@ -175,7 +175,7 @@ PythonAnywhere serves these directly without going through Django.
 
 ## 11. Smoke-check
 
-- Dashboard renders revenue chart, annual rock tiles, and active projects.
+- Dashboard renders revenue chart, Objective tiles, and active Actions.
 - `/project/kanban/` loads and you can drag a card between lanes (the move calls `/project/kanban/move/`).
 - Bottom-of-sidebar sun/moon toggle switches dark ↔ light theme; preference persists.
 - Admin pages under `/app/company/`, `/app/rocks/`, etc. are reachable for admin / senior_leadership users.

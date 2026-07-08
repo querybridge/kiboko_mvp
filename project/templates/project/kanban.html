@@ -291,10 +291,8 @@
                 $0
               {% endif %}
             </div>
-            {% if project.metric %}
-              <div class="card-metric">{{ project.metric.name }}</div>
-            {% elif project.kpi %}
-              <div class="card-metric">{{ project.kpi.name }}</div>
+            {% if project.measure %}
+              <div class="card-metric">{{ project.measure.name }}</div>
             {% endif %}
             {% if project.strategy_tag %}
               <span class="card-tag tag-{{ project.strategy_tag|slugify }}">{{ project.strategy_tag }}</span>
@@ -308,8 +306,8 @@
   </div>
 </div>
 
-<!-- FAB: Add Project -->
-<a href="{% url 'project:project' %}" class="kanban-fab" title="New Project">+</a>
+<!-- FAB: Add Action -->
+<a href="{% url 'project:project' %}" class="kanban-fab" title="New Action">+</a>
 
 <!-- Toast for error messages -->
 <div class="kanban-toast" id="kanbanToast"></div>
