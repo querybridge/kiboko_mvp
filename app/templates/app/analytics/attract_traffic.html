@@ -1,0 +1,57 @@
+{% extends "app/base_site.html" %}
+{% block title %} Attract Traffic {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  {% include "app/analytics/_styles.html" %}
+{% endblock stylesheets %}
+
+{% block content %}
+  <div class="right_col" role="main" id="analytics-page">
+    <div class="page-title"><div class="title_left"><h3>Attract Traffic <small>Analytics</small></h3></div></div>
+    <div class="clearfix"></div>
+
+    {% include "app/analytics/_filter.html" %}
+
+    <!-- ATTRACT / Visits -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.attract_visits %}</div></div>
+
+    <!-- Invite / Returning / Encourage -->
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.invite %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.returning %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.encourage %}</div>
+    </div>
+
+    <!-- Visitors -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.visitors %}</div></div>
+
+    <!-- Visits by device -->
+    <div class="analytics-subtitle">Visits by Device Type</div>
+    <div class="row">
+      <div class="col-md-3">{% include "app/analytics/_card.html" with card=cards.dev_desktop %}</div>
+      <div class="col-md-3">{% include "app/analytics/_card.html" with card=cards.dev_mobile %}</div>
+      <div class="col-md-3">{% include "app/analytics/_card.html" with card=cards.dev_tablet %}</div>
+      <div class="col-md-3">{% include "app/analytics/_card.html" with card=cards.dev_other %}</div>
+    </div>
+
+    <!-- Visits by channel -->
+    <div class="analytics-subtitle">Visits by Channel</div>
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_direct %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_organic %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_paid %}</div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_social %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_referral %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_other %}</div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <script>var ANALYTICS_CHARTS = {{ charts_json|safe }};</script>
+  {% include "app/analytics/_scripts.html" %}
+{% endblock javascripts %}

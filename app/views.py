@@ -1159,6 +1159,84 @@ def help_page(request):
     return render(request, 'app/help.html')
 
 
+# --- Analytics dashboards -------------------------------------------------
+
+def _analytics_filter(request):
+    """Resolve and validate the (period, comparison) filter selection, and
+    return the common filter context shared by every analytics dashboard."""
+    from app import analytics_data as ad
+
+    primary = request.GET.get('period', ad.DEFAULT_PRIMARY)
+    if primary not in dict((c, d) for c, d, _ in ad.PRIMARY_OPTIONS):
+        primary = ad.DEFAULT_PRIMARY
+    valid_compares = [c for c, _ in ad.COMPARE_OPTIONS.get(primary, [])]
+    compare = request.GET.get('compare', '')
+    if compare not in valid_compares:
+        compare = ad.default_compare(primary)
+
+    ctx = {
+        'primary_options': ad.PRIMARY_OPTIONS,
+        'compare_options': ad.COMPARE_OPTIONS.get(primary, []),
+        'selected_primary': primary,
+        'selected_compare': compare,
+        'primary_label': ad.primary_label(primary),
+        'compare_label': ad.compare_label(primary, compare),
+    }
+    return primary, compare, ctx
+
+
+@login_required
+def analytics_grow_sales(request):
+    from app import analytics_data as ad
+    primary, compare, ctx = _analytics_filter(request)
+    cards, charts = ad.build_grow_sales(primary, compare)
+    ctx.update({'cards': cards, 'charts_json': json.dumps(charts)})
+    return render(request, 'app/analytics/grow_sales.html', ctx)
+
+
+@login_required
+def analytics_attract_traffic(request):
+    from app import analytics_data as ad
+    primary, compare, ctx = _analytics_filter(request)
+    d = ad.build_attract_traffic(primary, compare)
+    ctx.update({
+        'cards': d['cards'],
+        'charts_json': json.dumps(d['charts']),
+        'scatter_json': json.dumps(d['scatter']),
+    })
+    return render(request, 'app/analytics/attract_traffic.html', ctx)
+
+
+@login_required
+def analytics_engage_customers(request):
+    from app import analytics_data as ad
+    primary, compare, ctx = _analytics_filter(request)
+    d = ad.build_engage_customer(primary, compare)
+    ctx.update({
+        'cards': d['cards'],
+        'history': d['history'],
+        'scatter': d['scatter'],
+        'charts_json': json.dumps(d['charts']),
+        'scatter_json': json.dumps(d['scatter']),
+    })
+    return render(request, 'app/analytics/engage_customers.html', ctx)
+
+
+@login_required
+def analytics_expand_purchases(request):
+    from app import analytics_data as ad
+    primary, compare, ctx = _analytics_filter(request)
+    d = ad.build_expand_purchases(primary, compare)
+    ctx.update({
+        'cards': d['cards'],
+        'history': d['history'],
+        'scatter': d['scatter'],
+        'charts_json': json.dumps(d['charts']),
+        'scatter_json': json.dumps(d['scatter']),
+    })
+    return render(request, 'app/analytics/expand_purchases.html', ctx)
+
+
 @login_required
 def settings_users(request):
     """Manage Users — restricted to admin and senior_leadership roles."""

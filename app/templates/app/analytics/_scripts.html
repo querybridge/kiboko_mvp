@@ -1,0 +1,141 @@
+{# Shared analytics JS. Include inside the javascripts block AFTER defining
+   ANALYTICS_CHARTS (line/area) and optionally ANALYTICS_SCATTER (changeplots). #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script>
+(function() {
+  // ---- Filter auto-submit -------------------------------------------------
+  var period = document.getElementById('af-period');
+  var compare = document.getElementById('af-compare');
+  if (period) period.addEventListener('change', function() {
+    window.location.search = '?period=' + encodeURIComponent(period.value);
+  });
+  if (compare) compare.addEventListener('change', function() {
+    window.location.search = '?period=' + encodeURIComponent(period.value) +
+                             '&compare=' + encodeURIComponent(compare.value);
+  });
+
+  // ---- Drill-down: clicking a linked card navigates to its dashboard ------
+  Array.prototype.forEach.call(document.querySelectorAll('.analytics-card[data-card-link]'), function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('a')) return;  // explicit links (the chevron) handle themselves
+      window.location.href = card.getAttribute('data-card-link');
+    });
+  });
+
+  if (typeof Chart === 'undefined') return;
+
+  var GROUP_COLORS = {
+    grow:    { line: '#4a1f8a', fill: 'rgba(74,31,138,0.12)',  line2: '#b39ddb', fill2: 'rgba(179,157,219,0.12)' },
+    attract: { line: '#17a2b8', fill: 'rgba(23,162,184,0.12)', line2: '#8fd3de', fill2: 'rgba(23,162,184,0.07)' },
+    engage:  { line: '#e0a800', fill: 'rgba(224,168,0,0.16)',  line2: '#f2d98a', fill2: 'rgba(224,168,0,0.07)' },
+    expand:  { line: '#1a7a5c', fill: 'rgba(26,122,92,0.12)',  line2: '#8fc9b5', fill2: 'rgba(26,122,92,0.07)' }
+  };
+
+  function abbr(n) {
+    n = +n; var a = Math.abs(n);
+    if (a >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (a >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return Math.round(n).toLocaleString();
+  }
+  function fmtVal(v, kind) {
+    if (kind === 'currency') return '$' + abbr(v);
+    if (kind === 'percentage') return (+v).toFixed(2) + '%';
+    if (kind === 'integer') return abbr(v);
+    return (+v).toFixed(2);
+  }
+  window.analyticsFmtVal = fmtVal;
+
+  // ---- Line / area charts -------------------------------------------------
+  function dataset(label, data, line, fill, twoSets) {
+    return {
+      label: label, data: data,
+      borderColor: line, backgroundColor: fill, pointBackgroundColor: line,
+      borderWidth: 2, pointRadius: twoSets ? 2 : 0, pointHoverRadius: 4,
+      fill: true, lineTension: 0.35
+    };
+  }
+  if (window.ANALYTICS_CHARTS) Object.keys(ANALYTICS_CHARTS).forEach(function(id) {
+    var c = ANALYTICS_CHARTS[id];
+    var el = document.getElementById('chart-' + id);
+    if (!el) return;
+    var col = GROUP_COLORS[c.group] || GROUP_COLORS.grow;
+    var datasets = [dataset(c.main_label, c.s1, col.line, col.fill, c.two_sets)];
+    if (c.s2) datasets.push(dataset(c.compare_label, c.s2, col.line2, col.fill2, c.two_sets));
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: { labels: c.labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        legend: { display: c.two_sets, position: 'bottom', labels: { boxWidth: 12, fontSize: 11 } },
+        tooltips: {
+          mode: 'index', intersect: false,
+          callbacks: { label: function(item, data) {
+            return (data.datasets[item.datasetIndex].label || '') + ': ' + fmtVal(item.yLabel, c.format);
+          } }
+        },
+        hover: { mode: 'index', intersect: false },
+        scales: {
+          xAxes: [{ display: c.two_sets, gridLines: { display: false }, ticks: { fontSize: 10, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } }],
+          yAxes: [{ display: c.two_sets, gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontSize: 10, callback: function(v) { return fmtVal(v, c.format); } } }]
+        }
+      }
+    });
+  });
+
+  // ---- Scatter changeplots ------------------------------------------------
+  if (window.ANALYTICS_SCATTER) Object.keys(ANALYTICS_SCATTER).forEach(function(wid) {
+    var widget = ANALYTICS_SCATTER[wid];
+    var col = GROUP_COLORS[widget.group] || GROUP_COLORS.engage;
+    widget.charts.forEach(function(ch, ci) {
+      var el = document.getElementById('scatter-' + wid + '-' + ci);
+      if (!el) return;
+      var pts = ch.points.map(function(pt) { return { x: pt.x, y: pt.y }; });
+      var readout = document.getElementById('readout-' + wid + '-' + ci);
+
+      new Chart(el.getContext('2d'), {
+        type: 'scatter',
+        data: {
+          datasets: [
+            { label: 'Trend', type: 'line', data: [ch.trend ? { x: ch.trend.x1, y: ch.trend.y1 } : null,
+                                                     ch.trend ? { x: ch.trend.x2, y: ch.trend.y2 } : null],
+              borderColor: 'rgba(120,120,120,0.7)', borderWidth: 1, borderDash: [5, 4],
+              fill: false, pointRadius: 0, showLine: true },
+            { label: ch.heading, data: pts, backgroundColor: col.line, borderColor: '#fff',
+              borderWidth: 1, pointRadius: 6, pointHoverRadius: 8, showLine: false }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          legend: { display: false },
+          tooltips: {
+            callbacks: { label: function(item) {
+              if (item.datasetIndex === 0) return null;
+              var pt = ch.points[item.index];
+              return pt.label + ':  ' + (pt.change >= 0 ? '+' : '') + pt.change + '%  (' + pt.secondary + ' → ' + pt.primary + ')';
+            } }
+          },
+          onHover: function(e, els) {
+            if (!readout) return;
+            if (els && els.length) {
+              var i = els[0]._index, di = els[0]._datasetIndex;
+              if (di === 1) {
+                var pt = ch.points[i];
+                var dir = pt.change >= 0 ? 'up' : 'down';
+                readout.textContent = ch.heading.replace('Change in ', '') + ' for ' + pt.label + ' was ' +
+                  pt.primary + ', ' + dir + ' from ' + pt.secondary + ' prior period — a ' +
+                  (pt.change >= 0 ? '+' : '') + pt.change + '% ' + (pt.change >= 0 ? 'increase' : 'decrease') + '.';
+              }
+            }
+          },
+          scales: {
+            xAxes: [{ scaleLabel: { display: true, labelString: ch.x_label + ' YoY %', fontSize: 10 },
+                      gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }],
+            yAxes: [{ scaleLabel: { display: true, labelString: ch.y_label + ' YoY %', fontSize: 10 },
+                      gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }]
+          }
+        }
+      });
+    });
+  });
+})();
+</script>

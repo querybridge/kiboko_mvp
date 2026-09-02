@@ -22,6 +22,30 @@
 	  <ul class="nav side-menu">
         <li><a href="/app/"><i class="fa fa-dashboard"></i> Dashboard </a>
         </li>
+        <li id="analytics-menu"><a href="{% url 'app:analytics' %}"><i class="fa fa-bar-chart"></i> Analytics <span class="fa fa-chevron-down"></span></a>
+          <ul class="nav child_menu">
+            <li><a href="{% url 'app:analytics_grow_sales' %}">Grow Sales</a></li>
+            <li><a href="{% url 'app:analytics_attract_traffic' %}">Attract Traffic</a></li>
+            <li><a href="{% url 'app:analytics_engage_customers' %}">Engage Customers</a></li>
+            <li><a href="{% url 'app:analytics_expand_purchases' %}">Expand Purchases</a></li>
+          </ul>
+        </li>
+        <script>
+        // Pre-render the Analytics submenu open/closed from persisted state,
+        // BEFORE the theme initializes and before first paint, so a full-page
+        // navigation doesn't flash collapsed-then-expanded. The submenu stays
+        // open across page loads until the Analytics row is clicked again.
+        (function() {
+          try {
+            var li = document.getElementById('analytics-menu');
+            if (li && localStorage.getItem('analyticsMenuOpen') === '1') {
+              li.classList.add('active');
+              var sub = li.querySelector('ul.child_menu');
+              if (sub) sub.style.display = 'block';
+            }
+          } catch (_) {}
+        })();
+        </script>
         <li><a href="{% url 'project:kanban' %}"><i class="fa fa-columns"></i> Kanban </a>
         </li>
 		</ul>
@@ -127,6 +151,40 @@
     } else {
       document.addEventListener('DOMContentLoaded', syncThemeIcon);
     }
+  })();
+  </script>
+
+  <script>
+  // Analytics menu behavior:
+  //  - Clicking anywhere on the Analytics ROW navigates (to Grow Sales) AND
+  //    toggles the submenu open/closed. The state is persisted so the reloaded
+  //    page renders in the toggled state (see the pre-render script above).
+  //  - Clicking a CHILD navigates without collapsing/re-expanding: the submenu
+  //    stays open across the load.
+  // A capture-phase listener runs before the theme's bubble handler on <a>, so
+  // we suppress the theme's own toggle/animation while letting navigation occur.
+  (function() {
+    var li = document.getElementById('analytics-menu');
+    if (!li) return;
+    document.addEventListener('click', function(e) {
+      var link = e.target.closest ? e.target.closest('a') : null;
+      if (!link || !li.contains(link)) return;
+
+      // Stop the theme's accordion handler; navigation (default) still proceeds.
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+      try {
+        if (link.parentElement === li) {
+          // Row link: toggle persisted open state, then navigate.
+          var open = localStorage.getItem('analyticsMenuOpen') === '1';
+          localStorage.setItem('analyticsMenuOpen', open ? '0' : '1');
+        } else {
+          // Child link: keep the submenu open across the navigation.
+          localStorage.setItem('analyticsMenuOpen', '1');
+        }
+      } catch (_) {}
+    }, true);
   })();
   </script>
 

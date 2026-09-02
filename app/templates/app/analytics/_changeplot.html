@@ -1,0 +1,13 @@
+{# One changeplot widget = 3 scatter charts. Expects `widget` (id, group, title, charts). #}
+<div class="changeplot group-{{ widget.group }}">
+  <div class="changeplot-title">{{ widget.title }}</div>
+  <div class="cp-charts">
+    {% for ch in widget.charts %}
+      <div class="cp-chart">
+        <div class="cp-chart-head">{{ ch.heading }}</div>
+        <div class="cp-canvas-wrap"><canvas id="scatter-{{ widget.id }}-{{ forloop.counter0 }}"></canvas></div>
+        <div class="cp-readout" id="readout-{{ widget.id }}-{{ forloop.counter0 }}">Hover over a point to see details.</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>

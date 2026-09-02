@@ -1,0 +1,80 @@
+{% extends "app/base_site.html" %}
+{% block title %} Grow Sales {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  {% include "app/analytics/_styles.html" %}
+{% endblock stylesheets %}
+
+{% block content %}
+  <div class="right_col" role="main" id="analytics-page">
+    <div class="page-title">
+      <div class="title_left"><h3>Grow Sales <small>Analytics</small></h3></div>
+    </div>
+    <div class="clearfix"></div>
+
+    <!-- Date + comparison filter -->
+    <form id="analytics-filter" method="get">
+      <div class="af-group">
+        <label for="af-period">Period</label>
+        <select id="af-period" name="period">
+          {% for code, label, days in primary_options %}
+            <option value="{{ code }}" {% if code == selected_primary %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="af-vs">compared to</div>
+      <div class="af-group">
+        <label for="af-compare">Comparison period</label>
+        <select id="af-compare" name="compare">
+          {% for code, label in compare_options %}
+            <option value="{{ code }}" {% if code == selected_compare %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <noscript><button type="submit" class="btn btn-primary btn-sm">Apply</button></noscript>
+    </form>
+
+    <!-- Row 1: hero -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.grow_sales %}</div></div>
+
+    <!-- Row 2: Attract / Engage / Expand -->
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.attract %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.engage %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.expand %}</div>
+    </div>
+
+    <!-- Row 3: Visitors / Cart Creation / Units per Order -->
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.attract_visitors %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.engage_cart_creation %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.expand_units_per_order %}</div>
+    </div>
+
+    <!-- Row 4: Visits per Visitor / Cart Completion / Avg Unit Price -->
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.attract_visits %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.engage_cart_completion %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.expand_avg_unit_price %}</div>
+    </div>
+
+    <!-- Row 5: Attract & Engage (2/3) + Expand (1/3) -->
+    <div class="row">
+      <div class="col-md-8">{% include "app/analytics/_card.html" with card=cards.attract_engage %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.expand_two %}</div>
+    </div>
+
+    <!-- Row 6: Attract Traffic (1/3) + Engage & Expand (2/3) -->
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.attract_traffic %}</div>
+      <div class="col-md-8">{% include "app/analytics/_card.html" with card=cards.engage_expand %}</div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <script>var ANALYTICS_CHARTS = {{ charts_json|safe }};</script>
+  {% include "app/analytics/_scripts.html" %}
+{% endblock javascripts %}

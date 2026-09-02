@@ -1,0 +1,21 @@
+{# Date + comparison period filter. Auto-submits (JS in _scripts.html). #}
+<form id="analytics-filter" method="get">
+  <div class="af-group">
+    <label for="af-period">Period</label>
+    <select id="af-period" name="period">
+      {% for code, label, days in primary_options %}
+        <option value="{{ code }}" {% if code == selected_primary %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="af-vs">compared to</div>
+  <div class="af-group">
+    <label for="af-compare">Comparison period</label>
+    <select id="af-compare" name="compare">
+      {% for code, label in compare_options %}
+        <option value="{{ code }}" {% if code == selected_compare %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <noscript><button type="submit" class="btn btn-primary btn-sm">Apply</button></noscript>
+</form>

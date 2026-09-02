@@ -1,0 +1,46 @@
+{% extends "app/base_site.html" %}
+{% block title %} Expand Purchases {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  {% include "app/analytics/_styles.html" %}
+{% endblock stylesheets %}
+
+{% block content %}
+  <div class="right_col" role="main" id="analytics-page">
+    <div class="page-title"><div class="title_left"><h3>Expand Purchases <small>Analytics</small></h3></div></div>
+    <div class="clearfix"></div>
+
+    {% include "app/analytics/_filter.html" %}
+
+    <!-- Section 1: AOV + Units per Order / Avg Unit Price -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.expand_aov %}</div></div>
+    <div class="row">
+      <div class="col-md-6">{% include "app/analytics/_card.html" with card=cards.inspire %}</div>
+      <div class="col-md-6">{% include "app/analytics/_card.html" with card=cards.enhance %}</div>
+    </div>
+
+    <!-- Section 2: Units per Order big + Total Units + 2 history cards -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.inspire_big %}</div></div>
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.total_units %}</div></div>
+    <div class="row">
+      <div class="col-md-6">{% include "app/analytics/_history_card.html" with hc=history.unique_skus %}</div>
+      <div class="col-md-6">{% include "app/analytics/_history_card.html" with hc=history.cherry_pick %}</div>
+    </div>
+
+    <!-- Section 3: Avg Unit Price big -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.enhance_big %}</div></div>
+
+    <!-- Section 4: Product Category changeplot -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_changeplot.html" with widget=scatter.category_changeplot %}</div></div>
+  </div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <script>
+    var ANALYTICS_CHARTS = {{ charts_json|safe }};
+    var ANALYTICS_SCATTER = {{ scatter_json|safe }};
+  </script>
+  {% include "app/analytics/_scripts.html" %}
+{% endblock javascripts %}

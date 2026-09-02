@@ -1,0 +1,23 @@
+{# One HistoryCard: KPI + delta + trailing "Last N wks" readouts. Expects `hc`. #}
+<div class="history-card group-{{ hc.group }}">
+  <div class="hc-left">
+    <div class="hc-title">{{ hc.title }}</div>
+    <div class="hc-kpi">{{ hc.kpi }}</div>
+    {% if hc.delta is not None %}
+      <div class="hc-delta {% if hc.delta_good %}hc-up{% else %}hc-down{% endif %}">
+        <i class="fa fa-caret-{% if hc.delta >= 0 %}up{% else %}down{% endif %}"></i>
+        {{ hc.delta_str }} <span class="hc-delta-to">to {{ hc.delta_to }}</span>
+      </div>
+    {% endif %}
+    {% if hc.equation %}
+      <div class="hc-eq">
+        {% for part in hc.equation %}{{ part.value }} <span>{{ part.unit }}</span> {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="hc-weeks">
+    {% for wk in hc.weeks %}
+      <div class="hc-wk"><span class="hc-wk-label">{{ wk.0 }}</span><span class="hc-wk-val">{{ wk.1 }}</span></div>
+    {% endfor %}
+  </div>
+</div>

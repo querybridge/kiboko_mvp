@@ -1,0 +1,62 @@
+{% extends "app/base_site.html" %}
+{% block title %} Engage Customer {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  {% include "app/analytics/_styles.html" %}
+{% endblock stylesheets %}
+
+{% block content %}
+  <div class="right_col" role="main" id="analytics-page">
+    <div class="page-title"><div class="title_left"><h3>Engage Customer <small>Analytics</small></h3></div></div>
+    <div class="clearfix"></div>
+
+    {% include "app/analytics/_filter.html" %}
+
+    <!-- Section 1: Close Rate + Interest / Convince -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.engage_close_rate %}</div></div>
+    <div class="row">
+      <div class="col-md-6">{% include "app/analytics/_card.html" with card=cards.interest %}</div>
+      <div class="col-md-6">{% include "app/analytics/_card.html" with card=cards.convince %}</div>
+    </div>
+
+    <!-- Section 2: Cart Creation big + 6 history cards + Carts per PDP -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.interest_big %}</div></div>
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_history_card.html" with hc=history.bounce_rate %}</div>
+      <div class="col-md-4">{% include "app/analytics/_history_card.html" with hc=history.visit_duration %}</div>
+      <div class="col-md-4">{% include "app/analytics/_history_card.html" with hc=history.shopper_activity %}</div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_history_card.html" with hc=history.pages_per_visit %}</div>
+      <div class="col-md-4">{% include "app/analytics/_history_card.html" with hc=history.cat_pdp_per_visit %}</div>
+      <div class="col-md-4">{% include "app/analytics/_history_card.html" with hc=history.pdp_per_visit %}</div>
+    </div>
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.carts_per_pdp %}</div></div>
+
+    <!-- Section 3: Cart Completion big + 3 mini -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.convince_big %}</div></div>
+    <div class="row">
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.cart_views %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.checkout_views %}</div>
+      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.billing_shipping_views %}</div>
+    </div>
+
+    <!-- Section 4: % Returning + Orders per PDP -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.pct_returning %}</div></div>
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.orders_per_pdp %}</div></div>
+
+    <!-- Section 5: changeplots -->
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_changeplot.html" with widget=scatter.device_changeplot %}</div></div>
+    <div class="row"><div class="col-md-12">{% include "app/analytics/_changeplot.html" with widget=scatter.channel_changeplot %}</div></div>
+  </div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <script>
+    var ANALYTICS_CHARTS = {{ charts_json|safe }};
+    var ANALYTICS_SCATTER = {{ scatter_json|safe }};
+  </script>
+  {% include "app/analytics/_scripts.html" %}
+{% endblock javascripts %}

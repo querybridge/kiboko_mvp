@@ -1,0 +1,29 @@
+{# One analytics card. Expects `card` in context (see analytics_data.build_grow_sales). #}
+<div class="x_panel analytics-card group-{{ card.group }}{% if card.link %} ac-linked{% endif %}"{% if card.link %} data-card-link="{{ card.link }}"{% endif %}>
+  <div class="ac-head">
+    {% if card.title %}<span class="ac-title">{{ card.title }}</span>{% endif %}
+    <span class="ac-header">{{ card.header }}</span>
+    {% if card.link %}<a href="{{ card.link }}" class="ac-goto" title="Go to {{ card.header }} details"><i class="fa fa-angle-right"></i></a>{% endif %}
+  </div>
+  <div class="ac-top">
+    <div class="ac-left">
+      {% if card.kpi %}<div class="ac-kpi"{% if card.kpi_tooltip %} title="{{ card.kpi_tooltip }}"{% endif %}>{{ card.kpi }}</div>{% endif %}
+      {% if card.delta is not None %}
+        <div class="ac-delta {% if card.delta >= 0 %}ac-up{% else %}ac-down{% endif %}">
+          <i class="fa fa-caret-{% if card.delta >= 0 %}up{% else %}down{% endif %}"></i>
+          {{ card.delta_str }} <span class="ac-delta-to">to {{ card.delta_to }}</span>
+        </div>
+      {% endif %}
+    </div>
+    {% if card.equation %}
+      <div class="ac-eq">
+        {% for part in card.equation %}<span class="ac-eq-part"><span class="ac-eq-val">{{ part.value }}</span> <span class="ac-eq-unit">{{ part.unit }}</span></span> {% endfor %}
+        {% if card.equation_result %}<span class="ac-eq-part ac-eq-result"><span class="ac-eq-val">{{ card.equation_result.value }}</span> <span class="ac-eq-unit">{{ card.equation_result.unit }}</span></span>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="ac-chart" style="height: {{ card.chart_height }}px;">
+    <canvas id="chart-{{ card.id }}"></canvas>
+  </div>
+  {% if card.bottom_text %}<div class="ac-bottom">{{ card.bottom_text }}</div>{% endif %}
+</div>
