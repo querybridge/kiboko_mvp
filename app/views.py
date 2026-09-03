@@ -1219,6 +1219,14 @@ def analytics_engage_customers(request):
 
 
 @login_required
+def analytics_performance_story(request):
+    from app import performance_story as ps
+    primary, compare, ctx = _analytics_filter(request)
+    ctx.update(ps.build_performance_story(primary, compare))
+    return render(request, 'app/analytics/performance_story.html', ctx)
+
+
+@login_required
 def analytics_expand_purchases(request):
     from app import analytics_data as ad
     primary, compare, ctx = _analytics_filter(request)

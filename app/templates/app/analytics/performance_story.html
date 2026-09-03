@@ -1,0 +1,127 @@
+{% extends "app/base_site.html" %}
+{% block title %} Performance Storyboard {% endblock title %}
+
+{% block stylesheets %}
+  {{ block.super }}
+  {% include "app/analytics/_styles.html" %}
+  <style>
+    #analytics-page .ps-toolbar { display: flex; align-items: stretch; justify-content: space-between; gap: 12px; margin-bottom: 0; background: var(--bg-surface-muted,#1F1438); border: 1px solid var(--ac-edge,rgba(214,197,247,.14)); border-bottom: none; border-radius: 12px 12px 0 0; padding: 4px 14px; }
+    #analytics-page .ps-colhead { display: flex; align-items: center; flex: 1; }
+    #analytics-page .ps-colhead span { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--ac-secondary,#C8BCDF); }
+    /* Column widths shared by header + rows */
+    #analytics-page .ps-c-metric { width: 30%; }
+    #analytics-page .ps-c-value  { width: 15%; text-align: right; }
+    #analytics-page .ps-c-pct    { width: 15%; text-align: right; padding-right: 10px; }
+    #analytics-page .ps-c-msg    { width: 40%; padding-left: 14px; }
+
+    /* BRIEF / DETAIL toggle */
+    #analytics-page .ps-toggle { display: inline-flex; align-self: center; background: #120a26; border: 1px solid var(--ac-edge,rgba(214,197,247,.18)); border-radius: 999px; padding: 2px; }
+    #analytics-page .ps-toggle-btn { border: 0; background: transparent; color: var(--ac-muted,#A493C4); font-size: 11px; font-weight: 700; letter-spacing: .6px; padding: 5px 14px; border-radius: 999px; cursor: pointer; }
+    #analytics-page .ps-toggle-btn.active { background: var(--ac-grow,#A98EE8); color: #160C2E; }
+
+    /* Table body */
+    #analytics-page .ps-wrap { border: 1px solid var(--ac-edge,rgba(214,197,247,.14)); border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: var(--ac-shadow,0 10px 26px rgba(0,0,0,.48)); }
+    #analytics-page .ps-section { background: linear-gradient(180deg,var(--ac-top,#241851),var(--ac-bot,#1A1038)); border-left: 4px solid var(--ac-grow,#A98EE8); border-top: 1px solid var(--ac-edge,rgba(214,197,247,.10)); }
+    #analytics-page .ps-section:first-child { border-top: none; }
+    #analytics-page .ps-section.group-attract { border-left-color: var(--ac-attract,#3FC9E0); }
+    #analytics-page .ps-section.group-engage  { border-left-color: var(--ac-engage,#ECB752); }
+    #analytics-page .ps-section.group-expand  { border-left-color: var(--ac-expand,#55C892); }
+    #analytics-page .ps-section-name { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 8px 14px 4px; }
+    #analytics-page .group-attract .ps-section-name { color: var(--ac-attract,#3FC9E0); }
+    #analytics-page .group-engage  .ps-section-name { color: var(--ac-engage,#ECB752); }
+    #analytics-page .group-expand  .ps-section-name { color: var(--ac-expand,#55C892); }
+    #analytics-page .group-grow    .ps-section-name { color: var(--ac-grow,#A98EE8); }
+
+    #analytics-page .ps-row { display: flex; align-items: baseline; padding: 6px 14px; font-size: 13px; color: var(--ac-secondary,#C8BCDF); border-top: 1px solid rgba(255,255,255,.04); }
+    #analytics-page .ps-section-name + .ps-row, #analytics-page .ps-rows .ps-row:first-child { border-top: none; }
+    #analytics-page .ps-row.ps-bold .ps-metric, #analytics-page .ps-row.ps-bold .ps-value { color: var(--ac-primary,#F4EEFC); font-weight: 700; }
+    #analytics-page .ps-metric { width: 30%; }
+    #analytics-page .ps-value { width: 15%; text-align: right; font-variant-numeric: tabular-nums; color: var(--ac-primary,#F4EEFC); }
+    #analytics-page .ps-pct { width: 15%; text-align: right; padding-right: 10px; font-variant-numeric: tabular-nums; font-weight: 700; }
+    #analytics-page .ps-pct.ps-up   { color: var(--ac-up,#6BC28C); }
+    #analytics-page .ps-pct.ps-down { color: var(--ac-down,#E88A8A); }
+    #analytics-page .ps-pct.ps-flat { color: var(--ac-muted,#A493C4); }
+    #analytics-page .ps-msg { width: 40%; padding-left: 14px; color: var(--ac-secondary,#C8BCDF); font-size: 12.5px; line-height: 1.45; }
+
+    /* Detail rows hidden in BRIEF mode */
+    #analytics-page .ps-row.ps-detail { display: none; }
+    #analytics-page .ps-wrap.ps-show-detail .ps-row.ps-detail { display: flex; }
+    #analytics-page .ps-tail { border-top: 2px solid var(--ac-edge,rgba(214,197,247,.20)); }
+    /* GROW / Total Sales row: 2x scale */
+    #analytics-page .ps-tail .ps-section-name { font-size: 24px; padding-top: 12px; }
+    #analytics-page .ps-tail .ps-row { font-size: 26px; padding: 12px 14px; }
+    #analytics-page .ps-tail .ps-pct { font-size: 26px; }
+    #analytics-page .ps-tail .ps-msg { font-size: 25px; line-height: 1.35; }
+  </style>
+{% endblock stylesheets %}
+
+{% block content %}
+  <div class="right_col" role="main" id="analytics-page">
+    <div class="page-title"><div class="title_left"><h3>Performance Storyboard <small>Analytics</small></h3></div></div>
+    <div class="clearfix"></div>
+
+    {% include "app/analytics/_filter.html" %}
+
+    <div class="ps-toolbar">
+      <div class="ps-colhead">
+        <span class="ps-c-metric"></span>
+        <span class="ps-c-value">Current Period</span>
+        <span class="ps-c-pct">% to PRV</span>
+        <span class="ps-c-msg">Compared to PRV</span>
+      </div>
+      <div class="ps-toggle">
+        <button type="button" class="ps-toggle-btn active" data-mode="brief">Brief</button>
+        <button type="button" class="ps-toggle-btn" data-mode="detail">Detail</button>
+      </div>
+    </div>
+
+    <div class="ps-wrap" id="ps-wrap">
+      {% for sec in sections %}
+      <div class="ps-section group-{{ sec.group }}">
+        <div class="ps-section-name">{{ sec.name }}</div>
+        <div class="ps-rows">
+          {% for r in sec.rows %}
+          <div class="ps-row{% if r.detail_only %} ps-detail{% endif %}{% if r.bold %} ps-bold{% endif %}">
+            <span class="ps-metric">{{ r.label }}</span>
+            <span class="ps-value">{{ r.value }}</span>
+            <span class="ps-pct {{ r.pct_color }}">{{ r.pct }}</span>
+            <span class="ps-msg">{{ r.message }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="ps-section group-{{ tail.group }} ps-tail">
+        <div class="ps-section-name">{{ tail.name }}</div>
+        <div class="ps-rows">
+          <div class="ps-row ps-bold">
+            <span class="ps-metric">{{ tail.label }}</span>
+            <span class="ps-value">{{ tail.value }}</span>
+            <span class="ps-pct {{ tail.pct_color }}">{{ tail.pct }}</span>
+            <span class="ps-msg">{{ tail.message }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <script>var ANALYTICS_CHARTS = {};</script>
+  {% include "app/analytics/_scripts.html" %}
+  <script>
+  (function() {
+    var wrap = document.getElementById('ps-wrap');
+    var btns = document.querySelectorAll('.ps-toggle-btn');
+    Array.prototype.forEach.call(btns, function(b) {
+      b.addEventListener('click', function() {
+        Array.prototype.forEach.call(btns, function(x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        wrap.classList.toggle('ps-show-detail', b.getAttribute('data-mode') === 'detail');
+      });
+    });
+  })();
+  </script>
+{% endblock javascripts %}
