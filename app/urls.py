@@ -13,6 +13,8 @@ urlpatterns = [
     path('measurements/', views.settings_measurements, name='settings_measurements'),
     path('users/', views.settings_users, name='settings_users'),
     path('help/', views.help_page, name='help'),
+    path('work-in-progress/', views.work_in_progress, name='work_in_progress'),
+    path('data-connection/', views.data_connection, name='data_connection'),
     # Analytics dashboards (Analytics == Grow Sales landing page)
     path('analytics/', views.analytics_grow_sales, name='analytics'),
     path('analytics/grow-sales/', views.analytics_grow_sales, name='analytics_grow_sales'),

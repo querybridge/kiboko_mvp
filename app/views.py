@@ -111,7 +111,7 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None):
     # Add active action uplift — each action contributes its daily value
     # only for days in this month on or after its launch date
     projects = Action.objects.filter(
-        status='Active',
+        status='WIP',
     ).filter(
         Q(launch__isnull=True) | Q(launch__lte=last_of_month)
     )
@@ -264,7 +264,7 @@ def _build_chart_data(year, vertical_id=None):
     # Pre-compute per-project daily rates for MTD forecast
     last_of_current_month = date(year, current_month, days_in_current_month)
     project_qs = Action.objects.filter(
-        status='Active',
+        status='WIP',
     ).filter(
         Q(launch__isnull=True) | Q(launch__lte=last_of_current_month)
     )
@@ -327,7 +327,7 @@ def _build_chart_data(year, vertical_id=None):
 
     def _project_value_through(end_date):
         qs = Action.objects.filter(
-            status='Active',
+            status='WIP',
         ).filter(
             Q(launch__isnull=True) | Q(launch__lte=end_date)
         )
@@ -429,7 +429,7 @@ def index(request):
         vertical_id = None
 
     # Show active actions on dashboard
-    projects = Action.objects.filter(status='Active', archived=False).order_by('-normalized_score')
+    projects = Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score')
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
 
@@ -439,10 +439,10 @@ def index(request):
         base_qs = Action.objects.filter(objective=rock, archived=False)
         if vertical_id:
             base_qs = base_qs.filter(vertical_id=vertical_id)
-        count = base_qs.filter(status='Active').count()
-        value = base_qs.filter(status='Active').aggregate(Sum('value'))
-        count_p = base_qs.exclude(status='Active').count()
-        value_p = base_qs.exclude(status='Active').aggregate(Sum('value'))
+        count = base_qs.filter(status='WIP').count()
+        value = base_qs.filter(status='WIP').aggregate(Sum('value'))
+        count_p = base_qs.exclude(status='WIP').count()
+        value_p = base_qs.exclude(status='WIP').aggregate(Sum('value'))
         annual_rocks_data.append({
             'rock': rock,
             'count': count,
@@ -468,9 +468,6 @@ def index(request):
     # Build revenue chart data
     chart_data = _build_chart_data(date.today().year, vertical_id=vertical_id)
 
-    # Build gantt chart data for active projects
-    gantt_data = _build_gantt_data(projects)
-
     # Build performance scorecard data
     performance_data = _build_performance_data(date.today(), vertical_id=vertical_id)
 
@@ -482,7 +479,6 @@ def index(request):
         'chart_data_mtd': json.dumps(chart_data['mtd']),
         'chart_data_qtd': json.dumps(chart_data['qtd']),
         'chart_data_ytd': json.dumps(chart_data['ytd']),
-        'gantt_data': json.dumps(gantt_data),
         'performance_data': json.dumps(performance_data),
         'initiatives': initiatives,
     })
@@ -518,14 +514,14 @@ def _build_initiatives_summary(vertical_id=None):
             project_count=Count('actions', distinct=True, filter=pipeline_filter),
             active_count=Count(
                 'actions', distinct=True,
-                filter=pipeline_filter & Q(actions__status='Active'),
+                filter=pipeline_filter & Q(actions__status='WIP'),
             ),
             active_value=Coalesce(
-                Sum('actions__value', filter=pipeline_filter & Q(actions__status='Active')),
+                Sum('actions__value', filter=pipeline_filter & Q(actions__status='WIP')),
                 0, output_field=IntegerField(),
             ),
             inactive_value=Coalesce(
-                Sum('actions__value', filter=pipeline_filter & ~Q(actions__status='Active')),
+                Sum('actions__value', filter=pipeline_filter & ~Q(actions__status='WIP')),
                 0, output_field=IntegerField(),
             ),
             avg_progress=Avg('actions__progress', filter=pipeline_filter),
@@ -1235,6 +1231,57 @@ def analytics_expand_purchases(request):
         'scatter_json': json.dumps(d['scatter']),
     })
     return render(request, 'app/analytics/expand_purchases.html', ctx)
+
+
+@login_required
+def work_in_progress(request):
+    """Work In Progress — the active-actions gantt (moved off the dashboard)."""
+    vertical_id = request.GET.get('vertical', '')
+    try:
+        vertical_id = int(vertical_id) if vertical_id else None
+    except (ValueError, TypeError):
+        vertical_id = None
+
+    projects = Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score')
+    if vertical_id:
+        projects = projects.filter(vertical_id=vertical_id)
+
+    gantt = _build_gantt_data(projects)
+
+    # Optional focus: highlight one action and open the smallest period that
+    # contains its launch date so the user can see what's ahead of it.
+    focus_id = request.GET.get('focus', '')
+    try:
+        focus_id = int(focus_id) if focus_id else None
+    except (ValueError, TypeError):
+        focus_id = None
+
+    initial_period = 'mtd'
+    if focus_id:
+        focus_action = Action.objects.filter(pk=focus_id).first()
+        launch = focus_action.launch.isoformat() if (focus_action and focus_action.launch) else None
+        if launch:
+            for key in ('mtd', 'qtd', 'ytd'):
+                p = gantt['periods'][key]
+                if p['start'] <= launch <= p['end']:
+                    initial_period = key
+                    break
+            else:
+                initial_period = 'ytd'
+        else:
+            initial_period = 'ytd'
+
+    return render(request, 'app/work_in_progress.html', {
+        'gantt_data': json.dumps(gantt),
+        'focus_id': focus_id,
+        'initial_period': initial_period,
+    })
+
+
+@login_required
+def data_connection(request):
+    """Settings > Data Connection (placeholder; content defined later)."""
+    return render(request, 'app/data_connection.html')
 
 
 @login_required

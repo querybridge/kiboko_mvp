@@ -17,17 +17,17 @@
 
   <!-- sidebar menu -->
   <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
-      <div class="menu_section">
-	  <h3>Summary</h3>
-	  <ul class="nav side-menu">
-        <li><a href="/app/"><i class="fa fa-dashboard"></i> Dashboard </a>
-        </li>
+    <div class="menu_section">
+      <ul class="nav side-menu">
+
+        <!-- Analytics -->
         <li id="analytics-menu"><a href="{% url 'app:analytics' %}"><i class="fa fa-bar-chart"></i> Analytics <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
             <li><a href="{% url 'app:analytics_grow_sales' %}">Grow Sales</a></li>
             <li><a href="{% url 'app:analytics_attract_traffic' %}">Attract Traffic</a></li>
             <li><a href="{% url 'app:analytics_engage_customers' %}">Engage Customers</a></li>
             <li><a href="{% url 'app:analytics_expand_purchases' %}">Expand Purchases</a></li>
+            <li><a href="/app/actuals/">Update Actuals</a></li>
           </ul>
         </li>
         <script>
@@ -46,71 +46,44 @@
           } catch (_) {}
         })();
         </script>
-        <li><a href="{% url 'project:kanban' %}"><i class="fa fa-columns"></i> Kanban </a>
-        </li>
-		</ul>
-		</div>
-	<div class="menu_section">
-      <h3>Projects</h3>
-      <ul class="nav side-menu">
-        <li><a><i class="fa fa-edit"></i> Add Project<span class="fa fa-chevron-down"></span></a>
+
+        <!-- Project Prioritization -->
+        <li><a><i class="fa fa-sort-amount-desc"></i> Project Prioritization <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
+            <li><a href="/app/">Project Value Pipeline</a></li>
             {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
-            <li><a href="/strategy/add.html">New Quarterly Rock</a></li>
+            <li><a href="/project/approvals.html">Business Value Scoring</a></li>
             {% endif %}
-            <li><a href="/project/add.html">New Project</a></li>
+            <li><a href="/project/add.html">Add Project</a></li>
           </ul>
         </li>
-        {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' or user.profile.role == 'department_owner' %}
-        <li><a><i class="fa fa-calculator"></i> Estimate Value &amp; LOE <span class="fa fa-chevron-down"></span></a>
+
+        <!-- Project Control -->
+        <li><a><i class="fa fa-sliders"></i> Project Control <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
+            <li><a href="{% url 'project:kanban' %}">Kanban</a></li>
+            <li><a href="{% url 'app:work_in_progress' %}">Work In Progress</a></li>
+            <li><a href="/project/view.html">Backlog</a></li>
+          </ul>
+        </li>
+
+        <!-- Settings -->
+        <li><a><i class="fa fa-cog"></i> Settings <span class="fa fa-chevron-down"></span></a>
+          <ul class="nav child_menu">
+            <li><a href="/app/goals/">Edit Goals</a></li>
             {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
-            <li><a href="/project/value.html">Estimate Value</a></li>
+            <li><a href="{% url 'app:settings_users' %}">Manage Users</a></li>
             {% endif %}
-            <li><a href="/project/loe.html">Estimate LOE</a></li>
-            <li><a href="/project/approvals.html">Approve Projects</a></li>
+            <li><a href="{% url 'app:data_connection' %}">Data Connection</a></li>
           </ul>
         </li>
-        {% endif %}
-        <li><a><i class="fa fa-clone"></i>All Projects <span class="fa fa-chevron-down"></span></a>
-          <ul class="nav child_menu">
-            {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
-            <li><a href="/strategy/view.html">Quarterly Rocks</a></li>
-            {% endif %}
-            <li><a href="/project/view.html">Projects</a></li>
-            <li><a href="/project/archive/">Archive</a></li>
-          </ul>
-        </li>
-      </ul>
-    </div>
-    {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
-    <div class="menu_section">
-      <h3>Admin</h3>
-      <ul class="nav side-menu">
-        <li><a><i class="fa fa-wrench"></i> Admin <span class="fa fa-chevron-down"></span></a>
-          <ul class="nav child_menu">
-            <li><a href="{% url 'app:settings_company' %}">Company</a></li>
-            <li><a href="{% url 'app:settings_rocks' %}">Rocks</a></li>
-            <li><a href="{% url 'app:settings_measurements' %}">Measurements</a></li>
-            <li><a href="{% url 'app:settings_users' %}">Users</a></li>
-          </ul>
-        </li>
-      </ul>
-    </div>
-    {% endif %}
-    <div class="menu_section">
-      <h3>Revenue</h3>
-      <ul class="nav side-menu">
-        <li><a href="/app/goals/"><i class="fa fa-bullseye"></i> Edit Goals</a></li>
-        <li><a href="/app/actuals/"><i class="fa fa-upload"></i> Update Actuals</a></li>
-      </ul>
-    </div>
-    <div class="menu_section">
-      <ul class="nav side-menu">
+
+        <!-- Help -->
         <li><a href="{% url 'app:help' %}"><i class="fa fa-question-circle"></i> Help</a></li>
+
       </ul>
     </div>
-	</div>
+  </div>
   <!-- /sidebar menu -->
 
   <!-- Sidebar bottom actions: theme toggle + collapse/expand -->
