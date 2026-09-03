@@ -15,7 +15,7 @@ class ProjectAdd(ModelForm):
     class Meta:
         model = Action
         fields = [
-            'objective', 'project', 'business_unit', 'team', 'vertical',
+            'objective', 'aee_alignment', 'project', 'business_unit', 'team', 'vertical',
             'owner', 'name', 'why', 'impact', 'measure',
         ]
         labels = {
@@ -23,6 +23,7 @@ class ProjectAdd(ModelForm):
             'business_unit': 'Department',
             'team': 'Team',
             'objective': 'Objective',
+            'aee_alignment': 'AEE Alignment',
             'vertical': 'Vertical',
             'name': 'Action Name',
             'measure': 'Measure',
@@ -30,9 +31,11 @@ class ProjectAdd(ModelForm):
         help_texts = {
             'measure': 'Quantifiable data points used to track progress and performance against the parent metric',
             'team': 'Functional team executing the action (e.g. Marketing, IT, Merchandising)',
+            'aee_alignment': 'Which lever this action pulls: Attract Traffic, Engage Customers, or Expand Purchase',
         }
         widgets = {
             'objective': Select(attrs={}),
+            'aee_alignment': Select(attrs={}),
             'project': Select(attrs={}),
             'business_unit': Select(attrs={}),
             'team': Select(attrs={}),
@@ -55,7 +58,7 @@ class ProjectEdit(ModelForm):
         fields = [
             'name', 'project', 'owner', 'status', 'progress', 'launch',
             'impact', 'success', 'why', 'value',
-            'business_unit', 'team', 'objective', 'vertical', 'measure',
+            'business_unit', 'team', 'objective', 'aee_alignment', 'vertical', 'measure',
             'customer_value', 'business_value', 'cost_savings',
             'operational_cost', 'business_risk', 'level_of_effort',
         ]
@@ -64,6 +67,7 @@ class ProjectEdit(ModelForm):
             'business_unit': 'Department',
             'team': 'Team',
             'objective': 'Objective',
+            'aee_alignment': 'AEE Alignment',
             'vertical': 'Vertical',
             'measure': 'Measure',
         }
@@ -83,6 +87,7 @@ class ProjectEdit(ModelForm):
             'business_unit': Select(attrs={}),
             'team': Select(attrs={}),
             'objective': Select(attrs={}),
+            'aee_alignment': Select(attrs={}),
             'vertical': Select(attrs={}),
             'measure': Select(attrs={}),
             'customer_value': NumberInput(attrs={'min': 0, 'max': 10}),
