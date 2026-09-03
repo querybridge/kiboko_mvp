@@ -32,7 +32,7 @@
   /* Text — purple-tinted neutrals */
   --text-primary:   #F4EEFC;
   --text-secondary: #C8BCDF;
-  --text-muted:     #9886B5;
+  --text-muted:     #A493C4;  /* lifted from #9886B5 for small-text legibility */
   --text-disabled:  #6A5A8C;
 
   /* Brand */
@@ -58,6 +58,15 @@
   /* Shadows */
   --shadow-card:  0 12px 30px rgba(0, 0, 0, 0.32);
   --shadow-panel: 0 20px 50px rgba(0, 0, 0, 0.42);
+
+  /* Elevated card surface (shared with the analytics dashboards) — a lighter
+     gradient fill + light hairline lifts cards clearly off the near-black page. */
+  --card-fill:   linear-gradient(180deg, #241851 0%, #1A1038 100%);
+  --card-edge:   rgba(214, 197, 247, 0.14);
+  --card-shadow: 0 10px 26px rgba(0, 0, 0, 0.48);
+
+  /* Display font for focal numbers (KPIs / tile counts) */
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
 }
 
 /* ----- Base ----- */
@@ -216,10 +225,10 @@ body.nav-sm .container.body .col-md-3.left_col {
 .x_panel,
 .panel,
 .panel-default {
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  background: var(--card-fill) !important;
+  border: 1px solid var(--card-edge) !important;
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
   color: var(--text-primary);
   padding: 16px 18px;
 }
@@ -245,10 +254,18 @@ body.nav-sm .container.body .col-md-3.left_col {
 
 /* Tiles, dashboard mini-stats, KPI summary */
 .tile_count, .tile-stats {
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: var(--radius-card);
+  background: var(--card-fill) !important;
+  border: 1px solid var(--card-edge) !important;
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
   color: var(--text-primary);
+}
+/* Focal numbers in the display font, matching analytics KPIs */
+.tile-stats .count,
+.tile_count .count,
+.kpi-tile .kpi-value {
+  font-family: var(--font-display);
+  letter-spacing: -0.4px;
 }
 
 /* ----- Tables ----- */
@@ -361,11 +378,11 @@ label { color: var(--text-secondary); font-weight: 500; }
 /* ----- Dashboard widgets ----- */
 .dashboard_graph,
 .well {
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border-subtle) !important;
-  border-radius: var(--radius-card);
+  background: var(--card-fill) !important;
+  border: 1px solid var(--card-edge) !important;
+  border-radius: 14px;
   color: var(--text-primary);
-  box-shadow: none;
+  box-shadow: var(--card-shadow);
 }
 
 /* ----- Page title ----- */
@@ -382,10 +399,11 @@ label { color: var(--text-secondary); font-weight: 500; }
   border: 1px solid var(--border-subtle);
 }
 .kanban-card {
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border-subtle) !important;
+  background: var(--card-fill) !important;
+  border: 1px solid var(--card-edge) !important;
   color: var(--text-primary);
   border-radius: var(--radius-app);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.40);
 }
 .kanban-card .card-title,
 .kanban-card .card-title a,
