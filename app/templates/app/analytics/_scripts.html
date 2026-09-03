@@ -23,11 +23,16 @@
 
   if (typeof Chart === 'undefined') return;
 
+  // Light defaults so axes / legends read on the dark card surface.
+  Chart.defaults.global.defaultFontColor = '#C8BCDF';
+  Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
+  var GRID = 'rgba(255,255,255,0.06)';
+
   var GROUP_COLORS = {
-    grow:    { line: '#4a1f8a', fill: 'rgba(74,31,138,0.12)',  line2: '#b39ddb', fill2: 'rgba(179,157,219,0.12)' },
-    attract: { line: '#17a2b8', fill: 'rgba(23,162,184,0.12)', line2: '#8fd3de', fill2: 'rgba(23,162,184,0.07)' },
-    engage:  { line: '#e0a800', fill: 'rgba(224,168,0,0.16)',  line2: '#f2d98a', fill2: 'rgba(224,168,0,0.07)' },
-    expand:  { line: '#1a7a5c', fill: 'rgba(26,122,92,0.12)',  line2: '#8fc9b5', fill2: 'rgba(26,122,92,0.07)' }
+    grow:    { line: '#A98EE8', fill: 'rgba(169,142,232,0.16)', line2: '#7A6AA0', fill2: 'rgba(122,106,160,0.14)' },
+    attract: { line: '#3FC9E0', fill: 'rgba(63,201,224,0.16)',  line2: '#2C7C8A', fill2: 'rgba(63,201,224,0.08)' },
+    engage:  { line: '#ECB752', fill: 'rgba(236,183,82,0.18)',  line2: '#96793C', fill2: 'rgba(236,183,82,0.08)' },
+    expand:  { line: '#55C892', fill: 'rgba(85,200,146,0.16)',  line2: '#387A5C', fill2: 'rgba(85,200,146,0.08)' }
   };
 
   function abbr(n) {
@@ -75,7 +80,7 @@
         hover: { mode: 'index', intersect: false },
         scales: {
           xAxes: [{ display: c.two_sets, gridLines: { display: false }, ticks: { fontSize: 10, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } }],
-          yAxes: [{ display: c.two_sets, gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontSize: 10, callback: function(v) { return fmtVal(v, c.format); } } }]
+          yAxes: [{ display: c.two_sets, gridLines: { color: GRID, zeroLineColor: GRID }, ticks: { fontSize: 10, callback: function(v) { return fmtVal(v, c.format); } } }]
         }
       }
     });
@@ -128,9 +133,9 @@
           },
           scales: {
             xAxes: [{ scaleLabel: { display: true, labelString: ch.x_label + ' YoY %', fontSize: 10 },
-                      gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }],
+                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.14)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }],
             yAxes: [{ scaleLabel: { display: true, labelString: ch.y_label + ' YoY %', fontSize: 10 },
-                      gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }]
+                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.14)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }]
           }
         }
       });
