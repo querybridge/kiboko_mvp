@@ -15,9 +15,12 @@ Including another URLconf
 """
 from django.urls import path, include
 from django.contrib import admin
+from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Home page -> Grow Sales dashboard
+    path('', RedirectView.as_view(url='/app/analytics/grow-sales/', permanent=False)),
     path('strategy/', include('strategy.urls', namespace='strategy')),
     path('project/', include('project.urls', namespace='project')),
     path('users/', include('users.urls', namespace='users')),

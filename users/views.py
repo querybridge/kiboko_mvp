@@ -27,7 +27,7 @@ def register(request):
             raw_password = form.cleaned_data.get('password1')
             user = authenticate(username=username, password=raw_password)
             login(request, user)
-            return redirect('app:index')
+            return redirect('app:analytics_grow_sales')
     else:
         form = UserRegistrationForm()
     return render(request, 'users/register.html', {'form': form})

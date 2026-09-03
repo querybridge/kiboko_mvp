@@ -1,6 +1,6 @@
 <div class="left_col scroll-view">
   <div class="navbar nav_title" style="border: 0;">
-    <a href="/app/" class="site_title" style="height: auto; line-height: 1.2; margin-top: 15px; display: flex; align-items: flex-start;"><i class="fa fa-tasks" style="margin-right: 8px;"></i><span class="site_title_text" style="display: flex; flex-direction: column; text-align: left;"><strong>Kiboko</strong><span style="font-size: 11px;">Project Prioritization</span></span></a>
+    <a href="/app/analytics/grow-sales/" class="site_title" style="height: auto; line-height: 1.2; margin-top: 15px; display: flex; align-items: flex-start;"><i class="fa fa-tasks" style="margin-right: 8px;"></i><span class="site_title_text" style="display: flex; flex-direction: column; text-align: left;"><strong>Kiboko</strong><span style="font-size: 11px;">Project Prioritization</span></span></a>
     <style>
       body.nav-sm .site_title .site_title_text { display: none !important; }
       body.nav-sm .site_title { justify-content: center; }
@@ -20,8 +20,8 @@
     <div class="menu_section">
       <ul class="nav side-menu">
 
-        <!-- Analytics -->
-        <li id="analytics-menu"><a href="{% url 'app:analytics' %}"><i class="fa fa-bar-chart"></i> Analytics <span class="fa fa-chevron-down"></span></a>
+        <!-- Analytics (label only expands/collapses the submenu) -->
+        <li><a><i class="fa fa-bar-chart"></i> Analytics <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
             <li><a href="{% url 'app:analytics_grow_sales' %}">Grow Sales</a></li>
             <li><a href="{% url 'app:analytics_attract_traffic' %}">Attract Traffic</a></li>
@@ -30,22 +30,6 @@
             <li><a href="/app/actuals/">Update Actuals</a></li>
           </ul>
         </li>
-        <script>
-        // Pre-render the Analytics submenu open/closed from persisted state,
-        // BEFORE the theme initializes and before first paint, so a full-page
-        // navigation doesn't flash collapsed-then-expanded. The submenu stays
-        // open across page loads until the Analytics row is clicked again.
-        (function() {
-          try {
-            var li = document.getElementById('analytics-menu');
-            if (li && localStorage.getItem('analyticsMenuOpen') === '1') {
-              li.classList.add('active');
-              var sub = li.querySelector('ul.child_menu');
-              if (sub) sub.style.display = 'block';
-            }
-          } catch (_) {}
-        })();
-        </script>
 
         <!-- Project Prioritization -->
         <li><a><i class="fa fa-sort-amount-desc"></i> Project Prioritization <span class="fa fa-chevron-down"></span></a>
@@ -124,40 +108,6 @@
     } else {
       document.addEventListener('DOMContentLoaded', syncThemeIcon);
     }
-  })();
-  </script>
-
-  <script>
-  // Analytics menu behavior:
-  //  - Clicking anywhere on the Analytics ROW navigates (to Grow Sales) AND
-  //    toggles the submenu open/closed. The state is persisted so the reloaded
-  //    page renders in the toggled state (see the pre-render script above).
-  //  - Clicking a CHILD navigates without collapsing/re-expanding: the submenu
-  //    stays open across the load.
-  // A capture-phase listener runs before the theme's bubble handler on <a>, so
-  // we suppress the theme's own toggle/animation while letting navigation occur.
-  (function() {
-    var li = document.getElementById('analytics-menu');
-    if (!li) return;
-    document.addEventListener('click', function(e) {
-      var link = e.target.closest ? e.target.closest('a') : null;
-      if (!link || !li.contains(link)) return;
-
-      // Stop the theme's accordion handler; navigation (default) still proceeds.
-      e.stopPropagation();
-      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-
-      try {
-        if (link.parentElement === li) {
-          // Row link: toggle persisted open state, then navigate.
-          var open = localStorage.getItem('analyticsMenuOpen') === '1';
-          localStorage.setItem('analyticsMenuOpen', open ? '0' : '1');
-        } else {
-          // Child link: keep the submenu open across the navigation.
-          localStorage.setItem('analyticsMenuOpen', '1');
-        }
-      } catch (_) {}
-    }, true);
   })();
   </script>
 

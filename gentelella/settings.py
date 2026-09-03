@@ -139,3 +139,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATIC_URL = '/static/'
 STATIC_ROOT = 'static'
 LOGIN_URL = '/users/login/'
+# Home page: land on the Grow Sales analytics dashboard after login.
+LOGIN_REDIRECT_URL = '/app/analytics/grow-sales/'
