@@ -131,4 +131,22 @@
   #analytics-page .cp-chart-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--ac-secondary); margin-bottom: 8px; }
   #analytics-page .cp-canvas-wrap { position: relative; width: 100%; height: 220px; }
   #analytics-page .cp-readout { margin-top: 10px; font-size: 11px; color: var(--ac-muted); min-height: 30px; font-style: italic; line-height: 1.5; }
+
+  /* ---- Period winner / loser: pulsing 5px inner glow (draws the eye) ----
+     An inset box-shadow (no layout shift) glows inward from the card edges in
+     the theme's green (biggest gain) or red (biggest loss), pulsing ~5px. */
+  #analytics-page .analytics-card.ac-win  { animation: ac-pulse-win 1.7s ease-in-out infinite; }
+  #analytics-page .analytics-card.ac-loss { animation: ac-pulse-loss 1.7s ease-in-out infinite; }
+  @keyframes ac-pulse-win {
+    0%, 100% { box-shadow: var(--ac-shadow), inset 0 0 8px 1px rgba(107,194,140,0.45); }
+    50%      { box-shadow: var(--ac-shadow), inset 0 0 18px 5px rgba(107,194,140,0.80); }
+  }
+  @keyframes ac-pulse-loss {
+    0%, 100% { box-shadow: var(--ac-shadow), inset 0 0 8px 1px rgba(232,138,138,0.45); }
+    50%      { box-shadow: var(--ac-shadow), inset 0 0 18px 5px rgba(232,138,138,0.80); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #analytics-page .analytics-card.ac-win  { animation: none; box-shadow: var(--ac-shadow), inset 0 0 14px 5px rgba(107,194,140,0.60); }
+    #analytics-page .analytics-card.ac-loss { animation: none; box-shadow: var(--ac-shadow), inset 0 0 14px 5px rgba(232,138,138,0.60); }
+  }
 </style>

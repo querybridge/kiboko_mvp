@@ -478,6 +478,21 @@ def build_grow_sales(primary_code, compare_code):
     for c in cards.values():
         c['link'] = GROUP_LINKS.get(c['group'], '')
 
+    # Period winner / loser highlight (recreates the reference get6ChartPercentages):
+    # among the six granular "detail" cards, pulse the biggest gainer green and
+    # the biggest decliner red — only when the move is actually positive/negative.
+    detail_ids = ['attract_visitors', 'engage_cart_creation', 'expand_units_per_order',
+                  'attract_visits', 'engage_cart_completion', 'expand_avg_unit_price']
+    detail = [(cid, cards[cid]['delta']) for cid in detail_ids
+              if cards[cid].get('delta') is not None]
+    if detail:
+        win_id, win_val = max(detail, key=lambda kv: kv[1])
+        lose_id, lose_val = min(detail, key=lambda kv: kv[1])
+        if win_val > 0:
+            cards[win_id]['highlight'] = 'win'
+        if lose_val < 0 and lose_id != win_id:
+            cards[lose_id]['highlight'] = 'loss'
+
     return cards, charts
 
 

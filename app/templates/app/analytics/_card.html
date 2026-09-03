@@ -1,5 +1,5 @@
 {# One analytics card. Expects `card` in context (see analytics_data.build_grow_sales). #}
-<div class="analytics-card group-{{ card.group }}{% if card.link %} ac-linked{% endif %}"{% if card.link %} data-card-link="{{ card.link }}"{% endif %}>
+<div class="analytics-card group-{{ card.group }}{% if card.link %} ac-linked{% endif %}{% if card.highlight == 'win' %} ac-win{% elif card.highlight == 'loss' %} ac-loss{% endif %}"{% if card.link %} data-card-link="{{ card.link }}"{% endif %}>
   <div class="ac-head">
     {% if card.title %}<span class="ac-title">{{ card.title }}</span>{% endif %}
     <span class="ac-header">{{ card.header }}</span>
