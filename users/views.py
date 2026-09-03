@@ -11,7 +11,9 @@ from users.forms import UserRegistrationForm
 #Logout View
 def logout_view(request):
 	logout(request)
-	return HttpResponseRedirect(reverse('app:index'))
+	# Send to the login page directly (no ?next=) so the next login honors
+	# LOGIN_REDIRECT_URL (Grow Sales) rather than bouncing back here.
+	return HttpResponseRedirect(reverse('users:login'))
 
 
 #Registration Page
