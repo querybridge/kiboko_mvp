@@ -13,7 +13,7 @@ LANES = OrderedDict([
     ('ready_to_score',   'READY TO SCORE'),
     ('scored',           'SCORED'),
     ('on_deck',          'ON DECK'),
-    ('active',           'ACTIVE'),
+    ('active',           'WIP'),
 ])
 
 # Fields required before a project can be scored
@@ -44,7 +44,7 @@ def get_lane(project):
 
     status = (project.status or '').strip()
 
-    if status == 'Active':
+    if status == 'WIP':
         return 'active'
 
     if status == 'On Deck':
@@ -177,7 +177,7 @@ def apply_move(project, target_lane):
             project.status = 'On Deck'
             project.approved = True
         elif target_lane == 'active':
-            project.status = 'Active'
+            project.status = 'WIP'
             project.approved = True
 
     project.save()

@@ -33,31 +33,43 @@ def _get_vertical_id(request):
 
 # View All Projects Page
 def view(request):
+    from .project_field_options import AEE_ALIGNMENT_CHOICES
+
     context = {}
     title = ""
     vertical_id = _get_vertical_id(request)
+    # Optional AEE-alignment filter (from the analytics "Related Projects" links)
+    aee = request.GET.get('aee', '')
+    aee_labels = dict(AEE_ALIGNMENT_CHOICES)
+    if aee not in aee_labels or aee == '':
+        aee = ''
     # Exclude archived projects
     # Projects that are approved OR have status Pending Assignment/Active go in the approved table
     approved_projects = Action.objects.filter(
         archived=False,
     ).filter(
-        Q(approved=True) | Q(status__in=['Pending Assignment', 'Active'])
+        Q(approved=True) | Q(status__in=['Pending Assignment', 'WIP'])
     )
     if vertical_id:
         approved_projects = approved_projects.filter(vertical_id=vertical_id)
     owned_bus = BusinessUnit.objects.filter(owner=request.user)
     # Pending = not approved AND not Pending Assignment/Active status
-    pending_filter = Q(approved=False, archived=False) & ~Q(status__in=['Pending Assignment', 'Active'])
+    pending_filter = Q(approved=False, archived=False) & ~Q(status__in=['Pending Assignment', 'WIP'])
     if owned_bus.exists():
         pending_projects = Action.objects.filter(pending_filter, business_unit__in=owned_bus)
     else:
         pending_projects = Action.objects.filter(pending_filter)
     if vertical_id:
         pending_projects = pending_projects.filter(vertical_id=vertical_id)
+    if aee:
+        approved_projects = approved_projects.filter(aee_alignment=aee)
+        pending_projects = pending_projects.filter(aee_alignment=aee)
     return render(request, 'project/view.html', {
         'approved_projects': approved_projects,
         'pending_projects': pending_projects,
         'title': title,
+        'aee_filter': aee,
+        'aee_filter_label': aee_labels.get(aee, ''),
     })
     
 #Add New Project
@@ -213,7 +225,7 @@ def loe(request):
 @login_required
 def approve(request):
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['Active', 'Pending Assignment'])
+    projects = Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['WIP', 'Pending Assignment'])
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
     title = "Approve and Prioritize"

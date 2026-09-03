@@ -16,7 +16,15 @@
   <div class="">
     <div class="page-title">
       <div class="title_left">
+        {% if aee_filter %}
+        <h3>Backlog <small>filtered by AEE Alignment: {{ aee_filter_label }}</small></h3>
+        {% endif %}
       </div>
+      {% if aee_filter %}
+      <div class="title_right" style="text-align:right;">
+        <a href="/project/view.html" class="btn btn-sm btn-default">Clear filter <i class="fa fa-times"></i></a>
+      </div>
+      {% endif %}
       <div class="clearfix"></div>
       <div class="row">
         <div class="col-md-12 col-sm-12 col-xs-12">
@@ -39,6 +47,7 @@
                           <th>Date Created</th>
                           <th>Date Modified</th>
                           <th>Name</th>
+                          <th>AEE Alignment</th>
                           <th>Definition of Done</th>
                           <th>User Story</th>
                           <th>Value</th>
@@ -62,6 +71,7 @@
                           <td><a href="{{ project.id }}" class="">{{ project.date_created }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.date_modified }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.name }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.get_aee_alignment_display }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.impact }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.why }}</a></td>
                           <td><a href="{{ project.id }}" class="">${{ project.value|intcomma }}</a></td>
@@ -73,14 +83,14 @@
                           <td><a href="{{ project.id }}" class="">{{ project.level_of_effort|default:"0" }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.normalized_score }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.progress }}%</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.status }}</a></td>
+                          <td>{% if project.status == 'WIP' %}<a href="{% url 'app:work_in_progress' %}?focus={{ project.id }}" title="See this action on the Work In Progress timeline">{{ project.status }}</a>{% else %}{{ project.status }}{% endif %}</td>
                           <td>
                             <a href="/project/{{project.id}}/edit?next={{ request.path|urlencode }}" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
                           </td>
                         </tr>
                         {% empty %}
                         <tr >
-                          <td colspan="18" style="text-align: center;">No Approved Actions</td>
+                          <td colspan="19" style="text-align: center;">No Approved Actions</td>
                         </tr>
                         
                         {% endfor %}
@@ -107,6 +117,7 @@
                           <th>Date Created</th>
                           <th>Date Modified</th>
                           <th>Name</th>
+                          <th>AEE Alignment</th>
                           <th>Definition of Done</th>
                           <th>User Story</th>
                           <th>Value</th>
@@ -130,6 +141,7 @@
                           <td><a href="{{ project.id }}" class="">{{ project.date_created }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.date_modified }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.name }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.get_aee_alignment_display }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.impact }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.why }}</a></td>
                           <td><a href="{{ project.id }}" class="">${{ project.value|intcomma }}</a></td>
@@ -141,14 +153,14 @@
                           <td><a href="{{ project.id }}" class="">{{ project.level_of_effort|default:"0" }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.normalized_score }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.progress }}%</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.status }}</a></td>
+                          <td>{% if project.status == 'WIP' %}<a href="{% url 'app:work_in_progress' %}?focus={{ project.id }}" title="See this action on the Work In Progress timeline">{{ project.status }}</a>{% else %}{{ project.status }}{% endif %}</td>
                           <td>
                             <a href="/project/{{project.id}}/edit?next={{ request.path|urlencode }}" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
                           </td>
                         </tr>
                         {% empty %}
                         <tr >
-                          <td colspan="18" style="text-align: center;">No Actions To Be Approved</td>
+                          <td colspan="19" style="text-align: center;">No Actions To Be Approved</td>
                         </tr>
 
                         {% endfor %}

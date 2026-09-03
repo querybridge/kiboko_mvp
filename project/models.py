@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from multiselectfield import MultiSelectField
 from strategy.models import Project, Objective, Measure
 from business_unit.models import BusinessUnit, Vertical, Team
-from .project_field_options import locations, status_options, STRATEGY_TAG_CHOICES
+from .project_field_options import locations, status_options, STRATEGY_TAG_CHOICES, AEE_ALIGNMENT_CHOICES
 from .scoring import CRITERIA, weighted_score
 
 # Create your all your models here
@@ -54,6 +54,9 @@ class Action(models.Model):
 	business_risk = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
 	level_of_effort = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
 
+	# AEE (Attract / Engage / Expand) alignment
+	aee_alignment = models.CharField(max_length=50, choices=AEE_ALIGNMENT_CHOICES, blank=True, default='')
+
 	# Kanban fields
 	is_blocked = models.BooleanField(default=False)
 	strategy_tag = models.CharField(max_length=50, choices=STRATEGY_TAG_CHOICES, blank=True, default='')
@@ -79,7 +82,7 @@ class Action(models.Model):
 
 		# Stamp active_date the first time status transitions to Active
 		previous_status = getattr(self, '_db_status', None)
-		became_active = self.status == 'Active' and previous_status != 'Active'
+		became_active = self.status == 'WIP' and previous_status != 'WIP'
 		if became_active and not self.active_date:
 			self.active_date = date.today()
 

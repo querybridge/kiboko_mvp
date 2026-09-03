@@ -35,15 +35,15 @@ PROJECTS = [
 
 ACTIONS = [
     # (name, status, has_scores, value, progress, why)
-    ('PDP image zoom & 360 viewer', 'Active', True, 450000, 65, 'As a shopper I want to zoom and rotate product images so I can inspect details before buying'),
-    ('Add size/finish filter to PLP', 'Active', True, 120000, 30, 'Enable shoppers to narrow results by product attributes'),
-    ('Loyalty points dashboard', 'Active', True, 800000, 10, 'Show members their points balance, history, and redemption options'),
-    ('Referral program integration', 'Active', False, 350000, 5, 'Allow members to refer friends and earn bonus points'),
+    ('PDP image zoom & 360 viewer', 'WIP', True, 450000, 65, 'As a shopper I want to zoom and rotate product images so I can inspect details before buying'),
+    ('Add size/finish filter to PLP', 'WIP', True, 120000, 30, 'Enable shoppers to narrow results by product attributes'),
+    ('Loyalty points dashboard', 'WIP', True, 800000, 10, 'Show members their points balance, history, and redemption options'),
+    ('Referral program integration', 'WIP', False, 350000, 5, 'Allow members to refer friends and earn bonus points'),
     ('Headless CMS proof of concept', 'Pending Assignment', True, 0, 0, 'Validate headless architecture with a single landing page'),
     ('Content migration tooling', 'Pending Assignment', False, 0, 0, 'Build scripts to migrate legacy CMS content'),
-    ('B2B bulk order CSV upload', 'Active', True, 600000, 45, 'Let wholesale customers upload large orders via CSV'),
-    ('B2B net-30 payment terms', 'Active', True, 250000, 80, 'Offer invoice-based payment for approved B2B accounts'),
-    ('Homepage personalization A/B test', 'Active', True, 500000, 20, 'Test personalized hero banners vs static content'),
+    ('B2B bulk order CSV upload', 'WIP', True, 600000, 45, 'Let wholesale customers upload large orders via CSV'),
+    ('B2B net-30 payment terms', 'WIP', True, 250000, 80, 'Offer invoice-based payment for approved B2B accounts'),
+    ('Homepage personalization A/B test', 'WIP', True, 500000, 20, 'Test personalized hero banners vs static content'),
     ('Recommendation engine data pipeline', 'Pending Approval', True, 300000, 0, 'Build ETL pipeline feeding the ML recommendation model'),
     ('Holiday email drip sequences', 'Pending Approval', True, 200000, 0, 'Pre-built automated email flows for Black Friday and holiday season'),
     ('Gift guide landing pages', 'Pending Approval', False, 150000, 0, 'Curated gift guide pages by price range and recipient'),
@@ -54,7 +54,7 @@ ACTIONS = [
     ('Returns portal self-service', 'Complete', True, 220000, 100, 'Allow customers to initiate returns without contacting support'),
     ('Launched Q4 promo engine', 'Launched', True, 900000, 100, 'Dynamic promo pricing engine for holiday campaigns'),
     ('Accessibility WCAG 2.1 audit', 'Pending Approval', True, 50000, 0, 'Audit and remediate accessibility issues site-wide'),
-    ('Warehouse pick-pack optimization', 'Active', True, 400000, 55, 'Optimize warehouse pick routes to reduce fulfillment time'),
+    ('Warehouse pick-pack optimization', 'WIP', True, 400000, 55, 'Optimize warehouse pick routes to reduce fulfillment time'),
 ]
 
 
@@ -115,6 +115,18 @@ class Command(BaseCommand):
             parent = all_projects[i % len(all_projects)]
             obj = objectives[i % len(objectives)] if objectives else None
 
+            # AEE alignment — derive from the objective, else round-robin
+            _aee_cycle = ['attract_traffic', 'engage_customers', 'expand_purchase']
+            _oname = (obj.name.lower() if obj else '')
+            if any(k in _oname for k in ('shopper', 'visit', 'traffic')):
+                aee = 'attract_traffic'
+            elif any(k in _oname for k in ('close', 'conversion', 'engage')):
+                aee = 'engage_customers'
+            elif any(k in _oname for k in ('order value', 'aov', 'purchase', 'expand')):
+                aee = 'expand_purchase'
+            else:
+                aee = _aee_cycle[i % 3]
+
             # Scores — some actions get full scores, some get zeros
             if has_scores:
                 cv = rng.randint(3, 10)
@@ -127,12 +139,12 @@ class Command(BaseCommand):
                 cv = bv = cs = oc = br = loe = 0
 
             launch = None
-            if status in ('Active', 'Launched', 'Complete'):
+            if status in ('WIP', 'Launched', 'Complete'):
                 launch = date(2026, rng.randint(1, 6), rng.randint(1, 28))
             elif status == 'Pending Assignment':
                 launch = date(2026, rng.randint(4, 8), rng.randint(1, 28))
 
-            approved = status in ('Active', 'Complete', 'Launched', 'Pending Assignment')
+            approved = status in ('WIP', 'Complete', 'Launched', 'Pending Assignment')
 
             s = Action(
                 project=parent,
@@ -150,6 +162,7 @@ class Command(BaseCommand):
                 vertical=vert,
                 team=team,
                 objective=obj,
+                aee_alignment=aee,
                 measure=rng.choice(measures) if measures else None,
                 customer_value=cv,
                 business_value=bv,
@@ -167,7 +180,7 @@ class Command(BaseCommand):
             created_cap = launch if (launch and launch < today) else today
             created = _rand_date(rng, year_start, created_cap)
             Action.objects.filter(pk=s.pk).update(date_created=created)
-            if status == 'Active':
+            if status == 'WIP':
                 active_cap = min(launch or today, today)
                 active_date = _rand_date(rng, created, active_cap)
                 Action.objects.filter(pk=s.pk).update(active_date=active_date)
