@@ -70,6 +70,20 @@ GROUP_LINKS = {
     'expand': '/app/analytics/expand-purchases/',
 }
 
+# Distinct per-marker colors for changeplot points, so each device / channel /
+# category reads as its own group. A vibrant, warm, flat categorical palette in
+# the spirit of bold Afro-diasporic color work — legible on the dark surface.
+MARKER_PALETTE = [
+    '#F2A03D',  # amber
+    '#E8654F',  # coral
+    '#46B3A3',  # teal
+    '#8E6FE0',  # violet
+    '#E4B93C',  # gold
+    '#4E8FD6',  # sky blue
+    '#C9468C',  # magenta
+    '#6FB84A',  # green
+]
+
 
 def primary_label(code):
     for c, label, _ in PRIMARY_OPTIONS:
@@ -587,7 +601,7 @@ def _scatter_chart(seed, heading, x_label, y_label, names, lever_kind):
     rnd = random.Random(seed)
     points = []
     raw = []
-    for name in names:
+    for i, name in enumerate(names):
         x = round(rnd.uniform(-18, 32), 2)          # YoY % change, x metric
         y = round(rnd.uniform(-18, 32), 2)          # YoY % change, y metric
         if lever_kind == 'currency':
@@ -601,6 +615,7 @@ def _scatter_chart(seed, heading, x_label, y_label, names, lever_kind):
         raw.append((x, y))
         points.append({
             'label': name, 'x': x, 'y': y,
+            'color': MARKER_PALETTE[i % len(MARKER_PALETTE)],
             'primary': fmt(primary, lever_kind)[0],
             'secondary': fmt(secondary, lever_kind)[0],
             'change': change,

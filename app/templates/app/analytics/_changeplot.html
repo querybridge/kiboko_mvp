@@ -1,6 +1,11 @@
 {# One changeplot widget = 3 scatter charts. Expects `widget` (id, group, title, charts). #}
 <div class="changeplot group-{{ widget.group }}">
   <div class="changeplot-title">{{ widget.title }}</div>
+  <div class="cp-legend">
+    {% for pt in widget.charts.0.points %}
+      <span class="cp-legend-item"><span class="cp-legend-dot" style="background: {{ pt.color }};"></span>{{ pt.label }}</span>
+    {% endfor %}
+  </div>
   <div class="cp-charts">
     {% for ch in widget.charts %}
       <div class="cp-chart">
