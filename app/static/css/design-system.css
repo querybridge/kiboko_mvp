@@ -118,7 +118,6 @@ body.nav-sm .container.body .col-md-3.left_col {
 
 .nav_title {
   background: var(--purple-950) !important;
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .site_title,
@@ -131,23 +130,25 @@ body.nav-sm .container.body .col-md-3.left_col {
 #sidebar-menu .menu_section h3 {
   color: var(--text-muted) !important;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0 16px;
   margin-top: 18px;
   margin-bottom: 6px;
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 8px;
 }
 
-.nav.side-menu > li > a {
+.nav.side-menu > li > a,
+.nav.child_menu li a {
   color: var(--text-secondary) !important;
-  font-weight: 500;
+  font-weight: 400;
   border-radius: 0;
   border-left: 3px solid transparent;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
+/* Sidebar icons render at normal weight (no faux-bold) */
+.nav.side-menu > li > a i,
+.nav.child_menu li a i { font-weight: 400; }
 .nav.side-menu > li > a:hover {
   background: var(--purple-900) !important;
   color: var(--text-primary) !important;
