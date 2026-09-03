@@ -1,9 +1,16 @@
 {# One analytics card. Expects `card` in context (see analytics_data.build_grow_sales). #}
-<div class="analytics-card group-{{ card.group }}{% if card.link %} ac-linked{% endif %}{% if card.highlight == 'win' %} ac-win{% elif card.highlight == 'loss' %} ac-loss{% endif %}"{% if card.link %} data-card-link="{{ card.link }}"{% endif %}>
+<div class="analytics-card group-{{ card.group }}{% if card.band %} has-band{% endif %}{% if card.link %} ac-linked{% endif %}{% if card.highlight == 'win' %} ac-win{% elif card.highlight == 'loss' %} ac-loss{% endif %}"{% if card.link %} data-card-link="{{ card.link }}"{% endif %}>
+  {% if card.band %}
+    {# Elevated pillar band — solid group color makes the Attract/Engage/Expand identity unmistakable #}
+    <div class="ac-band">
+      <span class="ac-band-label">{{ card.title }}</span>
+      {% if card.link %}<a href="{{ card.link }}" class="ac-goto ac-goto-band" title="Go to {{ card.header }} details"><i class="fa fa-angle-right"></i></a>{% endif %}
+    </div>
+  {% endif %}
   <div class="ac-head">
-    {% if card.title %}<span class="ac-title">{{ card.title }}</span>{% endif %}
+    {% if card.title and not card.band %}<span class="ac-title">{{ card.title }}</span>{% endif %}
     <span class="ac-header">{{ card.header }}</span>
-    {% if card.link %}<a href="{{ card.link }}" class="ac-goto" title="Go to {{ card.header }} details"><i class="fa fa-angle-right"></i></a>{% endif %}
+    {% if card.link and not card.band %}<a href="{{ card.link }}" class="ac-goto" title="Go to {{ card.header }} details"><i class="fa fa-angle-right"></i></a>{% endif %}
   </div>
   <div class="ac-top">
     <div class="ac-left">

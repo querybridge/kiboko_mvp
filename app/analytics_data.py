@@ -478,6 +478,11 @@ def build_grow_sales(primary_code, compare_code):
     for c in cards.values():
         c['link'] = GROUP_LINKS.get(c['group'], '')
 
+    # Elevate the pillar identity with a full-width color band — ONLY on the
+    # three second-row cards that literally read ATTRACT / ENGAGE / EXPAND.
+    for cid in ('attract', 'engage', 'expand'):
+        cards[cid]['band'] = True
+
     # Period winner / loser highlight (recreates the reference get6ChartPercentages):
     # among the six granular "detail" cards, pulse the biggest gainer green and
     # the biggest decliner red — only when the move is actually positive/negative.

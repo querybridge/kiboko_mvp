@@ -60,6 +60,22 @@
   #analytics-page .analytics-card.group-engage  { border-left-color: var(--ac-engage); }
   #analytics-page .analytics-card.group-expand  { border-left-color: var(--ac-expand); }
 
+  /* Elevated pillar band (Attract/Engage/Expand identity) */
+  #analytics-page .analytics-card.has-band { overflow: hidden; }
+  #analytics-page .ac-band {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin: -18px -18px 14px; padding: 11px 16px; border-radius: 13px 13px 0 0;
+  }
+  #analytics-page .group-grow    .ac-band { background: var(--ac-grow); }
+  #analytics-page .group-attract .ac-band { background: var(--ac-attract); }
+  #analytics-page .group-engage  .ac-band { background: var(--ac-engage); }
+  #analytics-page .group-expand  .ac-band { background: var(--ac-expand); }
+  #analytics-page .ac-band-label { font-family: var(--font-display,'Space Grotesk','Inter',sans-serif); font-size: 19px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: #160C2E; line-height: 1; }
+  #analytics-page .ac-goto-band { color: #160C2E; opacity: .8; font-size: 20px; }
+  #analytics-page .ac-goto-band:hover { opacity: 1; }
+  /* On banded cards the metric header recedes so the pillar + KPI lead */
+  #analytics-page .has-band .ac-header { color: var(--ac-secondary); }
+
   #analytics-page .ac-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
   #analytics-page .ac-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; color: var(--ac-muted); text-transform: uppercase; }
   #analytics-page .ac-header { font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
