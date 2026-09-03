@@ -124,6 +124,7 @@ Thumbs.db
 
 # Project local
 claude_prompt_context.txt
+local_settings.py
 .claude/
 to_do.txt
 wakanda_dark.png

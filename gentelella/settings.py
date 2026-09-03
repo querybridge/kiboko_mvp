@@ -141,3 +141,13 @@ STATIC_ROOT = 'static'
 LOGIN_URL = '/users/login/'
 # Home page: land on the Grow Sales analytics dashboard after login.
 LOGIN_REDIRECT_URL = '/app/analytics/grow-sales/'
+
+# --- Per-environment overrides -------------------------------------------
+# Keep this committed settings.py at dev defaults. Put server-specific values
+# (DEBUG=False, SECRET_KEY, ALLOWED_HOSTS, DATABASES, etc.) in a gitignored
+# gentelella/local_settings.py so `git pull` never conflicts with the server
+# config. Anything defined there overrides the values above.
+try:
+    from .local_settings import *  # noqa: F401,F403
+except ImportError:
+    pass
