@@ -36,7 +36,10 @@ class Action(models.Model):
 	active_date = models.DateField(null=True, blank=True, editable=False)
 	normalized_score = models.DecimalField(max_digits=4, decimal_places=1, editable=False, null=True, default=0)
 	approved = models.BooleanField(default=False)
-	status = models.CharField(choices=status_options, max_length=350, null=True, default='Incomplete Entry')
+	# Blank by default so a new entry derives its starting Kanban column from its
+	# own completeness/score (see services.kanban.derive_status). Once placed, the
+	# stored column is authoritative.
+	status = models.CharField(choices=status_options, max_length=350, null=True, blank=True, default=None)
 	archived = models.BooleanField(default=False)
 	business_unit = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE)
 
@@ -80,9 +83,11 @@ class Action(models.Model):
 		score = weighted_score(values)
 		self.normalized_score = Decimal(str(score)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
 
-		# Keep status in sync with the Kanban column this action belongs to.
+		# Status is the source of truth for the Kanban column; is_blocked mirrors
+		# it so the board, the backlog and the edit form all agree.
 		from .services.kanban import derive_status
 		self.status = derive_status(self)
+		self.is_blocked = (self.status == 'Blocked')
 
 		# Stamp active_date the first time status transitions to Active
 		previous_status = getattr(self, '_db_status', None)
