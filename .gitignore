@@ -133,6 +133,8 @@ updates_*.txt
 *.sqlite3-journal
 media/
 staticfiles/
+# collectstatic output (STATIC_ROOT); regenerated on deploy. Source lives in app/static/.
+/static/
 
 # Logs
 *.log
