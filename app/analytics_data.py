@@ -400,15 +400,24 @@ def build_grow_sales(primary_code, compare_code):
          series_key='totalRevenue', secondary_key='totalRevenue',
          two_sets=True, fmt_kind='currency', chart_height=150)
 
-    # 2-4. ATTRACT / ENGAGE / EXPAND  (KPI + sparkline)
+    # 2-4. ATTRACT / ENGAGE / EXPAND  (KPI + sparkline + sentence)
     card('attract', 'attract', 'ATTRACT', 'VISITS',
          kpi_kind='integer', kpi_val=p['visits'], delta_key='total_visits',
+         bottom=(f"{fmt(p['visitors'], 'integer')[0]} visitors came to the site. "
+                 f"On average, they visited {fmt(p['visit_per_visitor'], 'normal')[0]} times each, "
+                 f"yielding {fmt(p['visits'], 'integer')[0]} total Visits."),
          series_key='sessions', fmt_kind='integer')
     card('engage', 'engage', 'ENGAGE', 'CLOSE RATE',
          kpi_kind='percentage', kpi_val=p['close_rate'], delta_key='close_rate',
+         bottom=(f"{fmt(p['cart_creation_pct'], 'percentage')[0]} of all visits created a cart. "
+                 f"Of those carts, {fmt(p['cart_completion'], 'percentage')[0]} completed purchase, "
+                 f"yielding a {fmt(p['close_rate'], 'percentage')[0]} Close Rate."),
          series_key='engageCloseRate', fmt_kind='percentage')
     card('expand', 'expand', 'EXPAND', 'AVG ORDER VALUE',
          kpi_kind='currency', kpi_val=p['aov'], delta_key='aov',
+         bottom=(f"The average order had {fmt(p['units_per_order'], 'normal')[0]} units at "
+                 f"{fmt(p['avg_unit_price'], 'currency')[0]} each, yielding a "
+                 f"{fmt(p['aov'], 'currency')[0]} Avg. Order Value."),
          series_key='expandAvgOrderValue', fmt_kind='currency')
 
     # 5-7. VISITORS / CART CREATION / UNITS PER ORDER  (KPI + equation)
@@ -433,25 +442,16 @@ def build_grow_sales(primary_code, compare_code):
          kpi_kind='normal', kpi_val=p['visit_per_visitor'], delta_key='visit_per_visitor',
          equation=[E(p['visits'], 'integer', 'Visits  /'),
                    E(p['visitors'], 'integer', 'Visitors')],
-         bottom=(f"{fmt(p['visitors'], 'integer')[0]} visitors came to the site. "
-                 f"On average, they had {fmt(p['visit_per_visitor'], 'normal')[0]} visits each, "
-                 f"yielding {fmt(p['visits'], 'integer')[0]} total Visits."),
          series_key='visitPerVisitorValue', fmt_kind='normal')
     card('engage_cart_completion', 'engage', '', 'CART COMPLETION',
          kpi_kind='percentage', kpi_val=p['cart_completion'], delta_key='cart_completion',
          equation=[E(p['orders'], 'integer', 'Orders  /'),
                    E(p['carts'], 'integer', 'Carts')],
-         bottom=(f"{fmt(p['cart_creation_pct'], 'percentage')[0]} of all visits created a cart. "
-                 f"Of those carts, {fmt(p['cart_completion'], 'percentage')[0]} completed purchase, "
-                 f"yielding a {fmt(p['close_rate'], 'percentage')[0]} Close Rate."),
          series_key='cartCompletionValue', fmt_kind='percentage')
     card('expand_avg_unit_price', 'expand', '', 'AVG UNIT PRICE',
          kpi_kind='currency', kpi_val=p['avg_unit_price'], delta_key='avg_unit_price',
          equation=[E(p['sales'], 'currency', 'Sales  /'),
                    E(p['units'], 'integer', 'Units')],
-         bottom=(f"The average order had {fmt(p['units_per_order'], 'normal')[0]} units at "
-                 f"{fmt(p['avg_unit_price'], 'currency')[0]} each, yielding a "
-                 f"{fmt(p['aov'], 'currency')[0]} Avg. Order Value."),
          series_key='expandAvgUnitPrice', fmt_kind='currency')
 
     # 11. ATTRACT & ENGAGE / ORDERS  (wide, 2-series) — gold/yellow theme
@@ -463,17 +463,17 @@ def build_grow_sales(primary_code, compare_code):
          series_key='checkouts', secondary_key='checkouts',
          two_sets=True, fmt_kind='integer', chart_height=130)
 
-    # 12. EXPAND / AVG ORDER VALUE  (equation result, delta on right)
+    # 12. EXPAND / AVG ORDER VALUE  (KPI + equation result)
     card('expand_two', 'expand', 'EXPAND', 'AVG ORDER VALUE',
-         delta_key='aov',
+         kpi_kind='currency', kpi_val=p['aov'], delta_key='aov',
          equation=[E(p['sales'], 'currency', 'Sales  /'),
                    E(p['orders'], 'integer', 'Orders  =')],
          result=E(p['aov'], 'currency', 'AOV'),
          series_key='expandAvgOrderValue', fmt_kind='currency', chart_height=130)
 
-    # 13. ATTRACT TRAFFIC / VISITS  (equation result, delta on right)
+    # 13. ATTRACT TRAFFIC / VISITS  (KPI + equation result)
     card('attract_traffic', 'attract', 'ATTRACT TRAFFIC', 'VISITS',
-         delta_key='total_visits',
+         kpi_kind='integer', kpi_val=p['visits'], delta_key='total_visits',
          equation=[E(p['visitors'], 'integer', 'Visitors  ×'),
                    E(p['visit_per_visitor'], 'normal', 'Visits each  =')],
          result=E(p['visits'], 'integer', 'Visits'),
