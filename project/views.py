@@ -14,8 +14,12 @@ from business_unit.models import BusinessUnit
 from django.contrib.auth.decorators import login_required
 from django.db.models import F, Q
 from .services.kanban import (
-    LANES, group_projects, compute_all_lane_totals, validate_move, apply_move,
+    LANES, get_lane, group_projects, compute_all_lane_totals, validate_move, apply_move,
 )
+
+# Statuses that are terminal / not represented as a Kanban lane. These never
+# appear in the Backlog -- they live in the Archive only.
+NON_KANBAN_STATUSES = ['Complete', 'Launched']
 
 
 def _get_vertical_id(request):
@@ -43,33 +47,49 @@ def view(request):
     aee_labels = dict(AEE_ALIGNMENT_CHOICES)
     if aee not in aee_labels or aee == '':
         aee = ''
-    # Exclude archived projects
-    # Projects that are approved OR have status Pending Assignment/Active go in the approved table
-    approved_projects = Action.objects.filter(
-        archived=False,
-    ).filter(
-        Q(approved=True) | Q(status__in=['Pending Assignment', 'WIP'])
-    )
+    # Optional measure filter (from clicking a card on a detail dashboard)
+    measure = request.GET.get('measure', '').strip()
+    # Backlog candidates: everything not archived and not a terminal status
+    # (Complete / Launched live in the Archive only). Each row is bucketed by its
+    # Kanban lane, so the Backlog tables mirror the Kanban headings exactly.
+    base = Action.objects.filter(archived=False).exclude(
+        status__in=NON_KANBAN_STATUSES
+    ).select_related('owner', 'measure', 'business_unit', 'vertical', 'project')
     if vertical_id:
-        approved_projects = approved_projects.filter(vertical_id=vertical_id)
-    owned_bus = BusinessUnit.objects.filter(owner=request.user)
-    # Pending = not approved AND not Pending Assignment/Active status
-    pending_filter = Q(approved=False, archived=False) & ~Q(status__in=['Pending Assignment', 'WIP'])
-    if owned_bus.exists():
-        pending_projects = Action.objects.filter(pending_filter, business_unit__in=owned_bus)
-    else:
-        pending_projects = Action.objects.filter(pending_filter)
-    if vertical_id:
-        pending_projects = pending_projects.filter(vertical_id=vertical_id)
+        base = base.filter(vertical_id=vertical_id)
     if aee:
-        approved_projects = approved_projects.filter(aee_alignment=aee)
-        pending_projects = pending_projects.filter(aee_alignment=aee)
+        base = base.filter(aee_alignment=aee)
+    if measure:
+        base = base.filter(measure__name=measure)
+
+    buckets = {key: [] for key in LANES}
+    for p in base:
+        p.kanban_lane_key = get_lane(p)
+        p.kanban_lane_label = LANES.get(p.kanban_lane_key, '')
+        buckets[p.kanban_lane_key].append(p)
+
+    # Business-unit owners only see their own units' not-yet-in-flight work
+    # (blocked / incomplete / awaiting review); WIP & On Deck stay visible to all.
+    owned_bus = BusinessUnit.objects.filter(owner=request.user)
+    if owned_bus.exists():
+        owned_ids = set(owned_bus.values_list('id', flat=True))
+        for key in ('blocked', 'incomplete_entry', 'ready_to_score', 'scored'):
+            buckets[key] = [p for p in buckets[key] if p.business_unit_id in owned_ids]
+
+    # Approved Actions -> WIP + On Deck; Pending Review -> Ready to Score + Scored.
+    approved_projects = buckets['active'] + buckets['on_deck']
+    pending_review_projects = buckets['ready_to_score'] + buckets['scored']
+    incomplete_projects = buckets['incomplete_entry']
+    blocked_projects = buckets['blocked']
     return render(request, 'project/view.html', {
         'approved_projects': approved_projects,
-        'pending_projects': pending_projects,
+        'pending_review_projects': pending_review_projects,
+        'incomplete_projects': incomplete_projects,
+        'blocked_projects': blocked_projects,
         'title': title,
         'aee_filter': aee,
         'aee_filter_label': aee_labels.get(aee, ''),
+        'measure_filter': measure,
     })
     
 #Add New Project
@@ -270,7 +290,11 @@ def delete(request, project_id):
 def archive(request):
     """View archived (launched) projects with pagination."""
     vertical_id = _get_vertical_id(request)
-    archived_projects = Action.objects.filter(archived=True).order_by('-launch', '-date_modified')
+    # Archived actions plus Complete ones (Complete isn't a Kanban lane, so it
+    # only lives here, not in the Backlog).
+    archived_projects = Action.objects.filter(
+        Q(archived=True) | Q(status='Complete')
+    ).order_by('-launch', '-date_modified')
     if vertical_id:
         archived_projects = archived_projects.filter(vertical_id=vertical_id)
     paginator = Paginator(archived_projects, 10)

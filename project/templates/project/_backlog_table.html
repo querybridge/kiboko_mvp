@@ -1,0 +1,74 @@
+{# One Backlog table. Expects: table_id, heading, projects, empty_msg #}
+{% load humanize %}
+<div class="row">
+  <div class="col-md-12 col-sm-12 col-xs-12">
+    <div class="x_panel">
+      {% if table_id == 'approved' %}
+      <ul class="nav navbar-right project_action" style="">
+        <li style="display: inline-block"><a href="/project/add.html?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Add</a></li>
+      </ul>
+      {% endif %}
+      <div class="x_title">
+        <h3>{{ heading }}</h3>
+      </div>
+      <div class="x_content">
+        <table id="datatable-{{ table_id }}" class="table table-striped table-bordered dt-responsive nowrap dataTable no-footer dtr-inline" cellspacing="0" width="100%" role="grid" style="width: 100%;">
+          <thead>
+            <tr>
+              <th>Owner</th>
+              <th>Date Created</th>
+              <th>Date Modified</th>
+              <th>Name</th>
+              <th>AEE Alignment</th>
+              <th>Measure</th>
+              <th>Definition of Done</th>
+              <th>User Story</th>
+              <th>Value</th>
+              <th>Cust Val</th>
+              <th>Biz Val</th>
+              <th>Cost Sav</th>
+              <th>Op Cost</th>
+              <th>Biz Risk</th>
+              <th>LOE</th>
+              <th>Score</th>
+              <th>Progress</th>
+              <th>Status</th>
+              <th>Edit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for project in projects %}
+            <tr>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.owner }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.date_created }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.date_modified }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.name }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.get_aee_alignment_display }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.measure|default:"—" }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.impact }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.why }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">${{ project.value|intcomma }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.customer_value|default:"0" }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.business_value|default:"0" }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.cost_savings|default:"0" }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.operational_cost|default:"0" }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.business_risk|default:"0" }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.level_of_effort|default:"0" }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.normalized_score }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.progress }}%</a></td>
+              <td>{% if project.kanban_lane_key == 'active' %}<a href="{% url 'app:work_in_progress' %}?focus={{ project.id }}" title="See this action on the Work In Progress timeline">{{ project.kanban_lane_label }}</a>{% else %}{{ project.kanban_lane_label }}{% endif %}</td>
+              <td>
+                <a href="/project/{{project.id}}/edit?next={{ request.path|urlencode }}" class="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="20" style="text-align: center;">{{ empty_msg }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
