@@ -1162,13 +1162,27 @@ def _analytics_filter(request):
     return the common filter context shared by every analytics dashboard."""
     from app import analytics_data as ad
 
-    primary = request.GET.get('period', ad.DEFAULT_PRIMARY)
-    if primary not in dict((c, d) for c, d, _ in ad.PRIMARY_OPTIONS):
+    valid_primary = dict((c, d) for c, d, _ in ad.PRIMARY_OPTIONS)
+
+    # Period: an explicit ?period= is a fresh selection; otherwise fall back to
+    # the last-used value from the session so selections persist across the
+    # analytics dashboards.
+    primary = request.GET.get('period') or request.session.get('analytics_period') or ad.DEFAULT_PRIMARY
+    if primary not in valid_primary:
         primary = ad.DEFAULT_PRIMARY
+
     valid_compares = [c for c, _ in ad.COMPARE_OPTIONS.get(primary, [])]
-    compare = request.GET.get('compare', '')
+    if 'period' in request.GET:
+        # Changing the period resets the comparison (server picks a valid one).
+        compare = request.GET.get('compare', '')
+    else:
+        compare = request.session.get('analytics_compare', '')
     if compare not in valid_compares:
         compare = ad.default_compare(primary)
+
+    # Remember the selection for the other dashboards.
+    request.session['analytics_period'] = primary
+    request.session['analytics_compare'] = compare
 
     ctx = {
         'primary_options': ad.PRIMARY_OPTIONS,
