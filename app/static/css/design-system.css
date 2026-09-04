@@ -153,6 +153,23 @@ body.nav-sm .container.body .col-md-3.left_col {
   background: var(--purple-900) !important;
   color: var(--text-primary) !important;
 }
+/* Lay out top-level menu links as a flex row so the toggle chevron stays
+   vertically centered even when a long label (e.g. "Project Prioritization")
+   wraps to two lines, instead of dropping to the bottom of the row. */
+body:not(.nav-sm) .nav.side-menu > li > a {
+  display: flex;
+  align-items: center;
+}
+body:not(.nav-sm) .nav.side-menu > li > a > i:first-child {
+  flex: 0 0 auto;
+  margin-right: 8px;
+}
+body:not(.nav-sm) .nav.side-menu > li > a > .fa-chevron-down,
+body:not(.nav-sm) .nav.side-menu > li > a > .fa-chevron-up {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 6px;
+}
 .nav.side-menu > li.active > a,
 .nav.side-menu > li.current-page > a,
 .nav.side-menu > li.active-sm > a {
