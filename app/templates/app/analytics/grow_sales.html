@@ -4,6 +4,24 @@
 {% block stylesheets %}
   {{ block.super }}
   {% include "app/analytics/_styles.html" %}
+  <style>
+    /* Headline group: the three AEE pillars sit in an elevated, labeled panel
+       so they read above the six detail cards below. */
+    #analytics-page .lever-panel {
+      background: linear-gradient(180deg, rgba(169,142,232,0.07), rgba(169,142,232,0.02));
+      border: 1px solid var(--ac-edge, rgba(214,197,247,0.16));
+      border-radius: 16px;
+      box-shadow: var(--ac-shadow, 0 10px 26px rgba(0,0,0,0.48));
+      padding: 4px 14px 4px;
+      margin-bottom: 26px;
+    }
+    #analytics-page .lever-panel-label {
+      font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+      color: var(--ac-secondary, #C8BCDF); padding: 11px 4px 5px;
+    }
+    /* Cards inside the panel drop their own shadow (the panel carries elevation) */
+    #analytics-page .lever-panel .analytics-card { margin-bottom: 14px; box-shadow: none; }
+  </style>
 {% endblock stylesheets %}
 
 {% block content %}
@@ -38,11 +56,14 @@
     <!-- Row 1: hero -->
     <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.grow_sales %}</div></div>
 
-    <!-- Row 2: Attract / Engage / Expand -->
-    <div class="row">
-      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.attract %}</div>
-      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.engage %}</div>
-      <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.expand %}</div>
+    <!-- Row 2: the three AEE pillars, grouped as the headline -->
+    <div class="lever-panel">
+      <div class="lever-panel-label">The Three Levers</div>
+      <div class="row">
+        <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.attract %}</div>
+        <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.engage %}</div>
+        <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.expand %}</div>
+      </div>
     </div>
 
     <!-- Row 3: Visitors / Cart Creation / Units per Order -->
