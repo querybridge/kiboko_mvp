@@ -48,6 +48,7 @@
                           <th>Date Modified</th>
                           <th>Name</th>
                           <th>AEE Alignment</th>
+                          <th>Measure</th>
                           <th>Definition of Done</th>
                           <th>User Story</th>
                           <th>Value</th>
@@ -72,6 +73,7 @@
                           <td><a href="{{ project.id }}" class="">{{ project.date_modified }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.name }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.get_aee_alignment_display }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.measure|default:"—" }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.impact }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.why }}</a></td>
                           <td><a href="{{ project.id }}" class="">${{ project.value|intcomma }}</a></td>
@@ -90,7 +92,7 @@
                         </tr>
                         {% empty %}
                         <tr >
-                          <td colspan="19" style="text-align: center;">No Approved Actions</td>
+                          <td colspan="20" style="text-align: center;">No Approved Actions</td>
                         </tr>
                         
                         {% endfor %}
@@ -118,6 +120,7 @@
                           <th>Date Modified</th>
                           <th>Name</th>
                           <th>AEE Alignment</th>
+                          <th>Measure</th>
                           <th>Definition of Done</th>
                           <th>User Story</th>
                           <th>Value</th>
@@ -142,6 +145,7 @@
                           <td><a href="{{ project.id }}" class="">{{ project.date_modified }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.name }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.get_aee_alignment_display }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.measure|default:"—" }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.impact }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.why }}</a></td>
                           <td><a href="{{ project.id }}" class="">${{ project.value|intcomma }}</a></td>
@@ -160,7 +164,7 @@
                         </tr>
                         {% empty %}
                         <tr >
-                          <td colspan="19" style="text-align: center;">No Actions To Be Approved</td>
+                          <td colspan="20" style="text-align: center;">No Actions To Be Approved</td>
                         </tr>
 
                         {% endfor %}
