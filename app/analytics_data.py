@@ -20,6 +20,7 @@ totals, so `visits x closeRate x AOV = sales` and friends hold to the penny.
 import datetime
 import random
 import zlib
+from urllib.parse import quote
 
 
 def _seed(*parts):
@@ -381,6 +382,40 @@ def _apply_lever_glow(cards, primary_code, compare_code, dashboard):
             cards[card_id]['highlight'] = state
 
 
+# The "main metric" cards on each detail dashboard -> the Add-Project Measure
+# they impact. Clicking one of these cards opens the Backlog filtered to that
+# measure ("projects that will move this metric"). Only these lever cards are
+# linked; device/channel splits, history readouts and changeplots are not.
+DETAIL_CARD_MEASURE = {
+    # Attract Traffic
+    'attract_visits': 'Visits',
+    'invite': 'New Visitors',
+    'returning': 'Returning Visitors',
+    'encourage': 'Visits per Visitor',
+    'visitors': 'Visitors',
+    # Engage Customer
+    'engage_close_rate': 'Close Rate',
+    'interest': 'Cart Creation',
+    'interest_big': 'Cart Creation',
+    'convince': 'Cart Completion',
+    'convince_big': 'Cart Completion',
+    # Expand Purchases
+    'expand_aov': 'Avg Order Value',
+    'inspire': 'Units per Order',
+    'inspire_big': 'Units per Order',
+    'enhance': 'Avg Unit Price',
+    'enhance_big': 'Avg Unit Price',
+}
+
+
+def _apply_backlog_links(cards):
+    """Make each main metric card click through to the Backlog, filtered to the
+    measure that card impacts."""
+    for card_id, measure in DETAIL_CARD_MEASURE.items():
+        if card_id in cards:
+            cards[card_id]['link'] = '/project/view.html?measure=' + quote(measure)
+
+
 # ---------------------------------------------------------------------------
 # Card assembly for the Grow Sales dashboard
 # ---------------------------------------------------------------------------
@@ -740,6 +775,7 @@ def build_attract_traffic(primary_code, compare_code):
                s1=_split_series(sessions, share, _seed(cid, 's')), fmt_kind='integer')
 
     _apply_lever_glow(d.cards, primary_code, compare_code, 'attract')
+    _apply_backlog_links(d.cards)
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
 
@@ -883,6 +919,7 @@ def build_engage_customer(primary_code, compare_code):
         d.scatter_widget(wid, 'engage', title, charts)
 
     _apply_lever_glow(d.cards, primary_code, compare_code, 'engage')
+    _apply_backlog_links(d.cards)
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
 
@@ -962,4 +999,5 @@ def build_expand_purchases(primary_code, compare_code):
     d.scatter_widget('category_changeplot', 'expand', 'Product Category AOV Changeplot', charts)
 
     _apply_lever_glow(d.cards, primary_code, compare_code, 'expand')
+    _apply_backlog_links(d.cards)
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
