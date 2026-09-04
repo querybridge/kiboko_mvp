@@ -10,11 +10,15 @@ locations = (
 		('Landing Page', 'Landing Page'),
 	)
 
+# Status == the Kanban column an action sits in (see services/kanban.py), plus
+# the two terminal states that live in the Archive rather than on the board.
 status_options = (
-		('Pending Approval', 'Pending Approval'),
-		('Pending Assignment', 'Pending Assignment'),
+		('Incomplete Entry', 'Incomplete Entry'),
+		('Ready to Score', 'Ready to Score'),
+		('Scored', 'Scored'),
 		('On Deck', 'On Deck'),
 		('WIP', 'WIP'),
+		('Blocked', 'Blocked'),
 		('Complete', 'Complete'),
 		('Launched', 'Launched'),
 	)

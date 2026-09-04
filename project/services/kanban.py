@@ -16,10 +16,62 @@ LANES = OrderedDict([
     ('active',           'WIP'),
 ])
 
+# The status value stored on an Action for each lane. Status == the Kanban
+# column, so moving a card (or saving one) writes the matching status here.
+LANE_STATUS = {
+    'blocked':          'Blocked',
+    'incomplete_entry': 'Incomplete Entry',
+    'ready_to_score':   'Ready to Score',
+    'scored':           'Scored',
+    'on_deck':          'On Deck',
+    'active':           'WIP',
+}
+STATUS_LANE = {status: lane for lane, status in LANE_STATUS.items()}
+
+# Terminal statuses -- not Kanban columns; they live in the Archive.
+TERMINAL_STATUSES = ('Complete', 'Launched')
+
 # Fields required before a project can be scored
 REQUIRED_FOR_SCORING = [
     'name', 'project_id', 'business_unit_id', 'owner_id', 'why',
 ]
+
+
+def _has_score(project):
+    return project.normalized_score is not None and project.normalized_score > 0
+
+
+def derive_status(project):
+    """The canonical status (== Kanban column) an Action should carry.
+
+    Called from Action.save() so `status` always mirrors the column the card
+    belongs to. Terminal states and the two committed stages (On Deck / WIP) are
+    authoritative; the pre-approval stages are derived from completeness + score
+    so a card flows Incomplete Entry -> Ready to Score -> Scored automatically.
+    """
+    status = (project.status or '').strip()
+
+    # Terminal states are set explicitly and left alone.
+    if status in TERMINAL_STATUSES:
+        return status
+
+    # Blocked is an overlay flag that wins over everything else.
+    if project.is_blocked:
+        return 'Blocked'
+
+    # A card committed to a board stage keeps that stage.
+    if status == 'WIP':
+        return 'WIP'
+    if status in ('On Deck', 'Pending Assignment'):   # legacy value folds in
+        return 'On Deck'
+
+    # Everything else (new entries, Ready to Score / Scored, legacy Pending
+    # Approval) is derived from how complete + scored the entry is.
+    if _is_incomplete(project):
+        return 'Incomplete Entry'
+    if _has_score(project):
+        return 'Scored'
+    return 'Ready to Score'
 
 # Transitions: which lanes can a card be dragged INTO
 # None means "any lane can reach it"; a list means those source lanes only.
@@ -36,37 +88,28 @@ ALLOWED_TRANSITIONS = {
 def get_lane(project):
     """Determine which Kanban lane a project belongs to.
 
-    Priority order matters -- is_blocked is checked first, then status-based
-    rules, then scoring completeness.
+    Status mirrors the column (kept in sync by Action.save), so we map the
+    stored status straight to its lane. is_blocked wins first; legacy statuses
+    fall through to a completeness/score derivation for safety.
     """
     if project.is_blocked:
         return 'blocked'
 
     status = (project.status or '').strip()
 
-    if status == 'WIP':
-        return 'active'
+    if status in STATUS_LANE:
+        return STATUS_LANE[status]
 
-    if status == 'On Deck':
+    # Legacy / unsynced statuses (Pending Approval, Pending Assignment, blank).
+    if status == 'Pending Assignment':
         return 'on_deck'
-
-    if status in ('Pending Assignment',):
-        return 'on_deck'
-
-    # Check if scoring is complete
-    has_score = project.normalized_score is not None and project.normalized_score > 0
-
+    has_score = _has_score(project)
     if has_score and status == 'Pending Approval':
         return 'scored'
-
-    # Check required fields
     if _is_incomplete(project):
         return 'incomplete_entry'
-
     if not has_score:
         return 'ready_to_score'
-
-    # Fallback for scored but unmatched status
     return 'scored'
 
 
@@ -166,18 +209,10 @@ def apply_move(project, target_lane):
         project.is_blocked = True
     else:
         project.is_blocked = False
-
-        if target_lane == 'incomplete_entry':
-            project.status = 'Pending Approval'
-        elif target_lane == 'ready_to_score':
-            project.status = 'Pending Approval'
-        elif target_lane == 'scored':
-            project.status = 'Pending Approval'
-        elif target_lane == 'on_deck':
-            project.status = 'On Deck'
-            project.approved = True
-        elif target_lane == 'active':
-            project.status = 'WIP'
+        # Status == the target column. save() re-derives the pre-approval stages
+        # from completeness/score, so a soft target just seeds the derivation.
+        project.status = LANE_STATUS[target_lane]
+        if target_lane in ('on_deck', 'active'):
             project.approved = True
 
     project.save()

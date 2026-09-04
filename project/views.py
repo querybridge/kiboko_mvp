@@ -140,7 +140,7 @@ def project_edit(request, project_id):
             project.modified_date = timezone.now()
             if 'approve' in request.POST:
                 project.approved = True
-                project.status = 'Pending Assignment'
+                project.status = 'On Deck'
             project.save()
             if 'approve' in request.POST:
                 return redirect('project:all')
@@ -251,7 +251,7 @@ def loe(request):
 @login_required
 def approve(request):
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['WIP', 'Pending Assignment'])
+    projects = Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['WIP', 'On Deck'])
     if vertical_id:
         projects = projects.filter(vertical_id=vertical_id)
     title = "Approve and Prioritize"
@@ -316,7 +316,9 @@ def archive(request):
 def kanban_view(request):
     """Render the Kanban board."""
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(archived=False).select_related(
+    projects = Action.objects.filter(archived=False).exclude(
+        status__in=NON_KANBAN_STATUSES
+    ).select_related(
         'project', 'business_unit', 'vertical', 'owner',
     )
     if vertical_id:
@@ -365,7 +367,7 @@ def kanban_move(request):
 
     # Recompute all lane totals after the move
     vertical_id = data.get('vertical_id')
-    qs = Action.objects.filter(archived=False)
+    qs = Action.objects.filter(archived=False).exclude(status__in=NON_KANBAN_STATUSES)
     if vertical_id:
         try:
             qs = qs.filter(vertical_id=int(vertical_id))

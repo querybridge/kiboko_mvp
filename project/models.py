@@ -36,7 +36,7 @@ class Action(models.Model):
 	active_date = models.DateField(null=True, blank=True, editable=False)
 	normalized_score = models.DecimalField(max_digits=4, decimal_places=1, editable=False, null=True, default=0)
 	approved = models.BooleanField(default=False)
-	status = models.CharField(choices=status_options, max_length=350, null=True, default='Pending Approval')
+	status = models.CharField(choices=status_options, max_length=350, null=True, default='Incomplete Entry')
 	archived = models.BooleanField(default=False)
 	business_unit = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE)
 
@@ -79,6 +79,10 @@ class Action(models.Model):
 		values = {c: getattr(self, c, 0) or 0 for c in CRITERIA}
 		score = weighted_score(values)
 		self.normalized_score = Decimal(str(score)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+
+		# Keep status in sync with the Kanban column this action belongs to.
+		from .services.kanban import derive_status
+		self.status = derive_status(self)
 
 		# Stamp active_date the first time status transitions to Active
 		previous_status = getattr(self, '_db_status', None)
