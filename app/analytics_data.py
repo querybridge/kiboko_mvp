@@ -332,6 +332,56 @@ def build_metrics(primary_code, compare_code):
 
 
 # ---------------------------------------------------------------------------
+# Winner / loser glow shared between Grow Sales and the detail dashboards
+# ---------------------------------------------------------------------------
+
+# The six Grow Sales "detail" levers -> the pct delta key that ranks them.
+LEVER_DELTA_KEYS = {
+    'attract_visitors': 'total_visitor',
+    'attract_visits': 'visit_per_visitor',
+    'engage_cart_creation': 'cart_creation',
+    'engage_cart_completion': 'cart_completion',
+    'expand_units_per_order': 'units_per_order',
+    'expand_avg_unit_price': 'avg_unit_price',
+}
+
+# Each lever -> the detail dashboard + the (small summary) card that should
+# mirror the same glow.
+LEVER_DETAIL_CARD = {
+    'attract_visitors': ('attract', 'visitors'),
+    'attract_visits': ('attract', 'encourage'),
+    'engage_cart_creation': ('engage', 'interest'),
+    'engage_cart_completion': ('engage', 'convince'),
+    'expand_units_per_order': ('expand', 'inspire'),
+    'expand_avg_unit_price': ('expand', 'enhance'),
+}
+
+
+def lever_highlights(primary_code, compare_code):
+    """Best/worst of the six Grow Sales detail levers for a period selection.
+    Returns {lever_id: 'win'|'loss'} — biggest positive gainer green, biggest
+    negative decliner red, at most one of each (matches Grow Sales exactly)."""
+    pct = build_metrics(primary_code, compare_code)['pct']
+    deltas = [(lid, pct[key]) for lid, key in LEVER_DELTA_KEYS.items()]
+    win_id, win_val = max(deltas, key=lambda kv: kv[1])
+    lose_id, lose_val = min(deltas, key=lambda kv: kv[1])
+    out = {}
+    if win_val > 0:
+        out[win_id] = 'win'
+    if lose_val < 0 and lose_id != win_id:
+        out[lose_id] = 'loss'
+    return out
+
+
+def _apply_lever_glow(cards, primary_code, compare_code, dashboard):
+    """Mirror the Grow Sales win/loss glow onto this dashboard's matching card."""
+    for lever, state in lever_highlights(primary_code, compare_code).items():
+        dash, card_id = LEVER_DETAIL_CARD[lever]
+        if dash == dashboard and card_id in cards:
+            cards[card_id]['highlight'] = state
+
+
+# ---------------------------------------------------------------------------
 # Card assembly for the Grow Sales dashboard
 # ---------------------------------------------------------------------------
 
@@ -497,20 +547,12 @@ def build_grow_sales(primary_code, compare_code):
     for cid in ('attract', 'engage', 'expand'):
         cards[cid]['band'] = True
 
-    # Period winner / loser highlight (recreates the reference get6ChartPercentages):
-    # among the six granular "detail" cards, pulse the biggest gainer green and
-    # the biggest decliner red — only when the move is actually positive/negative.
-    detail_ids = ['attract_visitors', 'engage_cart_creation', 'expand_units_per_order',
-                  'attract_visits', 'engage_cart_completion', 'expand_avg_unit_price']
-    detail = [(cid, cards[cid]['delta']) for cid in detail_ids
-              if cards[cid].get('delta') is not None]
-    if detail:
-        win_id, win_val = max(detail, key=lambda kv: kv[1])
-        lose_id, lose_val = min(detail, key=lambda kv: kv[1])
-        if win_val > 0:
-            cards[win_id]['highlight'] = 'win'
-        if lose_val < 0 and lose_id != win_id:
-            cards[lose_id]['highlight'] = 'loss'
+    # Period winner / loser highlight: pulse the biggest gaining lever green and
+    # the biggest declining lever red (see lever_highlights). The same decision
+    # carries to each lever's detail dashboard via _apply_lever_glow.
+    for lever, state in lever_highlights(primary_code, compare_code).items():
+        if lever in cards:
+            cards[lever]['highlight'] = state
 
     return cards, charts
 
@@ -697,6 +739,7 @@ def build_attract_traffic(primary_code, compare_code):
                equation=[E(share * 100, 'percentage', 'of Visits')],
                s1=_split_series(sessions, share, _seed(cid, 's')), fmt_kind='integer')
 
+    _apply_lever_glow(d.cards, primary_code, compare_code, 'attract')
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
 
@@ -839,6 +882,7 @@ def build_engage_customer(primary_code, compare_code):
         ]
         d.scatter_widget(wid, 'engage', title, charts)
 
+    _apply_lever_glow(d.cards, primary_code, compare_code, 'engage')
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
 
@@ -917,4 +961,5 @@ def build_expand_purchases(primary_code, compare_code):
     ]
     d.scatter_widget('category_changeplot', 'expand', 'Product Category AOV Changeplot', charts)
 
+    _apply_lever_glow(d.cards, primary_code, compare_code, 'expand')
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
