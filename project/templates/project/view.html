@@ -20,15 +20,20 @@
         <h3>Backlog <small>filtered by AEE Alignment: {{ aee_filter_label }}</small></h3>
         {% elif measure_filter %}
         <h3>Backlog <small>filtered by Measure: {{ measure_filter }}</small></h3>
+        {% elif lane_filter %}
+        <h3>Backlog <small>filtered by Status: {{ lane_filter_label }}</small></h3>
         {% endif %}
       </div>
-      {% if aee_filter or measure_filter %}
+      {% if aee_filter or measure_filter or lane_filter %}
       <div class="title_right" style="text-align:right;">
         <a href="/project/view.html" class="btn btn-sm btn-default">Clear filter <i class="fa fa-times"></i></a>
       </div>
       {% endif %}
       <div class="clearfix"></div>
 
+      {% if lane_filter %}
+      {% include "project/_backlog_table.html" with table_id="lane" heading=lane_filter_label projects=lane_filter_projects empty_msg="No matching actions" %}
+      {% else %}
       {% include "project/_backlog_table.html" with table_id="approved" heading="Approved Actions" projects=approved_projects empty_msg="No Approved Actions" %}
 
       {% include "project/_backlog_table.html" with table_id="pending" heading="Actions Pending Review" projects=pending_review_projects empty_msg="No Actions Pending Review" %}
@@ -36,6 +41,7 @@
       {% include "project/_backlog_table.html" with table_id="incomplete" heading="Incomplete Entry" projects=incomplete_projects empty_msg="No Incomplete Entries" %}
 
       {% include "project/_backlog_table.html" with table_id="blocked" heading="Blocked Actions" projects=blocked_projects empty_msg="No Blocked Actions" %}
+      {% endif %}
 
       <div class="row">
         <div class="col-md-12 col-sm-12 col-xs-12">

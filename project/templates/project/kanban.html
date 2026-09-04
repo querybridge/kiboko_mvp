@@ -34,6 +34,13 @@
       justify-content: space-between;
       align-items: center;
     }
+    .lane-header a {
+      color: #fff;
+      text-decoration: none;
+    }
+    .lane-header a:hover {
+      text-decoration: underline;
+    }
     .lane-header .badge {
       font-size: 11px;
       background: rgba(255,255,255,.25);
@@ -268,7 +275,7 @@
       {% for lane in lanes_data %}
       <div class="kanban-lane lane-{{ lane.key }}" data-lane="{{ lane.key }}">
         <div class="lane-header">
-          <span>{{ lane.label }}</span>
+          <a href="{% url 'project:all' %}?lane={{ lane.key }}" title="See {{ lane.label }} actions in the Backlog">{{ lane.label }}</a>
           <span class="badge lane-count" data-lane="{{ lane.key }}">{{ lane.count }}</span>
         </div>
         <div class="lane-body" id="lane-{{ lane.key }}">

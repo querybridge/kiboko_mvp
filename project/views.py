@@ -81,11 +81,17 @@ def view(request):
     pending_review_projects = buckets['ready_to_score'] + buckets['scored']
     incomplete_projects = buckets['incomplete_entry']
     blocked_projects = buckets['blocked']
+    # Optional single-lane filter (from clicking a Kanban column header).
+    lane = request.GET.get('lane', '').strip()
+    lane_filter = lane if lane in LANES else ''
     return render(request, 'project/view.html', {
         'approved_projects': approved_projects,
         'pending_review_projects': pending_review_projects,
         'incomplete_projects': incomplete_projects,
         'blocked_projects': blocked_projects,
+        'lane_filter': lane_filter,
+        'lane_filter_label': LANES.get(lane_filter, ''),
+        'lane_filter_projects': buckets.get(lane_filter, []),
         'title': title,
         'aee_filter': aee,
         'aee_filter_label': aee_labels.get(aee, ''),
