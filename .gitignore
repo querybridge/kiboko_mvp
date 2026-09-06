@@ -131,6 +131,8 @@ wakanda_dark.png
 updates_*.txt
 recap_for_doug_*.txt
 docs/google_oauth_setup.md
+# Google OAuth client secret downloads -- never commit
+client_secret_*.json
 *.sqlite3
 *.sqlite3-journal
 media/
