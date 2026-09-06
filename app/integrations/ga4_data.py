@@ -11,29 +11,38 @@ Lazy import of the Data API client. Requires (add to requirements):
 from . import metrics as M
 
 
-def run_report(credentials, property_id, start_date, end_date, dimensions, metric_names):
+def run_report(credentials, property_id, start_date, end_date, dimensions,
+               metric_names, stream_id=None):
     """Thin wrapper over Data API runReport. Dates are 'YYYY-MM-DD' or GA4
-    relative dates like 'yesterday' / 'NdaysAgo'."""
+    relative dates like 'yesterday' / 'NdaysAgo'. When stream_id is given, the
+    report is filtered to that data stream (a single Website)."""
     from google.analytics.data_v1beta import BetaAnalyticsDataClient  # lazy
     from google.analytics.data_v1beta.types import (
-        RunReportRequest, DateRange, Dimension, Metric,
+        RunReportRequest, DateRange, Dimension, Metric, FilterExpression, Filter,
     )
+    dimension_filter = None
+    if stream_id:
+        dimension_filter = FilterExpression(filter=Filter(
+            field_name='streamId',
+            string_filter=Filter.StringFilter(value=str(stream_id))))
     client = BetaAnalyticsDataClient(credentials=credentials)
     request = RunReportRequest(
         property=f'properties/{property_id}',
         date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
         dimensions=[Dimension(name=d) for d in dimensions],
         metrics=[Metric(name=m) for m in metric_names],
+        dimension_filter=dimension_filter,
     )
     return client.run_report(request)
 
 
-def fetch_daily_fundamentals(credentials, property_id, start_date, end_date):
+def fetch_daily_fundamentals(credentials, property_id, start_date, end_date, stream_id=None):
     """Return {'YYYYMMDD': {visits, visitors, new_visitors, carts, orders, units,
-    sales}} for the property over the date range."""
+    sales}} for the property (optionally one data stream) over the date range."""
     resp = run_report(
         credentials, property_id, start_date, end_date,
-        dimensions=[M.DIMENSION_DATE], metric_names=M.GA4_METRIC_NAMES)
+        dimensions=[M.DIMENSION_DATE], metric_names=M.GA4_METRIC_NAMES,
+        stream_id=stream_id)
     out = {}
     for row in resp.rows:
         day = row.dimension_values[0].value

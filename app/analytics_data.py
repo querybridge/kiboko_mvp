@@ -256,27 +256,35 @@ def _pct_change(primary, secondary):
     return ((primary - secondary) / secondary * 100) if secondary else 0
 
 
-def build_metrics(primary_code, compare_code):
+def build_metrics(primary_code, compare_code, rows=None):
     """Return everything needed to render the Grow Sales dashboard for a
-    given (primary period, comparison period) selection."""
-    days = next((d for c, _, d in PRIMARY_OPTIONS if c == primary_code), 30)
-    n = min(days, MAX_POINTS)
+    given (primary period, comparison period) selection.
 
-    seed_p = _seed(primary_code, 'primary')
-    seed_s = _seed(primary_code, compare_code, 'secondary')
+    ``rows`` optionally supplies REAL data as ``(rows_p, rows_s, labels)`` where
+    each row is a dict with visits/visitors/carts/orders/units/sales (e.g. from
+    GA4). When omitted, deterministic dummy data is generated so the demo works.
+    """
+    if rows is not None:
+        rows_p, rows_s, labels = rows
+    else:
+        days = next((d for c, _, d in PRIMARY_OPTIONS if c == primary_code), 30)
+        n = min(days, MAX_POINTS)
 
-    params_p = _params(seed_p)
-    params_s = _perturb(params_p, seed_s, spread=0.10)
-    rows_p = _daily_series(seed_p, n, params_p)
-    rows_s = _daily_series(seed_s, n, params_s)
+        seed_p = _seed(primary_code, 'primary')
+        seed_s = _seed(primary_code, compare_code, 'secondary')
+
+        params_p = _params(seed_p)
+        params_s = _perturb(params_p, seed_s, spread=0.10)
+        rows_p = _daily_series(seed_p, n, params_p)
+        rows_s = _daily_series(seed_s, n, params_s)
+
+        # x-axis labels (MM-DD), ending yesterday
+        today = datetime.date.today()
+        start = today - datetime.timedelta(days=n)
+        labels = [(start + datetime.timedelta(days=i + 1)).strftime('%m-%d') for i in range(n)]
 
     agg_p = _aggregate(rows_p)
     agg_s = _aggregate(rows_s)
-
-    # x-axis labels (MM-DD), ending yesterday
-    today = datetime.date.today()
-    start = today - datetime.timedelta(days=n)
-    labels = [(start + datetime.timedelta(days=i + 1)).strftime('%m-%d') for i in range(n)]
 
     # per-day chart series (derived ratios per point)
     def series(rows, fn):
@@ -358,11 +366,11 @@ LEVER_DETAIL_CARD = {
 }
 
 
-def lever_highlights(primary_code, compare_code):
+def lever_highlights(primary_code, compare_code, rows=None):
     """Best/worst of the six Grow Sales detail levers for a period selection.
     Returns {lever_id: 'win'|'loss'} — biggest positive gainer green, biggest
     negative decliner red, at most one of each (matches Grow Sales exactly)."""
-    pct = build_metrics(primary_code, compare_code)['pct']
+    pct = build_metrics(primary_code, compare_code, rows=rows)['pct']
     deltas = [(lid, pct[key]) for lid, key in LEVER_DELTA_KEYS.items()]
     win_id, win_val = max(deltas, key=lambda kv: kv[1])
     lose_id, lose_val = min(deltas, key=lambda kv: kv[1])
@@ -374,9 +382,9 @@ def lever_highlights(primary_code, compare_code):
     return out
 
 
-def _apply_lever_glow(cards, primary_code, compare_code, dashboard):
+def _apply_lever_glow(cards, primary_code, compare_code, dashboard, rows=None):
     """Mirror the Grow Sales win/loss glow onto this dashboard's matching card."""
-    for lever, state in lever_highlights(primary_code, compare_code).items():
+    for lever, state in lever_highlights(primary_code, compare_code, rows=rows).items():
         dash, card_id = LEVER_DETAIL_CARD[lever]
         if dash == dashboard and card_id in cards:
             cards[card_id]['highlight'] = state
@@ -420,14 +428,14 @@ def _apply_backlog_links(cards):
 # Card assembly for the Grow Sales dashboard
 # ---------------------------------------------------------------------------
 
-def build_grow_sales(primary_code, compare_code):
+def build_grow_sales(primary_code, compare_code, rows=None):
     """Return (cards, charts) for the Grow Sales dashboard.
 
     `cards` is a dict keyed by card id (each a fully-formatted card for the
     template partial); `charts` is a JSON-serializable dict keyed by the same
     ids carrying the Chart.js series/labels.
     """
-    m = build_metrics(primary_code, compare_code)
+    m = build_metrics(primary_code, compare_code, rows=rows)
     p = m['primary']
     pct = m['pct']
     clabel = compare_label(primary_code, compare_code)
@@ -585,7 +593,7 @@ def build_grow_sales(primary_code, compare_code):
     # Period winner / loser highlight: pulse the biggest gaining lever green and
     # the biggest declining lever red (see lever_highlights). The same decision
     # carries to each lever's detail dashboard via _apply_lever_glow.
-    for lever, state in lever_highlights(primary_code, compare_code).items():
+    for lever, state in lever_highlights(primary_code, compare_code, rows=rows).items():
         if lever in cards:
             cards[lever]['highlight'] = state
 
@@ -710,10 +718,10 @@ def _split_series(daily, share, seed):
     return [round(v * share * (0.9 + rnd.random() * 0.2), 2) for v in daily]
 
 
-def build_attract_traffic(primary_code, compare_code):
+def build_attract_traffic(primary_code, compare_code, rows=None):
     """Attract Traffic dashboard — all area/line charts (visits, visitors,
     device & channel splits)."""
-    m = build_metrics(primary_code, compare_code)
+    m = build_metrics(primary_code, compare_code, rows=rows)
     p, pct = m['primary'], m['pct']
     d = Deck(m['labels'], primary_label(primary_code), compare_label(primary_code, compare_code))
     E = d.eq
@@ -774,7 +782,7 @@ def build_attract_traffic(primary_code, compare_code):
                equation=[E(share * 100, 'percentage', 'of Visits')],
                s1=_split_series(sessions, share, _seed(cid, 's')), fmt_kind='integer')
 
-    _apply_lever_glow(d.cards, primary_code, compare_code, 'attract')
+    _apply_lever_glow(d.cards, primary_code, compare_code, 'attract', rows=rows)
     _apply_backlog_links(d.cards)
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
@@ -790,10 +798,10 @@ def _dummy_delta(seed, lo=-12, hi=15):
     return round(random.Random(seed).uniform(lo, hi), 2)
 
 
-def build_engage_customer(primary_code, compare_code):
+def build_engage_customer(primary_code, compare_code, rows=None):
     """Engage Customer dashboard — area charts + KPI/history cards + two
     device/channel close-rate changeplots (scatter)."""
-    m = build_metrics(primary_code, compare_code)
+    m = build_metrics(primary_code, compare_code, rows=rows)
     p, pct = m['primary'], m['pct']
     n = len(m['labels'])
     d = Deck(m['labels'], primary_label(primary_code), compare_label(primary_code, compare_code))
@@ -918,15 +926,15 @@ def build_engage_customer(primary_code, compare_code):
         ]
         d.scatter_widget(wid, 'engage', title, charts)
 
-    _apply_lever_glow(d.cards, primary_code, compare_code, 'engage')
+    _apply_lever_glow(d.cards, primary_code, compare_code, 'engage', rows=rows)
     _apply_backlog_links(d.cards)
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
 
-def build_expand_purchases(primary_code, compare_code):
+def build_expand_purchases(primary_code, compare_code, rows=None):
     """Expand Purchases dashboard — area charts + KPI/history cards + a product
     category AOV changeplot (scatter)."""
-    m = build_metrics(primary_code, compare_code)
+    m = build_metrics(primary_code, compare_code, rows=rows)
     p, pct = m['primary'], m['pct']
     d = Deck(m['labels'], primary_label(primary_code), compare_label(primary_code, compare_code))
     E = d.eq
@@ -998,6 +1006,6 @@ def build_expand_purchases(primary_code, compare_code):
     ]
     d.scatter_widget('category_changeplot', 'expand', 'Product Category AOV Changeplot', charts)
 
-    _apply_lever_glow(d.cards, primary_code, compare_code, 'expand')
+    _apply_lever_glow(d.cards, primary_code, compare_code, 'expand', rows=rows)
     _apply_backlog_links(d.cards)
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}

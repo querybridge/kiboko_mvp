@@ -27,17 +27,19 @@ def discover_hierarchy(credentials):
     Only web data streams carry a measurement id; other stream types are still
     returned with what the API provides.
     """
-    from google.analytics.admin_v1beta import AnalyticsAdminServiceClient  # lazy
+    from google.analytics.admin_v1beta import (  # lazy
+        AnalyticsAdminServiceClient, ListPropertiesRequest, ListDataStreamsRequest,
+    )
     client = AnalyticsAdminServiceClient(credentials=credentials)
 
     hierarchy = []
     for account in client.list_accounts():
         account_id = account.name.split('/')[-1]           # 'accounts/123' -> '123'
         properties = []
-        for prop in client.list_properties(filter=f'parent:{account.name}'):
+        for prop in client.list_properties(ListPropertiesRequest(filter=f'parent:{account.name}')):
             property_id = prop.name.split('/')[-1]          # 'properties/111' -> '111'
             streams = []
-            for stream in client.list_data_streams(parent=prop.name):
+            for stream in client.list_data_streams(ListDataStreamsRequest(parent=prop.name)):
                 web = getattr(stream, 'web_stream_data', None)
                 streams.append({
                     'stream_id': stream.name.split('/')[-1],

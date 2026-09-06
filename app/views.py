@@ -1191,11 +1191,17 @@ def _analytics_filter(request):
     return primary, compare, ctx
 
 
+def _ga4_rows(request, primary, compare):
+    """Real GA4 rows for the current scope, or None (dummy fallback)."""
+    from app.integrations import ga4_dashboard
+    return ga4_dashboard.ga4_rows(request, primary, compare)
+
+
 @login_required
 def analytics_grow_sales(request):
     from app import analytics_data as ad
     primary, compare, ctx = _analytics_filter(request)
-    cards, charts = ad.build_grow_sales(primary, compare)
+    cards, charts = ad.build_grow_sales(primary, compare, rows=_ga4_rows(request, primary, compare))
     ctx.update({'cards': cards, 'charts_json': json.dumps(charts)})
     return render(request, 'app/analytics/grow_sales.html', ctx)
 
@@ -1204,7 +1210,7 @@ def analytics_grow_sales(request):
 def analytics_attract_traffic(request):
     from app import analytics_data as ad
     primary, compare, ctx = _analytics_filter(request)
-    d = ad.build_attract_traffic(primary, compare)
+    d = ad.build_attract_traffic(primary, compare, rows=_ga4_rows(request, primary, compare))
     ctx.update({
         'cards': d['cards'],
         'charts_json': json.dumps(d['charts']),
@@ -1217,7 +1223,7 @@ def analytics_attract_traffic(request):
 def analytics_engage_customers(request):
     from app import analytics_data as ad
     primary, compare, ctx = _analytics_filter(request)
-    d = ad.build_engage_customer(primary, compare)
+    d = ad.build_engage_customer(primary, compare, rows=_ga4_rows(request, primary, compare))
     ctx.update({
         'cards': d['cards'],
         'history': d['history'],
@@ -1240,7 +1246,7 @@ def analytics_performance_story(request):
 def analytics_expand_purchases(request):
     from app import analytics_data as ad
     primary, compare, ctx = _analytics_filter(request)
-    d = ad.build_expand_purchases(primary, compare)
+    d = ad.build_expand_purchases(primary, compare, rows=_ga4_rows(request, primary, compare))
     ctx.update({
         'cards': d['cards'],
         'history': d['history'],
