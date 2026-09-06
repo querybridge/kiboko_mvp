@@ -1,6 +1,12 @@
 from business_unit.models import Company, Website
 
 
+def google_flags(request):
+    """Expose whether Google sign-in is configured (for the login page CTA)."""
+    from app.integrations import google_oauth
+    return {'google_oauth_enabled': google_oauth.is_enabled()}
+
+
 def tenancy_selector(request):
     """Cascading Company -> Vertical -> Website scope for the top bar.
 

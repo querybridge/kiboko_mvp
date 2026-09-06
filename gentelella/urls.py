@@ -17,10 +17,15 @@ from django.urls import path, include
 from django.contrib import admin
 from django.views.generic import RedirectView
 
+from app import auth_views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Home page -> Grow Sales dashboard
     path('', RedirectView.as_view(url='/app/analytics/grow-sales/', permanent=False)),
+    # Sign in with Google (callback path must match GOOGLE_OAUTH_REDIRECT_URI)
+    path('auth/google/login/', auth_views.google_login, name='google_login'),
+    path('auth/google/callback/', auth_views.google_callback, name='google_callback'),
     path('strategy/', include('strategy.urls', namespace='strategy')),
     path('project/', include('project.urls', namespace='project')),
     path('users/', include('users.urls', namespace='users')),
