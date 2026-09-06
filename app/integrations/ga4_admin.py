@@ -30,16 +30,18 @@ def discover_hierarchy(credentials):
     from google.analytics.admin_v1beta import (  # lazy
         AnalyticsAdminServiceClient, ListPropertiesRequest, ListDataStreamsRequest,
     )
+    from app.integrations._retry import transient_retry
+    retry = transient_retry()
     client = AnalyticsAdminServiceClient(credentials=credentials)
 
     hierarchy = []
-    for account in client.list_accounts():
+    for account in client.list_accounts(retry=retry):
         account_id = account.name.split('/')[-1]           # 'accounts/123' -> '123'
         properties = []
-        for prop in client.list_properties(ListPropertiesRequest(filter=f'parent:{account.name}')):
+        for prop in client.list_properties(ListPropertiesRequest(filter=f'parent:{account.name}'), retry=retry):
             property_id = prop.name.split('/')[-1]          # 'properties/111' -> '111'
             streams = []
-            for stream in client.list_data_streams(ListDataStreamsRequest(parent=prop.name)):
+            for stream in client.list_data_streams(ListDataStreamsRequest(parent=prop.name), retry=retry):
                 web = getattr(stream, 'web_stream_data', None)
                 streams.append({
                     'stream_id': stream.name.split('/')[-1],

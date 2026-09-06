@@ -1313,13 +1313,19 @@ def data_connection(request):
     if not identity or not google_oauth.is_enabled():
         return render(request, 'app/data_connection.html', ctx)
 
-    # Discover live from GA4 (on the user's behalf).
+    # Discover live from GA4 (on the user's behalf). Transient Google outages
+    # (503/429/timeout) are already retried in the client; if they still fail we
+    # show a friendly "try again" state rather than a raw error.
+    from app.integrations._retry import is_transient
     try:
         creds = google_oauth.credentials_from_identity(identity)
         hierarchy = ga4_admin.discover_hierarchy(creds)
     except Exception as e:
         logger.exception('GA4 discovery failed')
-        ctx['error'] = f'{type(e).__name__}: {e}'
+        if is_transient(e):
+            ctx['transient'] = True
+        else:
+            ctx['error'] = 'We couldn’t reach Google Analytics. Please try again.'
         return render(request, 'app/data_connection.html', ctx)
 
     if request.method == 'POST':

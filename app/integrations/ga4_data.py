@@ -25,6 +25,7 @@ def run_report(credentials, property_id, start_date, end_date, dimensions,
         dimension_filter = FilterExpression(filter=Filter(
             field_name='streamId',
             string_filter=Filter.StringFilter(value=str(stream_id))))
+    from app.integrations._retry import transient_retry
     client = BetaAnalyticsDataClient(credentials=credentials)
     request = RunReportRequest(
         property=f'properties/{property_id}',
@@ -33,7 +34,7 @@ def run_report(credentials, property_id, start_date, end_date, dimensions,
         metrics=[Metric(name=m) for m in metric_names],
         dimension_filter=dimension_filter,
     )
-    return client.run_report(request)
+    return client.run_report(request, retry=transient_retry())
 
 
 def fetch_daily_fundamentals(credentials, property_id, start_date, end_date, stream_id=None):

@@ -28,9 +28,16 @@
               <p>Sign in with Google to connect GA4 data.</p>
               <a href="{% url 'google_login' %}" class="btn btn-primary"><i class="fa fa-google"></i>&nbsp; Sign in with Google</a>
 
+            {% elif transient %}
+              <div class="alert alert-warning">
+                <i class="fa fa-clock-o"></i> Google Analytics is temporarily unavailable. This usually clears in a moment.
+              </div>
+              <a href="{% url 'app:data_connection' %}" class="btn btn-primary"><i class="fa fa-refresh"></i>&nbsp; Try again</a>
+
             {% elif error %}
-              <div class="alert alert-danger">Couldn't reach GA4: {{ error }}</div>
-              <p class="text-muted">Make sure your Google account has access to at least one GA4 property, then reload.</p>
+              <div class="alert alert-danger">{{ error }}</div>
+              <p class="text-muted">If this persists, make sure your Google account has access to at least one GA4 property.</p>
+              <a href="{% url 'app:data_connection' %}" class="btn btn-default"><i class="fa fa-refresh"></i>&nbsp; Try again</a>
 
             {% elif property_count == 0 %}
               <p class="text-muted">Your Google account can't access any GA4 properties. Ask a GA4 admin to grant your
