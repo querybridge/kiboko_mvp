@@ -264,6 +264,49 @@ def ga4_splits(request, primary_code, compare_code, today=None):
         return None
 
 
+# Engage funnel-view cards -> GA4 recommended ecommerce events.
+ENGAGE_EVENTS = {
+    'cart_views': 'view_cart',
+    'checkout_views': 'begin_checkout',
+    'billing_views': 'add_shipping_info',
+}
+
+
+def ga4_engage_events(request, primary_code, compare_code, today=None):
+    """Real cart/checkout/billing view counts (+ deltas) from GA4 events for the
+    current scope, or None. Keys: cart_views/checkout_views/billing_views and
+    each with a _delta suffix."""
+    try:
+        scoped = _scoped_creds(request)
+        if not scoped:
+            return None
+        creds, property_ids, stream_id = scoped
+        today = today or datetime.date.today()
+        p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+        names = list(ENGAGE_EVENTS.values())
+
+        def totals(start, end):
+            acc = {n: 0.0 for n in names}
+            for pid in property_ids:
+                t = ga4_data.fetch_event_counts(
+                    creds, pid, start.isoformat(), end.isoformat(), names, stream_id=stream_id)
+                for n in names:
+                    acc[n] += t.get(n, 0.0)
+            return acc
+
+        prim, sec = totals(p_start, p_end), totals(s_start, s_end)
+        out = {}
+        for key, ev in ENGAGE_EVENTS.items():
+            pv, sv = prim[ev], sec[ev]
+            out[key] = pv
+            out[key + '_delta'] = round(((pv - sv) / sv * 100) if sv else 0.0, 2)
+        return out
+    except Exception as e:
+        logger.warning('GA4 engage events fetch failed (%s: %s) -- falling back to dummy',
+                       type(e).__name__, e)
+        return None
+
+
 def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
     """(prim_f, sec_f) storyboard fundamentals for the current scope, or None."""
     try:

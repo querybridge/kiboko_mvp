@@ -118,6 +118,17 @@
   #analytics-page .history-card.group-attract { border-left-color: var(--ac-attract); }
   #analytics-page .history-card.group-engage  { border-left-color: var(--ac-engage); }
   #analytics-page .history-card.group-expand  { border-left-color: var(--ac-expand); }
+  /* Premium (BigQuery-tier) metric: greyed out with a lock badge. */
+  #analytics-page .history-card.hc-premium { position: relative; }
+  #analytics-page .history-card.hc-premium .hc-left,
+  #analytics-page .history-card.hc-premium .hc-weeks { opacity: .28; filter: grayscale(1); }
+  #analytics-page .hc-premium-badge {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    white-space: nowrap; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
+    color: var(--ac-secondary, #C8BCDF); background: rgba(20,12,40,0.86);
+    border: 1px solid var(--ac-edge, rgba(214,197,247,0.22)); border-radius: 999px; padding: 6px 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  }
   #analytics-page .hc-left { min-width: 0; }
   #analytics-page .hc-title { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--ac-secondary); margin-bottom: 8px; }
   #analytics-page .hc-kpi { font-family: 'Space Grotesk','Inter',system-ui,sans-serif; font-size: 26px; font-weight: 700; color: var(--ac-primary); line-height: 1.0; letter-spacing: -0.4px; }

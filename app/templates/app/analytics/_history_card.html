@@ -1,5 +1,6 @@
 {# One HistoryCard: KPI + delta + trailing "Last N wks" readouts. Expects `hc`. #}
-<div class="history-card group-{{ hc.group }}">
+<div class="history-card group-{{ hc.group }}{% if hc.premium %} hc-premium{% endif %}">
+  {% if hc.premium %}<div class="hc-premium-badge"><i class="fa fa-lock"></i> Premium Tier Required</div>{% endif %}
   <div class="hc-left">
     <div class="hc-title">{{ hc.title }}</div>
     <div class="hc-kpi">{{ hc.kpi }}</div>

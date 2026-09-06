@@ -127,6 +127,67 @@
           </div>
         </div>
 
+        <!-- GA4 Data Connection prerequisites -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Connecting Google Analytics (GA4)</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <p>The analytics dashboards (Grow Sales, Attract Traffic, Engage Customers,
+              Expand Purchases, and the Performance Storyboard) show <strong>real data</strong>
+              once a GA4 property is connected. For that data to be complete, the
+              following prerequisites must be met.</p>
+            <ol>
+              <li>
+                <span class="step-label">Sign in with Google</span> &mdash;
+                Kiboko reads GA4 on your behalf, so each user signs in with Google.
+                Your Google account must have at least <strong>Viewer</strong> access to the
+                GA4 property (GA4 &rarr; Admin &rarr; Property Access Management). You only
+                see properties your own Google account can access.
+              </li>
+              <li>
+                <span class="step-label">Connect properties</span> &mdash;
+                Go to <strong>Settings &rarr; Data Connection</strong> and import the GA4
+                properties you want. Each becomes a <strong>Vertical</strong>, its account a
+                <strong>Company</strong>, and its data streams <strong>Websites</strong>.
+              </li>
+              <li>
+                <span class="step-label">Ecommerce tracking must be live</span> &mdash;
+                The property must collect the standard GA4 ecommerce events
+                (<code>add_to_cart</code>, <code>view_cart</code>, <code>begin_checkout</code>,
+                <code>add_shipping_info</code>, <code>purchase</code>, <code>view_item</code>).
+                Without them, the related metrics (sales, orders, AOV, cart/checkout/billing
+                views) read <strong>0</strong> &mdash; being connected is not enough; the site
+                must send the data.
+              </li>
+              <li>
+                <span class="step-label">History</span> &mdash;
+                Roughly <strong>13 months</strong> of collected data is needed for
+                year-over-year comparison periods to populate.
+              </li>
+              <li>
+                <span class="step-label">Currency &amp; timezone</span> &mdash;
+                Set correctly on the GA4 property (imported automatically) so daily totals and
+                money formatting line up.
+              </li>
+              <li>
+                <span class="step-label">Choose your scope</span> &mdash;
+                Use the top-bar <strong>Company &rarr; Vertical &rarr; Website</strong>
+                selectors. <em>All Verticals</em> totals across a company's properties;
+                <em>All Websites</em> totals a property's data streams.
+              </li>
+            </ol>
+            <p><strong>Premium (BigQuery) tier:</strong> a few item/order-level metrics
+              &mdash; <em>Unique SKUs per Order</em> and <em>Cherry Pick Rate</em> &mdash;
+              can't be produced by the standard GA4 API and appear greyed out labelled
+              <strong>&ldquo;Premium Tier Required&rdquo;</strong> until the BigQuery tier is enabled.</p>
+            <p class="text-muted">Note: very long date ranges may be sampled on the standard
+              tier. If a dashboard shows dummy/illustrative numbers, no GA4 property is
+              connected for the current scope.</p>
+          </div>
+        </div>
+
         <!-- Add a Action -->
         <div class="x_panel">
           <div class="x_title">

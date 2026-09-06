@@ -648,15 +648,17 @@ class Deck:
             self.charts[cid]['s2'] = s2
 
     def history_card(self, cid, group, title, kpi_val, kpi_kind, delta, weeks,
-                     reversed_color=False, equation=None):
-        """weeks = list of (label, formatted_value) trailing readouts."""
+                     reversed_color=False, equation=None, premium=False):
+        """weeks = list of (label, formatted_value) trailing readouts.
+        premium=True marks a metric that needs the Premium (BigQuery) tier -- it
+        renders greyed with a 'Premium Tier Required' label."""
         disp = fmt(kpi_val, kpi_kind)[0]
         good = (delta is not None) and ((delta < 0) if reversed_color else (delta >= 0))
         self.history[cid] = {
             'id': cid, 'group': group, 'title': title, 'kpi': disp,
             'delta': delta, 'delta_str': fmt_delta(delta) if delta is not None else '',
             'delta_to': self.compare_lbl, 'delta_good': good,
-            'weeks': weeks, 'equation': equation or [],
+            'weeks': weeks, 'equation': equation or [], 'premium': premium,
         }
 
     def scatter_widget(self, wid, group, title, charts):
@@ -816,7 +818,7 @@ def _dummy_delta(seed, lo=-12, hi=15):
     return round(random.Random(seed).uniform(lo, hi), 2)
 
 
-def build_engage_customer(primary_code, compare_code, rows=None):
+def build_engage_customer(primary_code, compare_code, rows=None, events=None):
     """Engage Customer dashboard — area charts + KPI/history cards + two
     device/channel close-rate changeplots (scatter)."""
     m = build_metrics(primary_code, compare_code, rows=rows)
@@ -833,9 +835,16 @@ def build_engage_customer(primary_code, compare_code, rows=None):
     cart_to_detail = p['carts'] / pdp_views * 100 if pdp_views else 0
     buy_to_detail = p['orders'] / pdp_views * 100 if pdp_views else 0
     returning_pct = p['returning_users'] / p['visitors'] * 100 if p['visitors'] else 0
-    cart_views = p['orders'] * 1.8
-    checkout_views = p['orders'] * 1.3
-    billing_views = p['orders'] * 1.1
+    # Cart / checkout / billing views come from real GA4 event counts (view_cart /
+    # begin_checkout / add_shipping_info) when available, else synthetic ratios.
+    if events:
+        cart_views, cart_delta = events['cart_views'], events['cart_views_delta']
+        checkout_views, checkout_delta = events['checkout_views'], events['checkout_views_delta']
+        billing_views, billing_delta = events['billing_views'], events['billing_views_delta']
+    else:
+        cart_views, cart_delta = p['orders'] * 1.8, _dummy_delta(sd('cvd'))
+        checkout_views, checkout_delta = p['orders'] * 1.3, _dummy_delta(sd('chkd'))
+        billing_views, billing_delta = p['orders'] * 1.1, _dummy_delta(sd('bsd'))
 
     # synthetic daily comparison series
     def s2(series, seed):
@@ -903,13 +912,13 @@ def build_engage_customer(primary_code, compare_code, rows=None):
            s1=s_completion, s2=s2(s_completion, sd('com2')),
            two_sets=True, fmt_kind='percentage', chart_height=150)
     d.card('cart_views', 'engage', '', 'CART VIEWS',
-           kpi_val=cart_views, kpi_kind='integer', delta=_dummy_delta(sd('cvd')),
+           kpi_val=cart_views, kpi_kind='integer', delta=cart_delta,
            s1=s_cartv, fmt_kind='integer')
     d.card('checkout_views', 'engage', '', 'CHECKOUT VIEWS',
-           kpi_val=checkout_views, kpi_kind='integer', delta=_dummy_delta(sd('chkd')),
+           kpi_val=checkout_views, kpi_kind='integer', delta=checkout_delta,
            s1=s_checkv, fmt_kind='integer')
     d.card('billing_shipping_views', 'engage', '', 'BILLING/SHIPPING VIEWS',
-           kpi_val=billing_views, kpi_kind='integer', delta=_dummy_delta(sd('bsd')),
+           kpi_val=billing_views, kpi_kind='integer', delta=billing_delta,
            s1=s2(s_checkv, sd('bs2')), fmt_kind='integer')
 
     # SECTION 4 -----------------------------------------------------------
@@ -1000,13 +1009,16 @@ def build_expand_purchases(primary_code, compare_code, rows=None):
                      E(p['units_per_order'], 'normal', 'Units per Order  =')],
            result=E(p['units'], 'integer', 'Units Ordered'),
            s1=s_units, s2=s2(s_units, sd('units2')), two_sets=True, fmt_kind='normal', chart_height=150)
+    # Item/order-level metrics the GA4 Data API can't produce -> Premium (BigQuery) tier.
     d.history_card('unique_skus', 'expand', 'UNIQUE SKUS PER ORDER', unique_skus, 'normal',
-                   _dummy_delta(sd('usk')), _weeks(unique_skus, 'normal', sd('uskw')))
+                   _dummy_delta(sd('usk')), _weeks(unique_skus, 'normal', sd('uskw')),
+                   premium=True)
     d.history_card('cherry_pick', 'expand', 'CHERRY PICK RATE', cherry_pick, 'percentage',
                    _dummy_delta(sd('chp')), _weeks(cherry_pick, 'percentage', sd('chpw')),
                    reversed_color=True,
                    equation=[E(single_sku_orders, 'integer', 'single-SKU orders  /'),
-                             E(p['orders'], 'integer', 'orders')])
+                             E(p['orders'], 'integer', 'orders')],
+                   premium=True)
 
     # SECTION 3 -----------------------------------------------------------
     d.card('enhance_big', 'expand', 'ENHANCE', 'AVERAGE UNIT PRICE',

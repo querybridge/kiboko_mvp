@@ -1226,8 +1226,12 @@ def analytics_attract_traffic(request):
 @login_required
 def analytics_engage_customers(request):
     from app import analytics_data as ad
+    from app.integrations import ga4_dashboard
     primary, compare, ctx = _analytics_filter(request)
-    d = ad.build_engage_customer(primary, compare, rows=_ga4_rows(request, primary, compare))
+    d = ad.build_engage_customer(
+        primary, compare,
+        rows=_ga4_rows(request, primary, compare),
+        events=ga4_dashboard.ga4_engage_events(request, primary, compare))
     ctx.update({
         'cards': d['cards'],
         'history': d['history'],

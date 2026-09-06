@@ -67,6 +67,46 @@ def fetch_totals(credentials, property_id, start_date, end_date, metric_names, s
     return out
 
 
+def fetch_event_counts(credentials, property_id, start_date, end_date, event_names, stream_id=None):
+    """Return {event_name: count} for the given GA4 event names over the range
+    (e.g. view_cart / begin_checkout / add_shipping_info for funnel views)."""
+    from google.analytics.data_v1beta import BetaAnalyticsDataClient  # lazy
+    from google.analytics.data_v1beta.types import (
+        RunReportRequest, DateRange, Dimension, Metric,
+        FilterExpression, FilterExpressionList, Filter,
+    )
+    from app.integrations._retry import transient_retry
+
+    ev_filter = FilterExpression(filter=Filter(
+        field_name='eventName',
+        in_list_filter=Filter.InListFilter(values=list(event_names))))
+    if stream_id:
+        dimension_filter = FilterExpression(and_group=FilterExpressionList(expressions=[
+            ev_filter,
+            FilterExpression(filter=Filter(
+                field_name='streamId',
+                string_filter=Filter.StringFilter(value=str(stream_id)))),
+        ]))
+    else:
+        dimension_filter = ev_filter
+
+    client = BetaAnalyticsDataClient(credentials=credentials)
+    request = RunReportRequest(
+        property=f'properties/{property_id}',
+        date_ranges=[DateRange(start_date=start_date, end_date=end_date)],
+        dimensions=[Dimension(name='eventName')],
+        metrics=[Metric(name='eventCount')],
+        dimension_filter=dimension_filter,
+    )
+    resp = client.run_report(request, retry=transient_retry())
+    out = {e: 0.0 for e in event_names}
+    for row in resp.rows:
+        name = row.dimension_values[0].value
+        if name in out:
+            out[name] = float(row.metric_values[0].value or 0)
+    return out
+
+
 def fetch_daily_split(credentials, property_id, start_date, end_date, split, stream_id=None):
     """Return {'YYYYMMDD': {bucket: {fundamentals}}} split by 'device' or
     'channel'. Buckets are Kiboko's normalized names (desktop/mobile/... or
