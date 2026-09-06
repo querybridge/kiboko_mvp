@@ -142,6 +142,22 @@ LOGIN_URL = '/users/login/'
 # Home page: land on the Grow Sales analytics dashboard after login.
 LOGIN_REDIRECT_URL = '/app/analytics/grow-sales/'
 
+# --- Google OAuth / GA4 Data API -----------------------------------------
+# Real credentials live in gitignored local_settings.py. When the client id +
+# secret are set, "Sign in with Google" + live GA4 activate; until then the app
+# falls back to the existing login (see app.integrations.google_oauth.is_enabled).
+GOOGLE_OAUTH_CLIENT_ID = ''
+GOOGLE_OAUTH_CLIENT_SECRET = ''
+GOOGLE_OAUTH_REDIRECT_URI = 'http://localhost:8000/auth/google/callback/'
+GOOGLE_OAUTH_SCOPES = [
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    # analytics.readonly covers BOTH the Admin API (list accounts/properties/
+    # streams) and the Data API (run reports).
+    'https://www.googleapis.com/auth/analytics.readonly',
+]
+
 # --- Per-environment overrides -------------------------------------------
 # Keep this committed settings.py at dev defaults. Put server-specific values
 # (DEBUG=False, SECRET_KEY, ALLOWED_HOSTS, DATABASES, etc.) in a gitignored

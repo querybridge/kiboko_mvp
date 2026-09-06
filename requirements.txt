@@ -7,3 +7,10 @@ PyMySQL>=1.1
 django-computedfields>=0.2.0
 graphviz>=0.20
 django-widget-tweaks>=1.5
+
+# Google sign-in + GA4 Data/Admin API (app/integrations). Imported lazily, so the
+# app runs without them until GOOGLE_OAUTH_* creds are configured.
+google-auth>=2.30
+google-auth-oauthlib>=1.2
+google-analytics-data>=0.18
+google-analytics-admin>=0.22
