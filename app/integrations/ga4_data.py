@@ -54,6 +54,19 @@ def fetch_daily_fundamentals(credentials, property_id, start_date, end_date, str
     return out
 
 
+def fetch_totals(credentials, property_id, start_date, end_date, metric_names, stream_id=None):
+    """Period totals for the given GA4 metrics (no date dimension -> one row).
+    Returns {metric_name: float}."""
+    resp = run_report(
+        credentials, property_id, start_date, end_date,
+        dimensions=[], metric_names=metric_names, stream_id=stream_id)
+    out = {m: 0.0 for m in metric_names}
+    for row in resp.rows:  # a single totals row when there are no dimensions
+        for i, m in enumerate(metric_names):
+            out[m] = float(row.metric_values[i].value or 0)
+    return out
+
+
 def fetch_daily_split(credentials, property_id, start_date, end_date, split):
     """Return {'YYYYMMDD': {bucket: {fundamentals}}} split by 'device' or
     'channel'. Buckets are Kiboko's normalized names (desktop/mobile/... or

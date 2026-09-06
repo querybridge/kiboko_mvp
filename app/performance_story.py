@@ -327,11 +327,16 @@ def _capitalize(s):
 # Build
 # --------------------------------------------------------------------------
 
-def build_performance_story(primary_code, compare_code):
-    seed_p = _seed(primary_code, 'ps-primary')
-    seed_s = _seed(primary_code, compare_code, 'ps-secondary')
-    prim_f = _fundamentals(seed_p)
-    sec_f = _perturb(prim_f, seed_s)
+def build_performance_story(primary_code, compare_code, fundamentals=None):
+    """``fundamentals`` optionally supplies real (prim_f, sec_f) fundamentals
+    dicts (e.g. from GA4); otherwise deterministic dummy data is used."""
+    if fundamentals is not None:
+        prim_f, sec_f = fundamentals
+    else:
+        seed_p = _seed(primary_code, 'ps-primary')
+        seed_s = _seed(primary_code, compare_code, 'ps-secondary')
+        prim_f = _fundamentals(seed_p)
+        sec_f = _perturb(prim_f, seed_s)
 
     prim = _derive(prim_f)
     sec = _derive(sec_f)

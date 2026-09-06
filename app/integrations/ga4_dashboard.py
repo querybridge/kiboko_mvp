@@ -73,47 +73,57 @@ def _rows_for_range(creds, property_ids, start, end, stream_id):
     return rows, dates
 
 
-def ga4_rows(request, primary_code, compare_code, today=None):
-    """(rows_p, rows_s, labels) of real GA4 data for the current scope, or None.
+def _resolve_scope(request):
+    """(property_ids, stream_id) for the current top-bar scope, or None.
 
-    Uses the selected Vertical's GA4 property (and the selected Website's stream,
-    if a specific one is chosen), read with the signed-in user's Google token.
+    One Vertical -> [its property] (+ stream if a specific Website is chosen);
+    All Verticals -> every GA4 property in the current company.
     """
-    if not google_oauth.is_enabled():
-        return None
-
-    identity = getattr(request.user, 'google_identity', None)
-    if not identity:
-        return None
-
     from business_unit.models import Vertical, Website
     vertical_id = request.session.get('scope_vertical')
-    stream_id = None
 
     if vertical_id and vertical_id != 'all':
-        # One Vertical = one GA4 property (optionally one Website/data stream).
         vertical = Vertical.objects.filter(pk=vertical_id).first()
         if not vertical or not vertical.ga4_property_id:
             return None
-        property_ids = [vertical.ga4_property_id]
+        stream_id = None
         website_id = request.session.get('scope_website')
         if website_id and website_id != 'all':
             site = Website.objects.filter(pk=website_id, vertical=vertical).first()
             stream_id = site.ga4_stream_id if site else None
-    else:
-        # All Verticals = sum across every GA4 property in the current company.
-        company_id = request.session.get('scope_company')
-        if not company_id:
-            return None
-        property_ids = list(
-            Vertical.objects.filter(company_id=company_id)
-            .exclude(ga4_property_id='')
-            .values_list('ga4_property_id', flat=True))
-        if not property_ids:
-            return None
+        return [vertical.ga4_property_id], stream_id
 
+    company_id = request.session.get('scope_company')
+    if not company_id:
+        return None
+    property_ids = list(
+        Vertical.objects.filter(company_id=company_id)
+        .exclude(ga4_property_id='')
+        .values_list('ga4_property_id', flat=True))
+    return (property_ids, None) if property_ids else None
+
+
+def _scoped_creds(request):
+    """(credentials, property_ids, stream_id) or None -- shared preamble."""
+    if not google_oauth.is_enabled():
+        return None
+    identity = getattr(request.user, 'google_identity', None)
+    if not identity:
+        return None
+    scope = _resolve_scope(request)
+    if not scope:
+        return None
+    property_ids, stream_id = scope
+    return google_oauth.credentials_from_identity(identity), property_ids, stream_id
+
+
+def ga4_rows(request, primary_code, compare_code, today=None):
+    """(rows_p, rows_s, labels) of real GA4 data for the current scope, or None."""
     try:
-        creds = google_oauth.credentials_from_identity(identity)
+        scoped = _scoped_creds(request)
+        if not scoped:
+            return None
+        creds, property_ids, stream_id = scoped
         today = today or datetime.date.today()
         p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
         rows_p, dates_p = _rows_for_range(creds, property_ids, p_start, p_end, stream_id)
@@ -127,5 +137,74 @@ def ga4_rows(request, primary_code, compare_code, today=None):
         return rows_p, rows_s, labels
     except Exception as e:
         logger.warning('GA4 dashboard fetch failed (%s: %s) -- falling back to dummy',
+                       type(e).__name__, e)
+        return None
+
+
+# Performance Storyboard needs a richer fundamentals set. GA4 provides most of
+# these directly; the funnel-view rows it can't (without page-path config) are
+# approximated from real metrics in _story_fundamentals below.
+STORY_GA4_METRICS = [
+    'sessions', 'totalUsers', 'newUsers', 'engagedSessions',
+    'userEngagementDuration', 'screenPageViews', 'addToCarts',
+    'ecommercePurchases', 'itemsPurchased', 'purchaseRevenue',
+]
+
+
+def _story_totals(creds, property_ids, start, end, stream_id):
+    """Summed GA4 story metrics across the properties for the range."""
+    total = {m: 0.0 for m in STORY_GA4_METRICS}
+    for pid in property_ids:
+        t = ga4_data.fetch_totals(creds, pid, start.isoformat(), end.isoformat(),
+                                  STORY_GA4_METRICS, stream_id=stream_id)
+        for m in STORY_GA4_METRICS:
+            total[m] += t.get(m, 0.0)
+    return total
+
+
+def _story_fundamentals(t):
+    """Map GA4 metric totals to the storyboard's fundamentals dict. Real where
+    GA4 provides it; the funnel-view rows (cart/checkout/billing views, category/
+    PDP page views, single-SKU) are approximated from real metrics until the
+    page-path/Premium tier lands."""
+    sessions = t.get('sessions', 0.0)
+    page_views = t.get('screenPageViews', 0.0)
+    add_to_cart = t.get('addToCarts', 0.0)
+    checkouts = t.get('ecommercePurchases', 0.0)
+    return dict(
+        visitors=t.get('totalUsers', 0.0),
+        new_users=t.get('newUsers', 0.0),
+        sessions=sessions,
+        engaged=t.get('engagedSessions', 0.0),
+        total_visit_time=t.get('userEngagementDuration', 0.0),
+        page_views=page_views,
+        add_to_cart=add_to_cart,
+        checkouts=checkouts,
+        item_qty=t.get('itemsPurchased', 0.0),
+        revenue=t.get('purchaseRevenue', 0.0),
+        # approximated (see docstring)
+        category_pv=page_views * 0.45,
+        pdp_pv=page_views * 0.60,
+        cart_views=add_to_cart * 1.40,
+        checkout_views=add_to_cart * 0.60,
+        billing_shipping_views=add_to_cart * 0.48,
+        single_sku=checkouts * 0.30,
+    )
+
+
+def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
+    """(prim_f, sec_f) storyboard fundamentals for the current scope, or None."""
+    try:
+        scoped = _scoped_creds(request)
+        if not scoped:
+            return None
+        creds, property_ids, stream_id = scoped
+        today = today or datetime.date.today()
+        p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+        prim = _story_fundamentals(_story_totals(creds, property_ids, p_start, p_end, stream_id))
+        sec = _story_fundamentals(_story_totals(creds, property_ids, s_start, s_end, stream_id))
+        return prim, sec
+    except Exception as e:
+        logger.warning('GA4 storyboard fetch failed (%s: %s) -- falling back to dummy',
                        type(e).__name__, e)
         return None

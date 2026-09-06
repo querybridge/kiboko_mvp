@@ -1237,8 +1237,10 @@ def analytics_engage_customers(request):
 @login_required
 def analytics_performance_story(request):
     from app import performance_story as ps
+    from app.integrations import ga4_dashboard
     primary, compare, ctx = _analytics_filter(request)
-    ctx.update(ps.build_performance_story(primary, compare))
+    fundamentals = ga4_dashboard.ga4_story_fundamentals(request, primary, compare)
+    ctx.update(ps.build_performance_story(primary, compare, fundamentals=fundamentals))
     return render(request, 'app/analytics/performance_story.html', ctx)
 
 
