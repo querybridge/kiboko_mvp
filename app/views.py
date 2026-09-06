@@ -3,6 +3,7 @@ import csv
 import datetime as dt
 import io
 import json
+import logging
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
@@ -16,6 +17,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
 from django.contrib.auth.models import User
+
+logger = logging.getLogger(__name__)
 from django.http import HttpResponseForbidden
 
 from app.forms import StrategyForm
@@ -1291,8 +1294,44 @@ def work_in_progress(request):
 
 @login_required
 def data_connection(request):
-    """Settings > Data Connection (placeholder; content defined later)."""
-    return render(request, 'app/data_connection.html')
+    """Settings > Data Connection: discover the GA4 hierarchy the signed-in
+    user's Google account can access and import Properties as Kiboko
+    Company/Vertical/Website (granting membership)."""
+    from app.integrations import google_oauth, ga4_admin
+    from business_unit import provisioning
+
+    identity = getattr(request.user, 'google_identity', None)
+    ctx = {'title': 'Data Connection', 'has_google': identity is not None,
+           'google_enabled': google_oauth.is_enabled()}
+
+    if not identity or not google_oauth.is_enabled():
+        return render(request, 'app/data_connection.html', ctx)
+
+    # Discover live from GA4 (on the user's behalf).
+    try:
+        creds = google_oauth.credentials_from_identity(identity)
+        hierarchy = ga4_admin.discover_hierarchy(creds)
+    except Exception as e:
+        logger.exception('GA4 discovery failed')
+        ctx['error'] = f'{type(e).__name__}: {e}'
+        return render(request, 'app/data_connection.html', ctx)
+
+    if request.method == 'POST':
+        selected = request.POST.getlist('property_ids')
+        if selected:
+            summary = provisioning.import_hierarchy(request.user, hierarchy, selected)
+            messages.success(
+                request,
+                f"Imported {summary['verticals']} property(ies) and "
+                f"{summary['websites']} website(s) across {summary['companies']} company(ies).")
+        else:
+            messages.info(request, 'No properties selected.')
+        return redirect('app:data_connection')
+
+    ctx['hierarchy'] = hierarchy
+    ctx['imported_ids'] = provisioning.imported_property_ids(request.user)
+    ctx['property_count'] = sum(len(a['properties']) for a in hierarchy)
+    return render(request, 'app/data_connection.html', ctx)
 
 
 @login_required

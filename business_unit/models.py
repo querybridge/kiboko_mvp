@@ -63,6 +63,7 @@ class Company(models.Model):
 	GA4 Account, but Kiboko groups by company, not by GA4 account."""
 	name = models.CharField(max_length=200)
 	slug = models.SlugField(max_length=200, unique=True)
+	ga4_account_id = models.CharField(max_length=50, blank=True, help_text='GA4 account id this company was imported from')
 	created = models.DateTimeField(auto_now_add=True)
 
 	class Meta:

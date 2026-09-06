@@ -75,4 +75,9 @@ def google_callback(request):
 
     google_oauth.upsert_identity(user, creds, claims)
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+
+    # New users with no company yet -> onboarding (connect GA4). Superusers see
+    # everything, so they skip straight to the dashboards.
+    if not user.is_superuser and not user.company_memberships.exists():
+        return redirect('app:data_connection')
     return redirect(settings.LOGIN_REDIRECT_URL)

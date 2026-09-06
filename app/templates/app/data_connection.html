@@ -3,17 +3,74 @@
 
 {% block content %}
   <div class="right_col" role="main">
-    <div class="page-title"><div class="title_left"><h3>Data Connection</h3></div></div>
+    <div class="page-title"><div class="title_left"><h3>Data Connection <small>GA4</small></h3></div></div>
     <div class="clearfix"></div>
+
+    {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
     <div class="row">
       <div class="col-md-12 col-sm-12 col-xs-12">
         <div class="x_panel">
           <div class="x_title">
-            <h2>Data Connection <small>Settings</small></h2>
+            <h2>Google Analytics 4 <small>connect the properties you can access</small></h2>
             <div class="clearfix"></div>
           </div>
           <div class="x_content">
-            <p class="text-muted">This page is coming soon.</p>
+
+            {% if not google_enabled %}
+              <p class="text-muted">Google sign-in isn't configured on this server yet.</p>
+
+            {% elif not has_google %}
+              <p>Sign in with Google to connect GA4 data.</p>
+              <a href="{% url 'google_login' %}" class="btn btn-primary"><i class="fa fa-google"></i>&nbsp; Sign in with Google</a>
+
+            {% elif error %}
+              <div class="alert alert-danger">Couldn't reach GA4: {{ error }}</div>
+              <p class="text-muted">Make sure your Google account has access to at least one GA4 property, then reload.</p>
+
+            {% elif property_count == 0 %}
+              <p class="text-muted">Your Google account can't access any GA4 properties. Ask a GA4 admin to grant your
+                Google account at least <strong>Viewer</strong> on the property, then reload this page.</p>
+
+            {% else %}
+              <p class="text-muted">Tick the GA4 properties to bring into Kiboko. Each property becomes a
+                <strong>Vertical</strong>, its account a <strong>Company</strong>, and its data streams
+                <strong>Websites</strong>. You only see properties your Google account can access.</p>
+              <form method="post" action="{% url 'app:data_connection' %}">
+                {% csrf_token %}
+                {% for account in hierarchy %}
+                  <div style="margin-bottom:18px;">
+                    <h4 style="border-bottom:1px solid rgba(255,255,255,.12); padding-bottom:6px;">
+                      <i class="fa fa-building-o"></i> {{ account.account_name }}
+                      <small class="text-muted">Company &middot; GA4 account {{ account.account_id }}</small>
+                    </h4>
+                    {% for prop in account.properties %}
+                    <div style="padding:6px 0 6px 18px;">
+                      <label style="font-weight:600;">
+                        <input type="checkbox" name="property_ids" value="{{ prop.property_id }}"
+                               {% if prop.property_id in imported_ids %}checked{% endif %}>
+                        {{ prop.display_name }}
+                        <small class="text-muted">Vertical &middot; property {{ prop.property_id }}{% if prop.property_id in imported_ids %} &middot; <span style="color:#2ecc71;">imported</span>{% endif %}</small>
+                      </label>
+                      <div style="padding-left:26px; color:#9aa;">
+                        {% for s in prop.data_streams %}
+                          <span style="margin-right:14px;"><i class="fa fa-globe"></i> {{ s.display_name }}{% if s.default_uri %} ({{ s.default_uri }}){% endif %}</span>
+                        {% empty %}
+                          <span class="text-muted">no data streams</span>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">Import selected</button>
+              </form>
+            {% endif %}
+
           </div>
         </div>
       </div>
