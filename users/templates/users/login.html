@@ -26,6 +26,11 @@
               <div class="clearfix"></div>
             </div>
             <div class="x_content">
+              {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-danger" style="margin-bottom:12px;">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
               {% if google_oauth_enabled %}
               <a href="{% url 'google_login' %}" class="btn btn-primary btn-block" style="margin-bottom:16px;">
                 <i class="fa fa-google"></i>&nbsp; Sign in with Google

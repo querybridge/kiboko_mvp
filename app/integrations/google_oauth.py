@@ -13,10 +13,25 @@ Activation: set GOOGLE_OAUTH_CLIENT_ID / _SECRET / _REDIRECT_URI in
 local_settings.py. Until then ``is_enabled()`` returns False and the app uses the
 existing login.
 """
+import os
+
 from django.conf import settings
 
 GOOGLE_AUTH_URI = 'https://accounts.google.com/o/oauth2/auth'
 GOOGLE_TOKEN_URI = 'https://oauth2.googleapis.com/token'
+
+
+def _relax_oauth_env():
+    """Dev-friendliness for the OAuth library:
+
+    - OAUTHLIB_RELAX_TOKEN_SCOPE: Google may return scopes in a different order /
+      add 'openid', which otherwise makes oauthlib raise "Scope has changed".
+    - OAUTHLIB_INSECURE_TRANSPORT: allow an http:// redirect URI for local dev
+      (never used for the https production redirect).
+    """
+    os.environ.setdefault('OAUTHLIB_RELAX_TOKEN_SCOPE', '1')
+    if str(getattr(settings, 'GOOGLE_OAUTH_REDIRECT_URI', '')).startswith('http://'):
+        os.environ.setdefault('OAUTHLIB_INSECURE_TRANSPORT', '1')
 
 
 class GoogleOAuthNotConfigured(RuntimeError):
@@ -50,6 +65,7 @@ def _client_config():
 
 def _flow(state=None):
     _require_config()
+    _relax_oauth_env()
     from google_auth_oauthlib.flow import Flow  # lazy import
     flow = Flow.from_client_config(
         _client_config(), scopes=settings.GOOGLE_OAUTH_SCOPES, state=state)
@@ -58,21 +74,27 @@ def _flow(state=None):
 
 
 def authorization_url():
-    """(url, state) to redirect the user to Google's consent screen.
+    """(url, state, code_verifier) to redirect the user to Google's consent screen.
 
     access_type=offline + prompt=consent so we always receive a refresh token.
+    Google uses PKCE, so the generated code_verifier must be persisted and handed
+    back to exchange_code().
     """
-    url, state = _flow().authorization_url(
+    flow = _flow()
+    url, state = flow.authorization_url(
         access_type='offline', include_granted_scopes='true', prompt='consent')
-    return url, state
+    return url, state, getattr(flow, 'code_verifier', None)
 
 
-def exchange_code(code, state=None):
+def exchange_code(code, state=None, code_verifier=None):
     """Exchange the callback ``code`` for credentials + verified id-token claims.
 
     Returns (credentials, claims) where claims has: sub, email, name, picture.
+    ``code_verifier`` must be the PKCE verifier issued by authorization_url().
     """
     flow = _flow(state=state)
+    if code_verifier:
+        flow.code_verifier = code_verifier
     flow.fetch_token(code=code)
     creds = flow.credentials
     return creds, _verify_id_token(creds)

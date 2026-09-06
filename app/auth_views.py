@@ -26,8 +26,9 @@ def google_login(request):
     """Kick off the OAuth flow -> redirect to Google's consent screen."""
     if not google_oauth.is_enabled():
         return redirect(_LOGIN)
-    url, state = google_oauth.authorization_url()
+    url, state, code_verifier = google_oauth.authorization_url()
     request.session['google_oauth_state'] = state
+    request.session['google_oauth_code_verifier'] = code_verifier
     return redirect(url)
 
 
@@ -41,6 +42,7 @@ def google_callback(request):
         return redirect(_LOGIN)
 
     state = request.session.pop('google_oauth_state', None)
+    code_verifier = request.session.pop('google_oauth_code_verifier', None)
     if not state or request.GET.get('state') != state:
         return HttpResponseBadRequest('Invalid OAuth state.')
 
@@ -50,10 +52,11 @@ def google_callback(request):
         return redirect(_LOGIN)
 
     try:
-        creds, claims = google_oauth.exchange_code(code, state=state)
-    except Exception:
+        creds, claims = google_oauth.exchange_code(code, state=state, code_verifier=code_verifier)
+    except Exception as e:
         logger.exception('Google OAuth token exchange failed')
-        messages.error(request, 'Google sign-in failed. Please try again.')
+        # Verbose during pilot so the cause is visible in the UI; tighten later.
+        messages.error(request, f'Google sign-in failed: {type(e).__name__}: {e}')
         return redirect(_LOGIN)
 
     sub = claims.get('sub')
