@@ -23,12 +23,9 @@ NON_KANBAN_STATUSES = ['Complete', 'Launched']
 
 
 def _get_vertical_id(request):
-    """Read vertical filter from query string, return int or None."""
-    v = request.GET.get('vertical', '')
-    try:
-        return int(v) if v else None
-    except (ValueError, TypeError):
-        return None
+    """The selected Vertical id (from the top-bar scope), or None for Summary."""
+    from business_unit.scope import scoped_vertical_id
+    return scoped_vertical_id(request)
 
 
 #from .models import Project

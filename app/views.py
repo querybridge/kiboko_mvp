@@ -22,6 +22,7 @@ from app.forms import StrategyForm
 from users.models import ROLE_CHOICES, UserProfile
 from app.models import MonthlyGoal, DailyActual
 from business_unit.models import BusinessUnit, Vertical
+from business_unit.scope import scoped_vertical_id
 from project.models import Action
 from strategy.models import Project, Objective, Metric, KPI
 from project.views import project_detail
@@ -422,11 +423,7 @@ def _build_chart_data(year, vertical_id=None):
 # View All Projects Page
 @login_required
 def index(request):
-    vertical_id = request.GET.get('vertical', '')
-    try:
-        vertical_id = int(vertical_id) if vertical_id else None
-    except (ValueError, TypeError):
-        vertical_id = None
+    vertical_id = scoped_vertical_id(request)
 
     # Show active actions on dashboard
     projects = Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score')
@@ -769,11 +766,7 @@ def edit_goals(request):
     last_year = year - 1
     prev_year = year - 2
 
-    vertical_id = request.GET.get('vertical', '')
-    try:
-        vertical_id = int(vertical_id) if vertical_id else None
-    except (ValueError, TypeError):
-        vertical_id = None
+    vertical_id = scoped_vertical_id(request)
 
     def _filter_goals(qs):
         if vertical_id:
@@ -1258,11 +1251,7 @@ def analytics_expand_purchases(request):
 @login_required
 def work_in_progress(request):
     """Work In Progress — the active-actions gantt (moved off the dashboard)."""
-    vertical_id = request.GET.get('vertical', '')
-    try:
-        vertical_id = int(vertical_id) if vertical_id else None
-    except (ValueError, TypeError):
-        vertical_id = None
+    vertical_id = scoped_vertical_id(request)
 
     projects = Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score')
     if vertical_id:

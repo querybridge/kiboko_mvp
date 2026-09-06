@@ -81,30 +81,48 @@
           </li>
         </ul>
       </li>
-      <li style="padding: 13px 10px 0 0;">
-        <select id="verticalFilter" class="form-control input-sm" style="display:inline-block; width:auto; min-width:160px;">
-          <option value="">Summary</option>
-          {% for v in nav_verticals %}
-          <option value="{{ v.id }}" {% if selected_vertical == v.id %}selected{% endif %}>{{ v.name }}</option>
+      {% if tenancy_current_company %}
+      {# navbar-right floats li right-to-left, so order is reversed to read Company -> Vertical -> Website #}
+      <li style="padding: 13px 10px 0 0;" title="Website (data stream)">
+        <select id="scopeWebsite" class="form-control input-sm" style="display:inline-block; width:auto; min-width:140px;" {% if tenancy_vertical_sel == 'all' %}disabled{% endif %}>
+          <option value="all" {% if tenancy_website_sel == 'all' %}selected{% endif %}>All Websites</option>
+          {% for w in tenancy_websites %}
+          <option value="{{ w.id }}" {% if tenancy_website_sel == w.id|stringformat:'s' %}selected{% endif %}>{{ w.name }}</option>
           {% endfor %}
         </select>
       </li>
+      <li style="padding: 13px 4px 0 0;" title="Vertical (GA4 property)">
+        <select id="scopeVertical" class="form-control input-sm" style="display:inline-block; width:auto; min-width:140px;">
+          <option value="all" {% if tenancy_vertical_sel == 'all' %}selected{% endif %}>All Verticals</option>
+          {% for v in tenancy_verticals %}
+          <option value="{{ v.id }}" {% if tenancy_vertical_sel == v.id|stringformat:'s' %}selected{% endif %}>{{ v.name }}</option>
+          {% endfor %}
+        </select>
+      </li>
+      <li style="padding: 13px 4px 0 0;" title="Company">
+        <select id="scopeCompany" class="form-control input-sm" style="display:inline-block; width:auto; min-width:120px;">
+          {% for c in tenancy_companies %}
+          <option value="{{ c.id }}" {% if c.id == tenancy_current_company.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </li>
+      {% endif %}
     </ul>
   </nav>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  var sel = document.getElementById('verticalFilter');
-  if (sel) {
-    sel.addEventListener('change', function() {
+  // Company / Vertical / Website scope selectors -> reload with the chosen param.
+  // The server cascades (new Company resets Vertical+Website; new Vertical resets
+  // Website), so we only need to send the one that changed.
+  [['scopeCompany','company'], ['scopeVertical','vertical'], ['scopeWebsite','website']].forEach(function(pair) {
+    var el = document.getElementById(pair[0]);
+    if (!el) return;
+    el.addEventListener('change', function() {
       var url = new URL(window.location.href);
-      if (this.value) {
-        url.searchParams.set('vertical', this.value);
-      } else {
-        url.searchParams.delete('vertical');
-      }
+      url.searchParams.set(pair[1], this.value);
       window.location.href = url.toString();
     });
-  }
+  });
 });
 </script>
