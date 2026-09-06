@@ -718,7 +718,17 @@ def _split_series(daily, share, seed):
     return [round(v * share * (0.9 + rnd.random() * 0.2), 2) for v in daily]
 
 
-def build_attract_traffic(primary_code, compare_code, rows=None):
+# Attract Traffic device/channel split cards -> (split, bucket) in the GA4 splits.
+SPLIT_CARD_BUCKET = {
+    'dev_desktop': ('device', 'desktop'), 'dev_mobile': ('device', 'mobile'),
+    'dev_tablet': ('device', 'tablet'), 'dev_other': ('device', 'others'),
+    'ch_direct': ('channel', 'direct'), 'ch_organic': ('channel', 'organic'),
+    'ch_paid': ('channel', 'paid'), 'ch_social': ('channel', 'social'),
+    'ch_referral': ('channel', 'referral'), 'ch_other': ('channel', 'others'),
+}
+
+
+def build_attract_traffic(primary_code, compare_code, rows=None, splits=None):
     """Attract Traffic dashboard — all area/line charts (visits, visitors,
     device & channel splits)."""
     m = build_metrics(primary_code, compare_code, rows=rows)
@@ -774,13 +784,21 @@ def build_attract_traffic(primary_code, compare_code, rows=None):
                 ('ch_paid', 'PAID SEARCH', 0.16), ('ch_social', 'SOCIAL', 0.12),
                 ('ch_referral', 'REFERRAL', 0.10), ('ch_other', 'OTHER', 0.08)]
     for cid, header, share in devices + channels:
-        rnd = random.Random(_seed(primary_code, compare_code, cid))
-        total = p['visits'] * share
-        delta = round(rnd.uniform(-12, 15), 2)
+        real = None
+        if splits:
+            split_key, bucket = SPLIT_CARD_BUCKET[cid]
+            real = splits.get(split_key, {}).get(bucket)
+        if real:
+            total, delta, share, s1 = real['total'], real['delta'], real['share'], real['daily']
+        else:
+            rnd = random.Random(_seed(primary_code, compare_code, cid))
+            total = p['visits'] * share
+            delta = round(rnd.uniform(-12, 15), 2)
+            s1 = _split_series(sessions, share, _seed(cid, 's'))
         d.card(cid, 'attract', '', header,
                kpi_val=total, kpi_kind='integer', delta=delta,
                equation=[E(share * 100, 'percentage', 'of Visits')],
-               s1=_split_series(sessions, share, _seed(cid, 's')), fmt_kind='integer')
+               s1=s1, fmt_kind='integer')
 
     _apply_lever_glow(d.cards, primary_code, compare_code, 'attract', rows=rows)
     _apply_backlog_links(d.cards)

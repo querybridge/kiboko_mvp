@@ -40,6 +40,15 @@ def _date_ranges(primary_code, compare_code, today):
     return p_start, p_end, s_start, s_end
 
 
+def _range_dates(start, end):
+    """Ordered list of dates across [start, end], capped to MAX_POINTS (tail)."""
+    dates, day = [], start
+    while day <= end:
+        dates.append(day)
+        day += datetime.timedelta(days=1)
+    return dates[-MAX_POINTS:] if len(dates) > MAX_POINTS else dates
+
+
 def _fetch_by_day(creds, property_ids, start, end, stream_id):
     """Merge daily fundamentals across one or more GA4 properties, summed per day
     (the 'All Verticals' / 'All Websites' roll-up = total business performance)."""
@@ -190,6 +199,69 @@ def _story_fundamentals(t):
         billing_shipping_views=add_to_cart * 0.48,
         single_sku=checkouts * 0.30,
     )
+
+
+# Bucket order per split (matches the Attract Traffic device/channel cards).
+SPLIT_BUCKETS = {
+    'device': ['desktop', 'mobile', 'tablet', 'others'],
+    'channel': ['direct', 'organic', 'paid', 'social', 'referral', 'others'],
+}
+
+
+def _split_visits(creds, property_ids, start, end, split, stream_id):
+    """{bucket: {'total': visits, 'by_day': {YYYYMMDD: visits}}} summed across
+    the scope's properties for one split."""
+    buckets = {b: {'total': 0.0, 'by_day': {}} for b in SPLIT_BUCKETS[split]}
+    for pid in property_ids:
+        daily = ga4_data.fetch_daily_split(
+            creds, pid, start.isoformat(), end.isoformat(), split, stream_id=stream_id)
+        for day, bmap in daily.items():
+            for bucket, rec in bmap.items():
+                if bucket not in buckets:
+                    continue
+                v = float(rec.get('visits', 0) or 0)
+                buckets[bucket]['total'] += v
+                buckets[bucket]['by_day'][day] = buckets[bucket]['by_day'].get(day, 0.0) + v
+    return buckets
+
+
+def ga4_splits(request, primary_code, compare_code, today=None):
+    """Real device + channel visit splits for the current scope, or None.
+
+    Returns {'device': {bucket: {total, delta, share, daily}}, 'channel': {...}}
+    where `daily` aligns to the primary period's days.
+    """
+    try:
+        scoped = _scoped_creds(request)
+        if not scoped:
+            return None
+        creds, property_ids, stream_id = scoped
+        today = today or datetime.date.today()
+        p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+        dates_p = _range_dates(p_start, p_end)
+
+        out = {}
+        for split in ('device', 'channel'):
+            prim = _split_visits(creds, property_ids, p_start, p_end, split, stream_id)
+            sec = _split_visits(creds, property_ids, s_start, s_end, split, stream_id)
+            grand = sum(b['total'] for b in prim.values()) or 1.0
+            out[split] = {}
+            for bucket in SPLIT_BUCKETS[split]:
+                p_tot = prim[bucket]['total']
+                s_tot = sec[bucket]['total']
+                delta = ((p_tot - s_tot) / s_tot * 100) if s_tot else 0.0
+                out[split][bucket] = {
+                    'total': p_tot,
+                    'delta': round(delta, 2),
+                    'share': p_tot / grand,
+                    'daily': [round(prim[bucket]['by_day'].get(d.strftime('%Y%m%d'), 0.0), 2)
+                              for d in dates_p],
+                }
+        return out
+    except Exception as e:
+        logger.warning('GA4 splits fetch failed (%s: %s) -- falling back to dummy',
+                       type(e).__name__, e)
+        return None
 
 
 def ga4_story_fundamentals(request, primary_code, compare_code, today=None):

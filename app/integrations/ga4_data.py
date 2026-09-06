@@ -67,7 +67,7 @@ def fetch_totals(credentials, property_id, start_date, end_date, metric_names, s
     return out
 
 
-def fetch_daily_split(credentials, property_id, start_date, end_date, split):
+def fetch_daily_split(credentials, property_id, start_date, end_date, split, stream_id=None):
     """Return {'YYYYMMDD': {bucket: {fundamentals}}} split by 'device' or
     'channel'. Buckets are Kiboko's normalized names (desktop/mobile/... or
     direct/organic/paid/...)."""
@@ -80,7 +80,8 @@ def fetch_daily_split(credentials, property_id, start_date, end_date, split):
 
     resp = run_report(
         credentials, property_id, start_date, end_date,
-        dimensions=[M.DIMENSION_DATE, dim], metric_names=M.GA4_METRIC_NAMES)
+        dimensions=[M.DIMENSION_DATE, dim], metric_names=M.GA4_METRIC_NAMES,
+        stream_id=stream_id)
     out = {}
     for row in resp.rows:
         day = row.dimension_values[0].value

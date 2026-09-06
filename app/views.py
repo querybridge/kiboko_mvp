@@ -1209,8 +1209,12 @@ def analytics_grow_sales(request):
 @login_required
 def analytics_attract_traffic(request):
     from app import analytics_data as ad
+    from app.integrations import ga4_dashboard
     primary, compare, ctx = _analytics_filter(request)
-    d = ad.build_attract_traffic(primary, compare, rows=_ga4_rows(request, primary, compare))
+    d = ad.build_attract_traffic(
+        primary, compare,
+        rows=_ga4_rows(request, primary, compare),
+        splits=ga4_dashboard.ga4_splits(request, primary, compare))
     ctx.update({
         'cards': d['cards'],
         'charts_json': json.dumps(d['charts']),
