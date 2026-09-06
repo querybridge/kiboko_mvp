@@ -40,11 +40,24 @@ def _date_ranges(primary_code, compare_code, today):
     return p_start, p_end, s_start, s_end
 
 
-def _rows_for_range(creds, property_id, start, end, stream_id):
-    """Fetch daily fundamentals and return an ordered list of rows (one per day
-    across the range, zero-filled), plus the ordered date list."""
-    by_day = ga4_data.fetch_daily_fundamentals(
-        creds, property_id, start.isoformat(), end.isoformat(), stream_id=stream_id)
+def _fetch_by_day(creds, property_ids, start, end, stream_id):
+    """Merge daily fundamentals across one or more GA4 properties, summed per day
+    (the 'All Verticals' / 'All Websites' roll-up = total business performance)."""
+    merged = {}
+    for pid in property_ids:
+        by_day = ga4_data.fetch_daily_fundamentals(
+            creds, pid, start.isoformat(), end.isoformat(), stream_id=stream_id)
+        for day, rec in by_day.items():
+            acc = merged.setdefault(day, {k: 0.0 for k in _FUND_KEYS})
+            for k in _FUND_KEYS:
+                acc[k] += float(rec.get(k, 0) or 0)
+    return merged
+
+
+def _rows_for_range(creds, property_ids, start, end, stream_id):
+    """Ordered list of daily rows (one per day across the range, zero-filled)
+    summed across the given properties, plus the ordered date list."""
+    by_day = _fetch_by_day(creds, property_ids, start, end, stream_id)
     rows, dates = [], []
     day = start
     while day <= end:
@@ -69,31 +82,42 @@ def ga4_rows(request, primary_code, compare_code, today=None):
     if not google_oauth.is_enabled():
         return None
 
-    from business_unit.models import Vertical, Website
-    vertical_id = request.session.get('scope_vertical')
-    if not vertical_id or vertical_id == 'all':
-        return None  # company roll-up across properties -> not wired yet; use dummy
-    vertical = Vertical.objects.filter(pk=vertical_id).first()
-    if not vertical or not vertical.ga4_property_id:
-        return None
-
     identity = getattr(request.user, 'google_identity', None)
     if not identity:
         return None
 
-    # Optional single-stream (Website) filter.
+    from business_unit.models import Vertical, Website
+    vertical_id = request.session.get('scope_vertical')
     stream_id = None
-    website_id = request.session.get('scope_website')
-    if website_id and website_id != 'all':
-        site = Website.objects.filter(pk=website_id, vertical=vertical).first()
-        stream_id = site.ga4_stream_id if site else None
+
+    if vertical_id and vertical_id != 'all':
+        # One Vertical = one GA4 property (optionally one Website/data stream).
+        vertical = Vertical.objects.filter(pk=vertical_id).first()
+        if not vertical or not vertical.ga4_property_id:
+            return None
+        property_ids = [vertical.ga4_property_id]
+        website_id = request.session.get('scope_website')
+        if website_id and website_id != 'all':
+            site = Website.objects.filter(pk=website_id, vertical=vertical).first()
+            stream_id = site.ga4_stream_id if site else None
+    else:
+        # All Verticals = sum across every GA4 property in the current company.
+        company_id = request.session.get('scope_company')
+        if not company_id:
+            return None
+        property_ids = list(
+            Vertical.objects.filter(company_id=company_id)
+            .exclude(ga4_property_id='')
+            .values_list('ga4_property_id', flat=True))
+        if not property_ids:
+            return None
 
     try:
         creds = google_oauth.credentials_from_identity(identity)
         today = today or datetime.date.today()
         p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
-        rows_p, dates_p = _rows_for_range(creds, vertical.ga4_property_id, p_start, p_end, stream_id)
-        rows_s, _ = _rows_for_range(creds, vertical.ga4_property_id, s_start, s_end, stream_id)
+        rows_p, dates_p = _rows_for_range(creds, property_ids, p_start, p_end, stream_id)
+        rows_s, _ = _rows_for_range(creds, property_ids, s_start, s_end, stream_id)
         labels = [d.strftime('%m-%d') for d in dates_p]
         # Comparison series must align in length with the primary for the charts.
         if len(rows_s) < len(rows_p):
