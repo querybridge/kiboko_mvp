@@ -231,7 +231,11 @@ def _aggregate(rows):
     def safe(a, b):
         return a / b if b else 0
 
-    new_users = visitors * 0.62
+    # Real new/returning when the rows carry new_visitors (GA4); else a nominal split.
+    if rows and 'new_visitors' in rows[0]:
+        new_users = sum(r.get('new_visitors', 0) for r in rows)
+    else:
+        new_users = visitors * 0.62
     return {
         'visits': visits,
         'visitors': visitors,
@@ -661,8 +665,47 @@ class Deck:
             'weeks': weeks, 'equation': equation or [], 'premium': premium,
         }
 
-    def scatter_widget(self, wid, group, title, charts):
-        self.scatter[wid] = {'id': wid, 'group': group, 'title': title, 'charts': charts}
+    def scatter_widget(self, wid, group, title, charts, premium=False):
+        self.scatter[wid] = {'id': wid, 'group': group, 'title': title,
+                             'charts': charts, 'premium': premium}
+
+
+def _pct_delta(a, b):
+    return ((a - b) / b * 100) if b else 0.0
+
+
+def _real_scatter_chart(heading, x_label, y_label, prim_seg, sec_seg, x_key, y_key, kind):
+    """A changeplot chart from real per-segment fundamentals. Each point plots a
+    segment's YoY %-change on x_key vs y_key; primary/secondary show the y/x rate."""
+    points, raw = [], []
+    for i, name in enumerate(prim_seg):
+        pp, ss = prim_seg[name], sec_seg.get(name, {})
+        px, py = pp.get(x_key, 0) or 0, pp.get(y_key, 0) or 0
+        sx, sy = ss.get(x_key, 0) or 0, ss.get(y_key, 0) or 0
+        x, y = round(_pct_delta(px, sx), 2), round(_pct_delta(py, sy), 2)
+        prate = (py / px * 100) if px else 0
+        srate = (sy / sx * 100) if sx else 0
+        points.append({
+            'label': name, 'x': x, 'y': y,
+            'color': MARKER_PALETTE[i % len(MARKER_PALETTE)],
+            'primary': fmt(prate, kind)[0], 'secondary': fmt(srate, kind)[0],
+            'change': round(_pct_delta(prate, srate), 2),
+        })
+        raw.append((x, y))
+    trend = _linfit(raw) if len(raw) >= 2 else {'x1': 0, 'y1': 0, 'x2': 0, 'y2': 0}
+    return {'heading': f'Change in {heading}', 'x_label': x_label, 'y_label': y_label,
+            'points': points, 'trend': trend}
+
+
+def _real_changeplot_charts(seg):
+    """The three engage changeplot charts from a split's {display: {'p','s'}}."""
+    prim = {name: v['p'] for name, v in seg.items()}
+    sec = {name: v['s'] for name, v in seg.items()}
+    return [
+        _real_scatter_chart('Cart Creation Rate', 'Visits', 'Carts', prim, sec, 'visits', 'carts', 'percentage'),
+        _real_scatter_chart('Cart Completion Rate', 'Carts', 'Orders', prim, sec, 'carts', 'orders', 'percentage'),
+        _real_scatter_chart('Close Rate', 'Visits', 'Orders', prim, sec, 'visits', 'orders', 'percentage'),
+    ]
 
 
 def _linfit(pts):
@@ -818,9 +861,15 @@ def _dummy_delta(seed, lo=-12, hi=15):
     return round(random.Random(seed).uniform(lo, hi), 2)
 
 
-def build_engage_customer(primary_code, compare_code, rows=None, events=None):
+def build_engage_customer(primary_code, compare_code, rows=None, events=None,
+                          live=False, segments=None):
     """Engage Customer dashboard — area charts + KPI/history cards + two
-    device/channel close-rate changeplots (scatter)."""
+    device/channel close-rate changeplots (scatter).
+
+    live=True (a GA4 property is connected) shows real-or-zero: metrics not yet
+    wired to GA4 (PDP views, engagement history cards, new/returning close rates)
+    render as 0 rather than illustrative dummy values, so gaps are visible.
+    """
     m = build_metrics(primary_code, compare_code, rows=rows)
     p, pct = m['primary'], m['pct']
     n = len(m['labels'])
@@ -830,8 +879,12 @@ def build_engage_customer(primary_code, compare_code, rows=None, events=None):
     def sd(key):  # deterministic seed for this dashboard
         return _seed(primary_code, compare_code, 'eng', key)
 
-    # derived dummy aggregates
-    pdp_views = p['visits'] * 2.6
+    def dd(seed):  # delta: 0 when live (not wired), else illustrative
+        return 0.0 if live else _dummy_delta(seed)
+
+    # PDP views aren't available from the GA4 Data API (need page-path config) ->
+    # 0 when live; illustrative ratio otherwise.
+    pdp_views = 0.0 if live else p['visits'] * 2.6
     cart_to_detail = p['carts'] / pdp_views * 100 if pdp_views else 0
     buy_to_detail = p['orders'] / pdp_views * 100 if pdp_views else 0
     returning_pct = p['returning_users'] / p['visitors'] * 100 if p['visitors'] else 0
@@ -894,11 +947,13 @@ def build_engage_customer(primary_code, compare_code, rows=None, events=None):
         ('pdp_per_visit', 'PDP VIEWS PER VISIT', 4.2, 'normal', False),
     ]
     for cid, title, base, kind, rev in history:
-        d.history_card(cid, 'engage', title, base, kind, _dummy_delta(sd(cid)),
-                       _weeks(base, kind, sd(cid + 'w')), reversed_color=rev)
+        base = 0 if live else base   # not wired to GA4 yet -> 0 when connected
+        weeks = [(lbl, fmt(0, kind)[0]) for lbl in ('Last 4 wks', 'Last 8 wks', 'Last 13 wks')] \
+            if live else _weeks(base, kind, sd(cid + 'w'))
+        d.history_card(cid, 'engage', title, base, kind, dd(sd(cid)), weeks, reversed_color=rev)
 
     d.card('carts_per_pdp', 'engage', '', 'CARTS PER PDP VIEW',
-           kpi_val=cart_to_detail, kpi_kind='percentage', delta=_dummy_delta(sd('ctdd')),
+           kpi_val=cart_to_detail, kpi_kind='percentage', delta=dd(sd('ctdd')),
            equation=[E(p['carts'], 'integer', 'Carts  /'),
                      E(pdp_views, 'integer', 'PDP Views  =')],
            result=E(cart_to_detail, 'percentage', 'Carts per PDP View'),
@@ -922,10 +977,10 @@ def build_engage_customer(primary_code, compare_code, rows=None, events=None):
            s1=s2(s_checkv, sd('bs2')), fmt_kind='integer')
 
     # SECTION 4 -----------------------------------------------------------
-    ret_cr = 7.2
-    new_cr = 4.1
+    ret_cr = 0.0 if live else 7.2
+    new_cr = 0.0 if live else 4.1
     d.card('pct_returning', 'engage', 'ENGAGE', '% RETURNING VISITORS',
-           kpi_val=returning_pct, kpi_kind='percentage', delta=_dummy_delta(sd('retd')),
+           kpi_val=returning_pct, kpi_kind='percentage', delta=dd(sd('retd')),
            equation=[E(p['returning_users'], 'integer', 'Returning Visitors  /'),
                      E(p['visitors'], 'integer', 'Visitors  =')],
            result=E(returning_pct, 'percentage', 'Returning Visitors'),
@@ -933,34 +988,41 @@ def build_engage_customer(primary_code, compare_code, rows=None, events=None):
                    f"New Visitor Close Rate: {fmt(new_cr, 'percentage')[0]}"),
            s1=s_ret, s2=s2(s_ret, sd('ret2')), two_sets=True, fmt_kind='percentage', chart_height=150)
     d.card('orders_per_pdp', 'engage', '', 'ORDERS PER PDP VIEW',
-           kpi_val=buy_to_detail, kpi_kind='percentage', delta=_dummy_delta(sd('btdd')),
+           kpi_val=buy_to_detail, kpi_kind='percentage', delta=dd(sd('btdd')),
            equation=[E(p['orders'], 'integer', 'Orders  /'),
                      E(pdp_views, 'integer', 'PDP Views  =')],
            result=E(buy_to_detail, 'percentage', 'Orders per PDP View'),
            s1=s_btd, s2=s2(s_btd, sd('btd2')), two_sets=True, fmt_kind='percentage', chart_height=130)
 
-    # SECTION 5 — changeplots --------------------------------------------
-    devices = ['Desktop', 'Mobile', 'Tablet', 'Other']
-    channels = ['Direct', 'Organic Search', 'Paid Search', 'Social', 'Referral', 'Other']
-    for wid, title, names in (
-        ('device_changeplot', 'Device Close Rate Changeplot', devices),
-        ('channel_changeplot', 'Channel Close Rate Changeplot', channels),
-    ):
-        charts = [
-            _scatter_chart(sd(wid + '1'), 'Cart Creation Rate', 'Visits', 'Carts', names, 'percentage'),
-            _scatter_chart(sd(wid + '2'), 'Cart Completion Rate', 'Carts', 'Orders', names, 'percentage'),
-            _scatter_chart(sd(wid + '3'), 'Close Rate', 'Visits', 'Orders', names, 'percentage'),
-        ]
-        d.scatter_widget(wid, 'engage', title, charts)
+    # SECTION 5 — changeplots (real device/channel from GA4 when connected) -----
+    if segments:
+        d.scatter_widget('device_changeplot', 'engage', 'Device Close Rate Changeplot',
+                         _real_changeplot_charts(segments['device']))
+        d.scatter_widget('channel_changeplot', 'engage', 'Channel Close Rate Changeplot',
+                         _real_changeplot_charts(segments['channel']))
+    else:
+        devices = ['Desktop', 'Mobile', 'Tablet', 'Other']
+        channels = ['Direct', 'Organic Search', 'Paid Search', 'Social', 'Referral', 'Other']
+        for wid, title, names in (
+            ('device_changeplot', 'Device Close Rate Changeplot', devices),
+            ('channel_changeplot', 'Channel Close Rate Changeplot', channels),
+        ):
+            charts = [
+                _scatter_chart(sd(wid + '1'), 'Cart Creation Rate', 'Visits', 'Carts', names, 'percentage'),
+                _scatter_chart(sd(wid + '2'), 'Cart Completion Rate', 'Carts', 'Orders', names, 'percentage'),
+                _scatter_chart(sd(wid + '3'), 'Close Rate', 'Visits', 'Orders', names, 'percentage'),
+            ]
+            d.scatter_widget(wid, 'engage', title, charts)
 
     _apply_lever_glow(d.cards, primary_code, compare_code, 'engage', rows=rows)
     _apply_backlog_links(d.cards)
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
 
-def build_expand_purchases(primary_code, compare_code, rows=None):
+def build_expand_purchases(primary_code, compare_code, rows=None, live=False):
     """Expand Purchases dashboard — area charts + KPI/history cards + a product
-    category AOV changeplot (scatter)."""
+    category AOV changeplot (scatter). live=True zeros the not-yet-wired deltas
+    and marks the item/order-level widgets as Premium (BigQuery) tier."""
     m = build_metrics(primary_code, compare_code, rows=rows)
     p, pct = m['primary'], m['pct']
     d = Deck(m['labels'], primary_label(primary_code), compare_label(primary_code, compare_code))
@@ -969,12 +1031,16 @@ def build_expand_purchases(primary_code, compare_code, rows=None):
     def sd(key):
         return _seed(primary_code, compare_code, 'exp', key)
 
+    def dd(seed):
+        return 0.0 if live else _dummy_delta(seed)
+
     def s2(series, seed):
         rnd = random.Random(seed)
         return [round(v * (0.86 + rnd.random() * 0.2), 4) for v in series]
 
-    unique_skus = 2.3
-    cherry_pick = 28.0
+    # Item/order-level -> Premium (BigQuery) tier; 0 when live (cards are greyed).
+    unique_skus = 0.0 if live else 2.3
+    cherry_pick = 0.0 if live else 28.0
     single_sku_orders = p['orders'] * cherry_pick / 100.0
 
     s_aov = m['daily']['expandAvgOrderValue']
@@ -1004,7 +1070,7 @@ def build_expand_purchases(primary_code, compare_code, rows=None):
            result=E(p['units_per_order'], 'normal', 'Units per Order'),
            s1=s_upo, s2=s2(s_upo, sd('upo2')), two_sets=True, fmt_kind='normal', chart_height=150)
     d.card('total_units', 'expand', '', 'TOTAL UNITS ORDERED (QUANTITY)',
-           kpi_val=p['units'], kpi_kind='integer', delta=_dummy_delta(sd('tud')),
+           kpi_val=p['units'], kpi_kind='integer', delta=dd(sd('tud')),
            equation=[E(p['orders'], 'integer', 'Orders  ×'),
                      E(p['units_per_order'], 'normal', 'Units per Order  =')],
            result=E(p['units'], 'integer', 'Units Ordered'),
@@ -1034,7 +1100,9 @@ def build_expand_purchases(primary_code, compare_code, rows=None):
         _scatter_chart(sd('cat2'), 'Avg Unit Price', 'Units', 'Sales', cats, 'currency'),
         _scatter_chart(sd('cat3'), 'AOV', 'Orders', 'Sales', cats, 'currency'),
     ]
-    d.scatter_widget('category_changeplot', 'expand', 'Product Category AOV Changeplot', charts)
+    # Per-category order metrics need item/order-level data -> Premium (BigQuery) tier.
+    d.scatter_widget('category_changeplot', 'expand', 'Product Category AOV Changeplot',
+                     charts, premium=live)
 
     _apply_lever_glow(d.cards, primary_code, compare_code, 'expand', rows=rows)
     _apply_backlog_links(d.cards)

@@ -1231,7 +1231,9 @@ def analytics_engage_customers(request):
     d = ad.build_engage_customer(
         primary, compare,
         rows=_ga4_rows(request, primary, compare),
-        events=ga4_dashboard.ga4_engage_events(request, primary, compare))
+        events=ga4_dashboard.ga4_engage_events(request, primary, compare),
+        live=ga4_dashboard.is_connected(request),
+        segments=ga4_dashboard.ga4_segments(request, primary, compare))
     ctx.update({
         'cards': d['cards'],
         'history': d['history'],
@@ -1256,7 +1258,11 @@ def analytics_performance_story(request):
 def analytics_expand_purchases(request):
     from app import analytics_data as ad
     primary, compare, ctx = _analytics_filter(request)
-    d = ad.build_expand_purchases(primary, compare, rows=_ga4_rows(request, primary, compare))
+    from app.integrations import ga4_dashboard
+    d = ad.build_expand_purchases(
+        primary, compare,
+        rows=_ga4_rows(request, primary, compare),
+        live=ga4_dashboard.is_connected(request))
     ctx.update({
         'cards': d['cards'],
         'history': d['history'],

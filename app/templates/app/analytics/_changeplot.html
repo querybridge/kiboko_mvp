@@ -1,5 +1,6 @@
 {# One changeplot widget = 3 scatter charts. Expects `widget` (id, group, title, charts). #}
-<div class="changeplot group-{{ widget.group }}">
+<div class="changeplot group-{{ widget.group }}{% if widget.premium %} cp-premium{% endif %}">
+  {% if widget.premium %}<div class="hc-premium-badge"><i class="fa fa-lock"></i> Premium Tier Required</div>{% endif %}
   <div class="changeplot-title">{{ widget.title }}</div>
   <div class="cp-legend">
     {% for pt in widget.charts.0.points %}
