@@ -1231,7 +1231,7 @@ def analytics_engage_customers(request):
     d = ad.build_engage_customer(
         primary, compare,
         rows=_ga4_rows(request, primary, compare),
-        events=ga4_dashboard.ga4_engage_events(request, primary, compare),
+        eng=ga4_dashboard.ga4_engage_metrics(request, primary, compare),
         live=ga4_dashboard.is_connected(request),
         segments=ga4_dashboard.ga4_segments(request, primary, compare))
     ctx.update({

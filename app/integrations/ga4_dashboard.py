@@ -294,42 +294,80 @@ def ga4_splits(request, primary_code, compare_code, today=None):
         return zeros()
 
 
-ENGAGE_EVENTS = {'cart_views': 'view_cart', 'checkout_views': 'begin_checkout',
-                 'billing_views': 'add_shipping_info'}
+# Engage: session metrics + ecommerce events. Funnel views and PDP/category
+# views come straight from GA4 events (view_item / view_item_list / view_cart /
+# begin_checkout / add_shipping_info) -- no page-path config needed. Engagement
+# history cards are computed from raw session counts (which sum across properties).
+ENGAGE_METRICS = ['sessions', 'engagedSessions', 'userEngagementDuration',
+                  'screenPageViews', 'addToCarts', 'ecommercePurchases']
+ENGAGE_EVENT_NAMES = ['view_item', 'view_item_list', 'view_cart', 'begin_checkout', 'add_shipping_info']
+
+_ENGAGE_KEYS = ['pdp_views', 'category_pv', 'carts_per_pdp', 'orders_per_pdp', 'bounce_rate',
+                'visit_duration', 'shopper_activity', 'pages_per_visit', 'cat_pdp_per_visit',
+                'pdp_per_visit', 'cart_views', 'checkout_views', 'billing_views']
 
 
-def ga4_engage_events(request, primary_code, compare_code, today=None):
+def _engage_compute(a):
+    """Derive the Engage card values from one period's raw counts."""
+    def sd(x, y):
+        return x / y if y else 0.0
+    sess, eng, dur = a['sessions'], a['engagedSessions'], a['userEngagementDuration']
+    pv, carts, orders = a['screenPageViews'], a['addToCarts'], a['ecommercePurchases']
+    vi, vl = a['view_item'], a['view_item_list']
+    return {
+        'pdp_views': vi,                          # view_item events
+        'category_pv': vl,                        # view_item_list events
+        'carts_per_pdp': sd(carts, vi) * 100,
+        'orders_per_pdp': sd(orders, vi) * 100,
+        'bounce_rate': sd(sess - eng, sess) * 100,
+        'visit_duration': sd(dur, sess),          # avg engagement seconds / session
+        'shopper_activity': sd(eng, sess) * 100,  # engagement rate
+        'pages_per_visit': sd(pv, sess),
+        'cat_pdp_per_visit': sd(vl, sess),
+        'pdp_per_visit': sd(vi, sess),
+        'cart_views': a['view_cart'],
+        'checkout_views': a['begin_checkout'],
+        'billing_views': a['add_shipping_info'],
+    }
+
+
+def ga4_engage_metrics(request, primary_code, compare_code, today=None):
+    """Engage card values (+ deltas) from real GA4 events/metrics, or None.
+    Keys in _ENGAGE_KEYS, each also with a _delta suffix."""
     sc = _connected_scope(request)
     if sc is None:
         return None
     identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
     p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
-    names = list(ENGAGE_EVENTS.values())
 
     def zeros():
-        return {**{k: 0.0 for k in ENGAGE_EVENTS}, **{k + '_delta': 0.0 for k in ENGAGE_EVENTS}}
+        return {**{k: 0.0 for k in _ENGAGE_KEYS}, **{k + '_delta': 0.0 for k in _ENGAGE_KEYS}}
     try:
         creds = google_oauth.credentials_from_identity(identity)
 
-        def totals(start, end):
-            acc = {n: 0.0 for n in names}
+        def raw(start, end):
+            acc = {m: 0.0 for m in ENGAGE_METRICS}
+            acc.update({e: 0.0 for e in ENGAGE_EVENT_NAMES})
             for pid in property_ids:
-                t = ga4_data.fetch_event_counts(creds, pid, start.isoformat(), end.isoformat(),
-                                                names, stream_id=stream_id)
-                for n in names:
-                    acc[n] += t.get(n, 0.0)
+                t = ga4_data.fetch_totals(creds, pid, start.isoformat(), end.isoformat(),
+                                          ENGAGE_METRICS, stream_id=stream_id)
+                for m in ENGAGE_METRICS:
+                    acc[m] += t.get(m, 0.0)
+                ev = ga4_data.fetch_event_counts(creds, pid, start.isoformat(), end.isoformat(),
+                                                 ENGAGE_EVENT_NAMES, stream_id=stream_id)
+                for e in ENGAGE_EVENT_NAMES:
+                    acc[e] += ev.get(e, 0.0)
             return acc
 
-        prim, sec = totals(p_start, p_end), totals(s_start, s_end)
+        p_c, s_c = _engage_compute(raw(p_start, p_end)), _engage_compute(raw(s_start, s_end))
         out = {}
-        for key, ev in ENGAGE_EVENTS.items():
-            pv, sv = prim[ev], sec[ev]
-            out[key] = pv
-            out[key + '_delta'] = round(((pv - sv) / sv * 100) if sv else 0.0, 2)
+        for k in _ENGAGE_KEYS:
+            out[k] = p_c[k]
+            out[k + '_delta'] = round(((p_c[k] - s_c[k]) / s_c[k] * 100) if s_c[k] else 0.0, 2)
         return out
     except Exception as e:
-        logger.warning('GA4 CONNECTED but funnel events unavailable (%s: %s) -- showing zeros',
+        logger.warning('GA4 CONNECTED but engage metrics unavailable (%s: %s) -- showing zeros',
                        type(e).__name__, e)
         return zeros()
 
@@ -338,22 +376,23 @@ STORY_GA4_METRICS = [
     'sessions', 'totalUsers', 'newUsers', 'engagedSessions', 'userEngagementDuration',
     'screenPageViews', 'addToCarts', 'ecommercePurchases', 'itemsPurchased', 'purchaseRevenue',
 ]
+STORY_EVENT_NAMES = ['view_item', 'view_item_list', 'view_cart', 'begin_checkout', 'add_shipping_info']
 
 
 def _story_fundamentals(t):
-    sessions = t.get('sessions', 0.0)
-    page_views = t.get('screenPageViews', 0.0)
-    add_to_cart = t.get('addToCarts', 0.0)
+    """Storyboard fundamentals from GA4 totals + event counts. Funnel/PDP/category
+    views come from real events; single-SKU stays Premium-approximated."""
     checkouts = t.get('ecommercePurchases', 0.0)
     return dict(
-        visitors=t.get('totalUsers', 0.0), new_users=t.get('newUsers', 0.0), sessions=sessions,
+        visitors=t.get('totalUsers', 0.0), new_users=t.get('newUsers', 0.0),
+        sessions=t.get('sessions', 0.0),
         engaged=t.get('engagedSessions', 0.0), total_visit_time=t.get('userEngagementDuration', 0.0),
-        page_views=page_views, add_to_cart=add_to_cart, checkouts=checkouts,
-        item_qty=t.get('itemsPurchased', 0.0), revenue=t.get('purchaseRevenue', 0.0),
-        # approximated until page-path/Premium tier
-        category_pv=page_views * 0.45, pdp_pv=page_views * 0.60, cart_views=add_to_cart * 1.40,
-        checkout_views=add_to_cart * 0.60, billing_shipping_views=add_to_cart * 0.48,
-        single_sku=checkouts * 0.30,
+        page_views=t.get('screenPageViews', 0.0), add_to_cart=t.get('addToCarts', 0.0),
+        checkouts=checkouts, item_qty=t.get('itemsPurchased', 0.0), revenue=t.get('purchaseRevenue', 0.0),
+        category_pv=t.get('view_item_list', 0.0), pdp_pv=t.get('view_item', 0.0),
+        cart_views=t.get('view_cart', 0.0), checkout_views=t.get('begin_checkout', 0.0),
+        billing_shipping_views=t.get('add_shipping_info', 0.0),
+        single_sku=checkouts * 0.30,   # item/order-level -> Premium tier
     )
 
 
@@ -372,11 +411,16 @@ def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
 
         def totals(start, end):
             total = {m: 0.0 for m in STORY_GA4_METRICS}
+            total.update({e: 0.0 for e in STORY_EVENT_NAMES})
             for pid in property_ids:
                 t = ga4_data.fetch_totals(creds, pid, start.isoformat(), end.isoformat(),
                                           STORY_GA4_METRICS, stream_id=stream_id)
                 for m in STORY_GA4_METRICS:
                     total[m] += t.get(m, 0.0)
+                ev = ga4_data.fetch_event_counts(creds, pid, start.isoformat(), end.isoformat(),
+                                                 STORY_EVENT_NAMES, stream_id=stream_id)
+                for e in STORY_EVENT_NAMES:
+                    total[e] += ev.get(e, 0.0)
             return total
 
         return _story_fundamentals(totals(p_start, p_end)), _story_fundamentals(totals(s_start, s_end))

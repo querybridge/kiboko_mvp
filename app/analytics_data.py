@@ -861,14 +861,26 @@ def _dummy_delta(seed, lo=-12, hi=15):
     return round(random.Random(seed).uniform(lo, hi), 2)
 
 
-def build_engage_customer(primary_code, compare_code, rows=None, events=None,
+HISTORY_DEFAULT = {'bounce_rate': 38.0, 'visit_duration': 204, 'shopper_activity': 46.0,
+                   'pages_per_visit': 5.4, 'cat_pdp_per_visit': 3.1, 'pdp_per_visit': 4.2}
+HISTORY_SPECS = [
+    ('bounce_rate', 'BOUNCE RATE', 'percentage', True),
+    ('visit_duration', 'VISIT DURATION', 'time', False),
+    ('shopper_activity', 'SHOPPER ACTIVITY', 'percentage', False),
+    ('pages_per_visit', 'PAGES PER VISIT', 'normal', False),
+    ('cat_pdp_per_visit', 'CATEGORY PAGE VIEWS PER VISIT', 'normal', False),
+    ('pdp_per_visit', 'PDP VIEWS PER VISIT', 'normal', False),
+]
+
+
+def build_engage_customer(primary_code, compare_code, rows=None, eng=None,
                           live=False, segments=None):
     """Engage Customer dashboard — area charts + KPI/history cards + two
     device/channel close-rate changeplots (scatter).
 
-    live=True (a GA4 property is connected) shows real-or-zero: metrics not yet
-    wired to GA4 (PDP views, engagement history cards, new/returning close rates)
-    render as 0 rather than illustrative dummy values, so gaps are visible.
+    `eng` (from GA4 when connected) supplies PDP/category views + funnel views +
+    engagement history cards from real events/metrics. Without it: illustrative
+    dummy (or, when live but unavailable, zeros so gaps are visible).
     """
     m = build_metrics(primary_code, compare_code, rows=rows)
     p, pct = m['primary'], m['pct']
@@ -882,22 +894,25 @@ def build_engage_customer(primary_code, compare_code, rows=None, events=None,
     def dd(seed):  # delta: 0 when live (not wired), else illustrative
         return 0.0 if live else _dummy_delta(seed)
 
-    # PDP views aren't available from the GA4 Data API (need page-path config) ->
-    # 0 when live; illustrative ratio otherwise.
-    pdp_views = 0.0 if live else p['visits'] * 2.6
-    cart_to_detail = p['carts'] / pdp_views * 100 if pdp_views else 0
-    buy_to_detail = p['orders'] / pdp_views * 100 if pdp_views else 0
-    returning_pct = p['returning_users'] / p['visitors'] * 100 if p['visitors'] else 0
-    # Cart / checkout / billing views come from real GA4 event counts (view_cart /
-    # begin_checkout / add_shipping_info) when available, else synthetic ratios.
-    if events:
-        cart_views, cart_delta = events['cart_views'], events['cart_views_delta']
-        checkout_views, checkout_delta = events['checkout_views'], events['checkout_views_delta']
-        billing_views, billing_delta = events['billing_views'], events['billing_views_delta']
+    # PDP views, carts/orders-per-PDP and funnel views come from real GA4 events
+    # (view_item / view_cart / begin_checkout / add_shipping_info) -- no page-path
+    # config needed. Falls back to illustrative ratios when not connected.
+    if eng:
+        pdp_views = eng['pdp_views']
+        cart_to_detail, cart_to_detail_delta = eng['carts_per_pdp'], eng['carts_per_pdp_delta']
+        buy_to_detail, buy_to_detail_delta = eng['orders_per_pdp'], eng['orders_per_pdp_delta']
+        cart_views, cart_delta = eng['cart_views'], eng['cart_views_delta']
+        checkout_views, checkout_delta = eng['checkout_views'], eng['checkout_views_delta']
+        billing_views, billing_delta = eng['billing_views'], eng['billing_views_delta']
     else:
+        pdp_views = 0.0 if live else p['visits'] * 2.6
+        cart_to_detail = p['carts'] / pdp_views * 100 if pdp_views else 0
+        buy_to_detail = p['orders'] / pdp_views * 100 if pdp_views else 0
+        cart_to_detail_delta, buy_to_detail_delta = dd(sd('ctdd')), dd(sd('btdd'))
         cart_views, cart_delta = p['orders'] * 1.8, _dummy_delta(sd('cvd'))
         checkout_views, checkout_delta = p['orders'] * 1.3, _dummy_delta(sd('chkd'))
         billing_views, billing_delta = p['orders'] * 1.1, _dummy_delta(sd('bsd'))
+    returning_pct = p['returning_users'] / p['visitors'] * 100 if p['visitors'] else 0
 
     # synthetic daily comparison series
     def s2(series, seed):
@@ -938,22 +953,18 @@ def build_engage_customer(primary_code, compare_code, rows=None, events=None,
            s1=s_creation, s2=s2(s_creation, sd('cre2')),
            two_sets=True, fmt_kind='percentage', chart_height=150)
 
-    history = [
-        ('bounce_rate', 'BOUNCE RATE', 38.0, 'percentage', True),
-        ('visit_duration', 'VISIT DURATION', 204, 'time', False),
-        ('shopper_activity', 'SHOPPER ACTIVITY', 46.0, 'percentage', False),
-        ('pages_per_visit', 'PAGES PER VISIT', 5.4, 'normal', False),
-        ('cat_pdp_per_visit', 'CATEGORY PAGE VIEWS PER VISIT', 3.1, 'normal', False),
-        ('pdp_per_visit', 'PDP VIEWS PER VISIT', 4.2, 'normal', False),
-    ]
-    for cid, title, base, kind, rev in history:
-        base = 0 if live else base   # not wired to GA4 yet -> 0 when connected
-        weeks = [(lbl, fmt(0, kind)[0]) for lbl in ('Last 4 wks', 'Last 8 wks', 'Last 13 wks')] \
-            if live else _weeks(base, kind, sd(cid + 'w'))
-        d.history_card(cid, 'engage', title, base, kind, dd(sd(cid)), weeks, reversed_color=rev)
+    for cid, title, kind, rev in HISTORY_SPECS:
+        if eng:  # real, computed from GA4 session metrics/events
+            base, delta = eng[cid], eng[cid + '_delta']
+            weeks = [(lbl, fmt(base, kind)[0]) for lbl in ('Last 4 wks', 'Last 8 wks', 'Last 13 wks')]
+        else:
+            base = HISTORY_DEFAULT[cid]
+            delta = dd(sd(cid))
+            weeks = _weeks(base, kind, sd(cid + 'w'))
+        d.history_card(cid, 'engage', title, base, kind, delta, weeks, reversed_color=rev)
 
     d.card('carts_per_pdp', 'engage', '', 'CARTS PER PDP VIEW',
-           kpi_val=cart_to_detail, kpi_kind='percentage', delta=dd(sd('ctdd')),
+           kpi_val=cart_to_detail, kpi_kind='percentage', delta=cart_to_detail_delta,
            equation=[E(p['carts'], 'integer', 'Carts  /'),
                      E(pdp_views, 'integer', 'PDP Views  =')],
            result=E(cart_to_detail, 'percentage', 'Carts per PDP View'),
@@ -988,7 +999,7 @@ def build_engage_customer(primary_code, compare_code, rows=None, events=None,
                    f"New Visitor Close Rate: {fmt(new_cr, 'percentage')[0]}"),
            s1=s_ret, s2=s2(s_ret, sd('ret2')), two_sets=True, fmt_kind='percentage', chart_height=150)
     d.card('orders_per_pdp', 'engage', '', 'ORDERS PER PDP VIEW',
-           kpi_val=buy_to_detail, kpi_kind='percentage', delta=dd(sd('btdd')),
+           kpi_val=buy_to_detail, kpi_kind='percentage', delta=buy_to_detail_delta,
            equation=[E(p['orders'], 'integer', 'Orders  /'),
                      E(pdp_views, 'integer', 'PDP Views  =')],
            result=E(buy_to_detail, 'percentage', 'Orders per PDP View'),
