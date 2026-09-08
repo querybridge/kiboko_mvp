@@ -294,11 +294,19 @@ def _zero_rows(n):
 # Providers  (return real-or-zeros when connected, None when not connected)
 # --------------------------------------------------------------------------
 
+def _bq_today(bq, today):
+    """Anchor 'today' to the export's latest data (+1 day) so relative periods
+    land on the data rather than on the real calendar today."""
+    if bq.data_through:
+        return min(today, bq.data_through + datetime.timedelta(days=1))
+    return today
+
+
 def ga4_rows(request, primary_code, compare_code, today=None):
     today = today or datetime.date.today()
     bqp = _premium_connection(request)
     if bqp is not None:                      # Premium company -> BigQuery
-        return _bq_rows(bqp[0], bqp[1], primary_code, compare_code, today)
+        return _bq_rows(bqp[0], bqp[1], primary_code, compare_code, _bq_today(bqp[0], today))
     sc = _connected_scope(request)
     if sc is None:
         return None

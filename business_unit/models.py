@@ -142,9 +142,10 @@ class BigQueryConnection(models.Model):
 	company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='bigquery')
 	gcp_project = models.CharField(max_length=100, blank=True)
 	service_account_json = models.JSONField(default=dict, blank=True)
-	cart_page_path = models.CharField(max_length=255, blank=True)
-	checkout_page_path = models.CharField(max_length=255, blank=True)
-	billing_shipping_page_path = models.CharField(max_length=255, blank=True)
+	# Latest complete day of data in the export. Relative periods (This Month,
+	# QTD, ...) are anchored to this so historical clients' dashboards land on
+	# their data instead of on 'today' (which may be past the export).
+	data_through = models.DateField(null=True, blank=True)
 	created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 	created = models.DateTimeField(auto_now_add=True)
 	last_tested_at = models.DateTimeField(null=True, blank=True)

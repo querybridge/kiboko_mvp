@@ -1342,7 +1342,7 @@ def data_connection(request):
         if not (name and prop and sa):
             messages.error(request, 'Company name, GA4 property id and service account JSON are required.')
             return redirect('app:data_connection')
-        ok, msg = bqmod.test_connection(sa, prop)
+        ok, msg, latest = bqmod.test_connection(sa, prop)
         if not ok:
             messages.error(request, f'Connection test failed: {msg}')
             return redirect('app:data_connection')
@@ -1350,10 +1350,7 @@ def data_connection(request):
         Vertical.objects.get_or_create(company=company, ga4_property_id=prop, defaults={'name': name})
         BigQueryConnection.objects.update_or_create(company=company, defaults={
             'service_account_json': sa, 'gcp_project': sa.get('project_id', ''),
-            'cart_page_path': request.POST.get('cart_page_path', '').strip(),
-            'checkout_page_path': request.POST.get('checkout_page_path', '').strip(),
-            'billing_shipping_page_path': request.POST.get('billing_shipping_page_path', '').strip(),
-            'created_by': request.user})
+            'data_through': latest, 'created_by': request.user})
         CompanyMembership.objects.get_or_create(company=company, user=request.user, defaults={'role': 'admin'})
         messages.success(request, f'Premium (BigQuery) connected for {name}. {msg}')
         return redirect('app:data_connection')

@@ -101,7 +101,8 @@
             {% endif %}
 
             <p class="text-muted">Premium reads the customer's <strong>GA4 &rarr; BigQuery export</strong> with a Google Cloud
-              <strong>service account</strong> (shared for the company, not tied to any one person's Google login). Setup:</p>
+              <strong>service account</strong> (shared for the company, not tied to any one person's Google login).
+              Cart / checkout / PDP / category views come from GA4 <strong>events</strong> &mdash; no page-path setup. Setup:</p>
             <ol class="text-muted">
               <li>In the customer's GA4, enable the <strong>BigQuery Links</strong> export (Admin &rarr; Product Links &rarr; BigQuery).</li>
               <li>In Google Cloud, create a <strong>service account</strong> and grant it <strong>BigQuery Data Viewer</strong> + <strong>Job User</strong> on the project that holds the <code>analytics_&lt;property_id&gt;</code> dataset.</li>
@@ -122,14 +123,6 @@
               <div class="form-group">
                 <label>Service account JSON key</label>
                 <textarea name="service_account_json" class="form-control" rows="6" placeholder='{ "type": "service_account", "project_id": "...", ... }' required></textarea>
-              </div>
-              <div class="row">
-                <div class="col-md-4"><div class="form-group"><label>Cart page path <small class="text-muted">(optional)</small></label>
-                  <input type="text" name="cart_page_path" class="form-control" placeholder="/cart"></div></div>
-                <div class="col-md-4"><div class="form-group"><label>Checkout page path</label>
-                  <input type="text" name="checkout_page_path" class="form-control" placeholder="/checkout"></div></div>
-                <div class="col-md-4"><div class="form-group"><label>Billing/shipping page path</label>
-                  <input type="text" name="billing_shipping_page_path" class="form-control" placeholder="/checkout/shipping"></div></div>
               </div>
               <button type="submit" class="btn btn-primary"><i class="fa fa-database"></i> Test &amp; connect (Premium)</button>
             </form>

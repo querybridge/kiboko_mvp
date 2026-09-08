@@ -39,22 +39,32 @@ def connect(service_account_json):
     return bigquery.Client(credentials=creds, project=project)
 
 
+def latest_daily_date(client, dataset):
+    """Latest complete daily table date (excludes events_intraday_*), or None.
+    Free metadata query."""
+    import datetime
+    q = (f"SELECT MAX(SUBSTR(table_id, 8)) AS d FROM `{dataset}.__TABLES__` "
+         f"WHERE table_id LIKE 'events_2%'")
+    rows = list(client.query(q).result())
+    d = rows[0]['d'] if rows else None
+    return datetime.date(int(d[:4]), int(d[4:6]), int(d[6:8])) if d else None
+
+
 def test_connection(service_account_json, property_id):
-    """(ok: bool, message: str) -- verifies the dataset exists and has GA4 tables."""
+    """(ok, message, latest_date) -- verifies the dataset exists and returns the
+    latest complete daily date (to anchor relative periods)."""
     dataset = dataset_for(property_id)
     if not dataset:
-        return False, 'Missing/invalid GA4 property id for the dataset name.'
+        return False, 'Missing/invalid GA4 property id for the dataset name.', None
     try:
         client = connect(service_account_json)
-        q = (f"SELECT table_id FROM `{dataset}.__TABLES__` "
-             f"WHERE table_id LIKE 'events_%' ORDER BY table_id DESC LIMIT 1")
-        rows = list(client.query(q).result())
-        if not rows:
-            return False, f'No GA4 event tables found in `{dataset}`.'
-        return True, f'Connected. Latest table: {rows[0][0]}.'
+        latest = latest_daily_date(client, dataset)
+        if latest is None:
+            return False, f'No GA4 daily event tables found in `{dataset}`.', None
+        return True, f'Connected. Data through {latest.isoformat()}.', latest
     except Exception as e:
         logger.warning('BigQuery test_connection failed (%s: %s)', type(e).__name__, e)
-        return False, f'{type(e).__name__}: {e}'
+        return False, f'{type(e).__name__}: {e}', None
 
 
 # Single conditional-aggregation query over the GA4 export (one row per day).
