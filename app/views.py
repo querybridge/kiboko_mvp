@@ -1316,15 +1316,52 @@ def work_in_progress(request):
 
 @login_required
 def data_connection(request):
-    """Settings > Data Connection: discover the GA4 hierarchy the signed-in
-    user's Google account can access and import Properties as Kiboko
-    Company/Vertical/Website (granting membership)."""
-    from app.integrations import google_oauth, ga4_admin
+    """Settings > Data Connection. Two methods:
+      * GA4 Standard  -- sign in with Google, discover + import properties.
+      * GA4 Premium   -- a service account reading the GA4 -> BigQuery export."""
+    import json as _json
+    from django.utils.text import slugify
+    from app.integrations import google_oauth, ga4_admin, bigquery as bqmod
     from business_unit import provisioning
+    from business_unit.models import Company, Vertical, CompanyMembership, BigQueryConnection
 
     identity = getattr(request.user, 'google_identity', None)
     ctx = {'title': 'Data Connection', 'has_google': identity is not None,
-           'google_enabled': google_oauth.is_enabled()}
+           'google_enabled': google_oauth.is_enabled(),
+           'bigquery_available': bqmod.is_available()}
+
+    # --- Premium: connect a Company via a BigQuery service account ------------
+    if request.method == 'POST' and request.POST.get('action') == 'bigquery_connect':
+        name = request.POST.get('company_name', '').strip()
+        prop = request.POST.get('property_id', '').strip()
+        try:
+            sa = _json.loads(request.POST.get('service_account_json', '').strip() or '{}')
+        except ValueError:
+            messages.error(request, 'Service account JSON is not valid JSON.')
+            return redirect('app:data_connection')
+        if not (name and prop and sa):
+            messages.error(request, 'Company name, GA4 property id and service account JSON are required.')
+            return redirect('app:data_connection')
+        ok, msg = bqmod.test_connection(sa, prop)
+        if not ok:
+            messages.error(request, f'Connection test failed: {msg}')
+            return redirect('app:data_connection')
+        company, _ = Company.objects.get_or_create(slug=slugify(name), defaults={'name': name})
+        Vertical.objects.get_or_create(company=company, ga4_property_id=prop, defaults={'name': name})
+        BigQueryConnection.objects.update_or_create(company=company, defaults={
+            'service_account_json': sa, 'gcp_project': sa.get('project_id', ''),
+            'cart_page_path': request.POST.get('cart_page_path', '').strip(),
+            'checkout_page_path': request.POST.get('checkout_page_path', '').strip(),
+            'billing_shipping_page_path': request.POST.get('billing_shipping_page_path', '').strip(),
+            'created_by': request.user})
+        CompanyMembership.objects.get_or_create(company=company, user=request.user, defaults={'role': 'admin'})
+        messages.success(request, f'Premium (BigQuery) connected for {name}. {msg}')
+        return redirect('app:data_connection')
+
+    # Premium companies this user already has connected.
+    ctx['premium_companies'] = list(
+        Company.objects.filter(bigquery__isnull=False, memberships__user=request.user).distinct()
+        if not request.user.is_superuser else Company.objects.filter(bigquery__isnull=False))
 
     if not identity or not google_oauth.is_enabled():
         return render(request, 'app/data_connection.html', ctx)

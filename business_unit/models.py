@@ -126,3 +126,31 @@ class GoogleIdentity(models.Model):
 
 	def __str__(self):
 		return self.email or str(self.user)
+
+
+class BigQueryConnection(models.Model):
+	"""GA4 PREMIUM connection: read a company's GA4 -> BigQuery export via a
+	service account (shared for all members), instead of each user's Google token.
+	A Company with one of these is on the Premium tier.
+
+	The dataset for a property is analytics_<vertical.ga4_property_id>; the page
+	paths let the SQL derive cart/checkout/billing views (mirrors ITG).
+
+	NOTE: service_account_json holds a GCP service-account key -- HIGHLY sensitive.
+	It must be encrypted at rest (django-cryptography / Fernet) before production,
+	like GoogleIdentity.refresh_token. Stored plain here only for scaffolding."""
+	company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='bigquery')
+	gcp_project = models.CharField(max_length=100, blank=True)
+	service_account_json = models.JSONField(default=dict, blank=True)
+	cart_page_path = models.CharField(max_length=255, blank=True)
+	checkout_page_path = models.CharField(max_length=255, blank=True)
+	billing_shipping_page_path = models.CharField(max_length=255, blank=True)
+	created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+	created = models.DateTimeField(auto_now_add=True)
+	last_tested_at = models.DateTimeField(null=True, blank=True)
+
+	class Meta:
+		verbose_name = 'BigQuery connection'
+
+	def __str__(self):
+		return f'BigQuery connection ({self.company})'

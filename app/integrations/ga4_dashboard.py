@@ -73,10 +73,67 @@ def _connected_scope(request):
     return identity, property_ids, stream_id
 
 
+def _premium_connection(request):
+    """(BigQueryConnection, property_ids) when the scoped company is Premium and
+    the user is authorized (member/superuser), else None. Access = membership,
+    NOT the user's personal Google/GA4 access."""
+    from business_unit.models import BigQueryConnection, CompanyMembership
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return None
+    company_id = request.session.get('scope_company')
+    if not company_id:
+        return None
+    bq = BigQueryConnection.objects.filter(company_id=company_id).first()
+    if not bq or not bq.service_account_json:
+        return None
+    if not user.is_superuser and not CompanyMembership.objects.filter(
+            company_id=company_id, user=user).exists():
+        return None
+    scope = _resolve_scope(request)
+    if not scope:
+        return None
+    property_ids, _stream = scope
+    return bq, property_ids
+
+
 def is_connected(request):
-    """True when the current scope is backed by a real GA4 property the user can
-    read. Dashboards use this to show real-or-zeros instead of dummy data."""
-    return _connected_scope(request) is not None
+    """True when the current scope is backed by real data (a GA4 property the user
+    can read, or a Premium BigQuery company). Dashboards show real-or-zeros then."""
+    return _premium_connection(request) is not None or _connected_scope(request) is not None
+
+
+def _bq_rows(bq, property_ids, primary_code, compare_code, today):
+    """Premium daily rows from BigQuery (summed across the company's datasets),
+    aggregated over the full period then bucketed -- mirrors ga4_rows."""
+    from app.integrations import bigquery as bqmod
+    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+    labels = [d.strftime('%m-%d') for d in _range_dates(p_start, p_end)]
+    try:
+        client = bqmod.connect(bq.service_account_json)
+
+        def merged(start, end):
+            acc = {}
+            for pid in property_ids:
+                ds = bqmod.dataset_for(pid)
+                if not ds:
+                    continue
+                for day, rec in bqmod.fetch_daily_fundamentals(client, ds, start, end).items():
+                    a = acc.setdefault(day, {k: 0.0 for k in _FUND_KEYS})
+                    for k in _FUND_KEYS:
+                        a[k] += rec.get(k, 0.0)
+            return acc
+
+        daily_p, dates_p = _order_days(merged(p_start, p_end), p_start, p_end)
+        daily_s, _ = _order_days(merged(s_start, s_end), s_start, s_end)
+        rows_p, labels = _bucketize(daily_p, dates_p, MAX_POINTS)
+        rows_s = _bucketize_to(daily_s, len(rows_p))
+        return rows_p, rows_s, labels
+    except Exception as e:
+        logger.warning('Premium (BigQuery) daily fundamentals unavailable (%s: %s) -- showing zeros',
+                       type(e).__name__, e)
+        z = _zero_rows(len(labels))
+        return z, list(z), labels
 
 
 # --------------------------------------------------------------------------
@@ -137,9 +194,8 @@ def _date_ranges(primary_code, compare_code, today):
     return p_start, p_end, s_start, s_end
 
 
-def _daily_rows(creds, property_ids, start, end, stream_id):
-    """All daily rows across [start, end] (no cap), zero-filled, + dates."""
-    by_day = _fetch_by_day(creds, property_ids, start, end, stream_id)
+def _order_days(by_day, start, end):
+    """Ordered, zero-filled daily rows from a {YYYYMMDD: fundamentals} dict."""
     rows, dates, day = [], [], start
     while day <= end:
         rec = by_day.get(day.strftime('%Y%m%d'))
@@ -147,6 +203,11 @@ def _daily_rows(creds, property_ids, start, end, stream_id):
         dates.append(day)
         day += datetime.timedelta(days=1)
     return rows, dates
+
+
+def _daily_rows(creds, property_ids, start, end, stream_id):
+    """All daily rows across [start, end] (no cap), zero-filled, + dates."""
+    return _order_days(_fetch_by_day(creds, property_ids, start, end, stream_id), start, end)
 
 
 def _bucketize(rows, dates, count):
@@ -234,11 +295,14 @@ def _zero_rows(n):
 # --------------------------------------------------------------------------
 
 def ga4_rows(request, primary_code, compare_code, today=None):
+    today = today or datetime.date.today()
+    bqp = _premium_connection(request)
+    if bqp is not None:                      # Premium company -> BigQuery
+        return _bq_rows(bqp[0], bqp[1], primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
         return None
     identity, property_ids, stream_id = sc
-    today = today or datetime.date.today()
     p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
     try:
         creds = google_oauth.credentials_from_identity(identity)
@@ -259,11 +323,17 @@ def ga4_rows(request, primary_code, compare_code, today=None):
 
 
 def ga4_splits(request, primary_code, compare_code, today=None):
+    today = today or datetime.date.today()
+    if _premium_connection(request) is not None:
+        logger.info('Premium (BigQuery) device/channel splits not wired yet -- showing zeros')
+        p_start, p_end, _s, _e = _date_ranges(primary_code, compare_code, today)
+        n = len(_range_dates(p_start, p_end))
+        return {split: {b: {'total': 0.0, 'delta': 0.0, 'share': 0.0, 'daily': [0.0] * n}
+                        for b in SPLIT_BUCKETS[split]} for split in ('device', 'channel')}
     sc = _connected_scope(request)
     if sc is None:
         return None
     identity, property_ids, stream_id = sc
-    today = today or datetime.date.today()
     p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
     dates_p = _range_dates(p_start, p_end)
 
@@ -334,6 +404,9 @@ def _engage_compute(a):
 def ga4_engage_metrics(request, primary_code, compare_code, today=None):
     """Engage card values (+ deltas) from real GA4 events/metrics, or None.
     Keys in _ENGAGE_KEYS, each also with a _delta suffix."""
+    if _premium_connection(request) is not None:
+        logger.info('Premium (BigQuery) engage metrics not wired yet -- showing zeros')
+        return {**{k: 0.0 for k in _ENGAGE_KEYS}, **{k + '_delta': 0.0 for k in _ENGAGE_KEYS}}
     sc = _connected_scope(request)
     if sc is None:
         return None
@@ -397,6 +470,9 @@ def _story_fundamentals(t):
 
 
 def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
+    if _premium_connection(request) is not None:
+        logger.info('Premium (BigQuery) storyboard metrics not wired yet -- showing zeros')
+        return _story_fundamentals({}), _story_fundamentals({})
     sc = _connected_scope(request)
     if sc is None:
         return None
@@ -435,6 +511,13 @@ def ga4_segments(request, primary_code, compare_code, today=None):
 
     {'device': {'Desktop': {'p': {funds}, 's': {funds}}, ...}, 'channel': {...}}
     """
+    if _premium_connection(request) is not None:
+        logger.info('Premium (BigQuery) changeplot segments not wired yet -- showing zeros')
+        out = {}
+        for split, disp in (('device', DEVICE_DISPLAY), ('channel', CHANNEL_DISPLAY)):
+            out[split] = {disp[b]: {'p': {k: 0.0 for k in _FUND_KEYS}, 's': {k: 0.0 for k in _FUND_KEYS}}
+                          for b in SPLIT_BUCKETS[split]}
+        return out
     sc = _connected_scope(request)
     if sc is None:
         return None

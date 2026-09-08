@@ -14,3 +14,5 @@ google-auth>=2.30
 google-auth-oauthlib>=1.2
 google-analytics-data>=0.18
 google-analytics-admin>=0.22
+# GA4 Premium tier: read the customer's GA4->BigQuery export via a service account.
+google-cloud-bigquery>=3.11
