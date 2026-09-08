@@ -1,9 +1,21 @@
 {% extends "app/base_site.html" %}
 {% block title %} Data Connection {% endblock title %}
 
+{% block stylesheets %}
+  {{ block.super }}
+  <style>
+    .premium-badge { background:#7a5cff; color:#fff; font-size:11px; font-weight:800; letter-spacing:.5px;
+      border-radius:999px; padding:3px 10px; vertical-align:middle; }
+    .premium-panel { border:1px solid rgba(122,92,255,.45); }
+    .premium-dim { opacity:.5; filter:grayscale(.5); pointer-events:none; }
+    .premium-benefits li { margin-bottom:4px; }
+    .upgrade-cta { margin-top:14px; }
+  </style>
+{% endblock stylesheets %}
+
 {% block content %}
   <div class="right_col" role="main">
-    <div class="page-title"><div class="title_left"><h3>Data Connection <small>GA4</small></h3></div></div>
+    <div class="page-title"><div class="title_left"><h3>Data Connection</h3></div></div>
     <div class="clearfix"></div>
 
     {% if messages %}
@@ -12,14 +24,91 @@
       {% endfor %}
     {% endif %}
 
+    {# ============================ PREMIUM (top) ============================ #}
+    <div class="row">
+      <div class="col-md-12 col-sm-12 col-xs-12">
+        <div class="x_panel premium-panel">
+          <div class="x_title">
+            <h2>Premium Connection <span class="premium-badge">PREMIUM</span>
+              <small>the most accurate, complete data</small></h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <p class="text-muted">The gold standard. Reads the customer's raw <strong>GA4 &rarr; BigQuery export</strong>
+              via a service account, so every dashboard is:</p>
+            <ul class="text-muted premium-benefits">
+              <li><strong>Unsampled &amp; exact</strong> &mdash; event-level, no estimation on any date range.</li>
+              <li><strong>No reporting delay</strong> &mdash; data as soon as it lands in BigQuery.</li>
+              <li><strong>Item / order-level metrics</strong> &mdash; unlocks Unique SKUs per Order, Cherry Pick Rate and
+                product-category economics that Standard can't compute.</li>
+              <li><strong>Roll-ups across sites</strong> &mdash; true company-wide totals.</li>
+            </ul>
+            {% if premium_companies %}
+              <p class="text-muted">Connected: {% for c in premium_companies %}<strong>{{ c.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+            {% endif %}
+
+            {% if can_provision_premium %}
+              {% if not bigquery_available %}
+              <div class="alert alert-warning">The BigQuery client library isn't installed on this server
+                (<code>pip install google-cloud-bigquery</code>).</div>
+              {% endif %}
+              <hr>
+              <p class="text-muted"><small>Admin provisioning &mdash; connect a company's GA4 &rarr; BigQuery export.
+                Cart / checkout / PDP / category views come from GA4 events (map custom names below if needed).</small></p>
+              <form method="post" action="{% url 'app:data_connection' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="bigquery_connect">
+                <div class="row">
+                  <div class="col-md-6"><div class="form-group"><label>Company name</label>
+                    <input type="text" name="company_name" class="form-control" placeholder="e.g. Autocado" required></div></div>
+                  <div class="col-md-6"><div class="form-group"><label>GA4 Property ID <small class="text-muted">(dataset = analytics_&lt;id&gt;)</small></label>
+                    <input type="text" name="property_id" class="form-control" placeholder="e.g. 291799606" required></div></div>
+                </div>
+                <div class="form-group"><label>Service account JSON key</label>
+                  <textarea name="service_account_json" class="form-control" rows="5" placeholder='{ "type": "service_account", "project_id": "...", ... }' required></textarea></div>
+                <label>Event names <small class="text-muted">(only change ones this company fires under a custom name)</small></label>
+                <div class="row">
+                  {% for ev in standard_events %}
+                  <div class="col-md-3"><div class="form-group">
+                    <label style="font-weight:400;color:#9aa;">{{ ev }}</label>
+                    <input type="text" name="event__{{ ev }}" class="form-control input-sm" value="{{ ev }}">
+                  </div></div>
+                  {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fa fa-database"></i> Test &amp; connect</button>
+              </form>
+            {% else %}
+              <div class="premium-dim">
+                <p class="text-muted"><em>Premium is a paid upgrade.</em></p>
+              </div>
+              <div class="upgrade-cta">
+                <span class="btn btn-primary disabled"><i class="fa fa-lock"></i> Upgrade to Premium</span>
+                <span class="text-muted" style="margin-left:10px;">Contact Kiboko to enable Premium for your company.</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# =========================== STANDARD (below) =========================== #}
     <div class="row">
       <div class="col-md-12 col-sm-12 col-xs-12">
         <div class="x_panel">
           <div class="x_title">
-            <h2>Google Analytics 4 <small>connect the properties you can access</small></h2>
+            <h2>Standard Connection <small>Google Analytics 4</small></h2>
             <div class="clearfix"></div>
           </div>
           <div class="x_content">
+            <p class="text-muted"><strong>Data source:</strong> the Google Analytics 4 reporting API (aggregated), read live
+              with your Google sign-in. Fast to set up and free &mdash; with a few GA4 limitations:</p>
+            <ul class="text-muted">
+              <li><strong>Reporting delay</strong> &mdash; GA4 data can lag roughly 24&ndash;48 hours.</li>
+              <li><strong>Estimation / sampling</strong> &mdash; long date ranges and high-cardinality breakdowns may be sampled.</li>
+              <li><strong>No item/order-level detail</strong> &mdash; a few metrics show as <em>Premium Tier Required</em>.</li>
+            </ul>
+            <p class="text-muted"><small>Want exact, unsampled, real-time data? See <strong>Premium</strong> above.</small></p>
+            <hr>
 
             {% if not google_enabled %}
               <p class="text-muted">Google sign-in isn't configured on this server yet.</p>
@@ -29,9 +118,7 @@
               <a href="{% url 'google_login' %}" class="btn btn-primary"><i class="fa fa-google"></i>&nbsp; Sign in with Google</a>
 
             {% elif transient %}
-              <div class="alert alert-warning">
-                <i class="fa fa-clock-o"></i> Google Analytics is temporarily unavailable. This usually clears in a moment.
-              </div>
+              <div class="alert alert-warning"><i class="fa fa-clock-o"></i> Google Analytics is temporarily unavailable. This usually clears in a moment.</div>
               <a href="{% url 'app:data_connection' %}" class="btn btn-primary"><i class="fa fa-refresh"></i>&nbsp; Try again</a>
 
             {% elif error %}
@@ -46,7 +133,7 @@
             {% else %}
               <p class="text-muted">Tick the GA4 properties to bring into Kiboko. Each property becomes a
                 <strong>Vertical</strong>, its account a <strong>Company</strong>, and its data streams
-                <strong>Websites</strong>. You only see properties your Google account can access.</p>
+                <strong>Websites</strong>.</p>
               <form method="post" action="{% url 'app:data_connection' %}">
                 {% csrf_token %}
                 {% for account in hierarchy %}
@@ -77,55 +164,6 @@
                 <button type="submit" class="btn btn-primary">Import selected</button>
               </form>
             {% endif %}
-
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col-md-12 col-sm-12 col-xs-12">
-        <div class="x_panel">
-          <div class="x_title">
-            <h2>GA4 Premium <small>service account &rarr; BigQuery (unsampled, item-level)</small></h2>
-            <div class="clearfix"></div>
-          </div>
-          <div class="x_content">
-            {% if premium_companies %}
-              <p class="text-muted">Premium companies connected:
-                {% for c in premium_companies %}<strong>{{ c.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
-            {% endif %}
-            {% if not bigquery_available %}
-              <div class="alert alert-warning">The BigQuery client library isn't installed on this server yet
-                (<code>pip install google-cloud-bigquery</code>). You can still save a connection; syncing needs the library.</div>
-            {% endif %}
-
-            <p class="text-muted">Premium reads the customer's <strong>GA4 &rarr; BigQuery export</strong> with a Google Cloud
-              <strong>service account</strong> (shared for the company, not tied to any one person's Google login).
-              Cart / checkout / PDP / category views come from GA4 <strong>events</strong> &mdash; no page-path setup. Setup:</p>
-            <ol class="text-muted">
-              <li>In the customer's GA4, enable the <strong>BigQuery Links</strong> export (Admin &rarr; Product Links &rarr; BigQuery).</li>
-              <li>In Google Cloud, create a <strong>service account</strong> and grant it <strong>BigQuery Data Viewer</strong> + <strong>Job User</strong> on the project that holds the <code>analytics_&lt;property_id&gt;</code> dataset.</li>
-              <li>Create a <strong>JSON key</strong> for that service account and paste it below.</li>
-            </ol>
-
-            <form method="post" action="{% url 'app:data_connection' %}">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="bigquery_connect">
-              <div class="form-group">
-                <label>Company name</label>
-                <input type="text" name="company_name" class="form-control" placeholder="e.g. Autocado" required>
-              </div>
-              <div class="form-group">
-                <label>GA4 Property ID <small class="text-muted">(numeric; dataset = analytics_&lt;id&gt;)</small></label>
-                <input type="text" name="property_id" class="form-control" placeholder="e.g. 123456789" required>
-              </div>
-              <div class="form-group">
-                <label>Service account JSON key</label>
-                <textarea name="service_account_json" class="form-control" rows="6" placeholder='{ "type": "service_account", "project_id": "...", ... }' required></textarea>
-              </div>
-              <button type="submit" class="btn btn-primary"><i class="fa fa-database"></i> Test &amp; connect (Premium)</button>
-            </form>
           </div>
         </div>
       </div>

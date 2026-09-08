@@ -1346,11 +1346,18 @@ def data_connection(request):
         if not ok:
             messages.error(request, f'Connection test failed: {msg}')
             return redirect('app:data_connection')
+        # Event map: standard name -> this company's actual event name (only keep
+        # overrides that differ from the standard).
+        event_map = {}
+        for ev in BigQueryConnection.STANDARD_EVENTS:
+            actual = request.POST.get(f'event__{ev}', '').strip()
+            if actual and actual != ev:
+                event_map[ev] = actual
         company, _ = Company.objects.get_or_create(slug=slugify(name), defaults={'name': name})
         Vertical.objects.get_or_create(company=company, ga4_property_id=prop, defaults={'name': name})
         BigQueryConnection.objects.update_or_create(company=company, defaults={
             'service_account_json': sa, 'gcp_project': sa.get('project_id', ''),
-            'data_through': latest, 'created_by': request.user})
+            'event_map': event_map, 'data_through': latest, 'created_by': request.user})
         CompanyMembership.objects.get_or_create(company=company, user=request.user, defaults={'role': 'admin'})
         messages.success(request, f'Premium (BigQuery) connected for {name}. {msg}')
         return redirect('app:data_connection')
@@ -1359,6 +1366,8 @@ def data_connection(request):
     ctx['premium_companies'] = list(
         Company.objects.filter(bigquery__isnull=False, memberships__user=request.user).distinct()
         if not request.user.is_superuser else Company.objects.filter(bigquery__isnull=False))
+    ctx['standard_events'] = BigQueryConnection.STANDARD_EVENTS
+    ctx['can_provision_premium'] = request.user.is_superuser
 
     if not identity or not google_oauth.is_enabled():
         return render(request, 'app/data_connection.html', ctx)

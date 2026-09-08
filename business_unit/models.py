@@ -142,6 +142,9 @@ class BigQueryConnection(models.Model):
 	company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='bigquery')
 	gcp_project = models.CharField(max_length=100, blank=True)
 	service_account_json = models.JSONField(default=dict, blank=True)
+	# Maps a standard GA4 event name -> the name this company actually fires
+	# (e.g. {'view_cart': 'View Cart'}). Empty/missing means use the standard name.
+	event_map = models.JSONField(default=dict, blank=True)
 	# Latest complete day of data in the export. Relative periods (This Month,
 	# QTD, ...) are anchored to this so historical clients' dashboards land on
 	# their data instead of on 'today' (which may be past the export).
@@ -150,8 +153,17 @@ class BigQueryConnection(models.Model):
 	created = models.DateTimeField(auto_now_add=True)
 	last_tested_at = models.DateTimeField(null=True, blank=True)
 
+	# Standard GA4 event names the connector uses; the map lets a company override
+	# any of them if they fire custom names.
+	STANDARD_EVENTS = ['add_to_cart', 'view_cart', 'begin_checkout', 'add_shipping_info',
+	                   'view_item', 'view_item_list', 'purchase']
+
 	class Meta:
 		verbose_name = 'BigQuery connection'
+
+	def event_name(self, standard):
+		"""The company's actual event name for a standard one (map or passthrough)."""
+		return (self.event_map or {}).get(standard) or standard
 
 	def __str__(self):
 		return f'BigQuery connection ({self.company})'
