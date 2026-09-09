@@ -140,6 +140,7 @@ def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):
     """Premium daily rows from BigQuery (summed across the company's datasets),
     aggregated over the full period then bucketed -- mirrors ga4_rows."""
     from app.integrations import bigquery as bqmod
+    events = bq.event_map
     p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today, custom)
     labels = [d.strftime('%m-%d') for d in _range_dates(p_start, p_end)]
     try:
@@ -151,7 +152,7 @@ def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):
                 ds = bqmod.dataset_for(pid)
                 if not ds:
                     continue
-                for day, rec in bqmod.fetch_daily_fundamentals(client, ds, start, end).items():
+                for day, rec in bqmod.fetch_daily_fundamentals(client, ds, start, end, events).items():
                     a = acc.setdefault(day, {k: 0.0 for k in _FUND_KEYS})
                     for k in _FUND_KEYS:
                         a[k] += rec.get(k, 0.0)
@@ -167,6 +168,64 @@ def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):
                        type(e).__name__, e)
         z = _zero_rows(len(labels))
         return z, list(z), labels
+
+
+# --------------------------------------------------------------------------
+# Premium (BigQuery) helpers for the detail providers (splits, engage, story,
+# segments, item-level). Each mirrors its GA4 counterpart's shape so the
+# dashboards render identically whether Standard or Premium.
+# --------------------------------------------------------------------------
+
+def _bq_ranges(request, bq, primary_code, compare_code, today):
+    """Date ranges for a Premium provider, anchored to the export's data_through."""
+    today = _bq_today(bq, today or datetime.date.today())
+    custom = _custom_dates(request) if primary_code == 'CUSTOM' else None
+    return _date_ranges(primary_code, compare_code, today, custom)
+
+
+def _bq_split_totals(client, property_ids, start, end, split, events):
+    """{bucket: {fund: total}} summed across datasets for one split/period."""
+    from app.integrations import bigquery as bqmod
+    buckets = {b: {k: 0.0 for k in _FUND_KEYS} for b in SPLIT_BUCKETS[split]}
+    for pid in property_ids:
+        ds = bqmod.dataset_for(pid)
+        if not ds:
+            continue
+        for _day, bmap in bqmod.fetch_split_daily(client, ds, start, end, split, events).items():
+            for bucket, rec in bmap.items():
+                if bucket in buckets:
+                    for k in _FUND_KEYS:
+                        buckets[bucket][k] += float(rec.get(k, 0) or 0)
+    return buckets
+
+
+def _bq_split_daily_visits(client, property_ids, start, end, split, events):
+    """{bucket: {YYYYMMDD: visits}} summed across datasets (split-card sparklines)."""
+    from app.integrations import bigquery as bqmod
+    out = {b: {} for b in SPLIT_BUCKETS[split]}
+    for pid in property_ids:
+        ds = bqmod.dataset_for(pid)
+        if not ds:
+            continue
+        for day, bmap in bqmod.fetch_split_daily(client, ds, start, end, split, events).items():
+            for bucket, rec in bmap.items():
+                if bucket in out:
+                    out[bucket][day] = out[bucket].get(day, 0.0) + float(rec.get('visits', 0) or 0)
+    return out
+
+
+def _bq_period_totals(client, property_ids, start, end, events, keys):
+    """Summed GA4-style totals across datasets, restricted to `keys`."""
+    from app.integrations import bigquery as bqmod
+    acc = {k: 0.0 for k in keys}
+    for pid in property_ids:
+        ds = bqmod.dataset_for(pid)
+        if not ds:
+            continue
+        t = bqmod.fetch_period_totals(client, ds, start, end, events)
+        for k in keys:
+            acc[k] += float(t.get(k, 0) or 0)
+    return acc
 
 
 # --------------------------------------------------------------------------
@@ -382,14 +441,27 @@ def ga4_rows(request, primary_code, compare_code, today=None):
         return z, list(z), labels
 
 
+def _split_metrics(prim, sec, by_day, dates_p, split):
+    """Shared: assemble the per-bucket split card payload from period totals +
+    comparison totals + daily visits."""
+    grand = sum(prim[b]['visits'] for b in SPLIT_BUCKETS[split]) or 1.0
+    out = {}
+    for b in SPLIT_BUCKETS[split]:
+        p_tot, s_tot = prim[b]['visits'], sec[b]['visits']
+        out[b] = {
+            'total': p_tot,
+            'delta': round(((p_tot - s_tot) / s_tot * 100) if s_tot else 0.0, 2),
+            'share': p_tot / grand,
+            'daily': [round(by_day[b].get(d.strftime('%Y%m%d'), 0.0), 2) for d in dates_p],
+        }
+    return out
+
+
 def ga4_splits(request, primary_code, compare_code, today=None):
     today = today or datetime.date.today()
-    if _premium_connection(request) is not None:
-        logger.info('Premium (BigQuery) device/channel splits not wired yet -- showing zeros')
-        p_start, p_end, _s, _e = _ranges(request, primary_code, compare_code, today)
-        n = len(_range_dates(p_start, p_end))
-        return {split: {b: {'total': 0.0, 'delta': 0.0, 'share': 0.0, 'daily': [0.0] * n}
-                        for b in SPLIT_BUCKETS[split]} for split in ('device', 'channel')}
+    bqp = _premium_connection(request)
+    if bqp is not None:                            # Premium company -> BigQuery
+        return _bq_splits(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
         return None
@@ -407,19 +479,36 @@ def ga4_splits(request, primary_code, compare_code, today=None):
             prim = _split_funds(creds, property_ids, p_start, p_end, split, stream_id)
             sec = _split_funds(creds, property_ids, s_start, s_end, split, stream_id)
             by_day = _split_daily_visits(creds, property_ids, p_start, p_end, split, stream_id)
-            grand = sum(prim[b]['visits'] for b in SPLIT_BUCKETS[split]) or 1.0
-            out[split] = {}
-            for b in SPLIT_BUCKETS[split]:
-                p_tot, s_tot = prim[b]['visits'], sec[b]['visits']
-                out[split][b] = {
-                    'total': p_tot,
-                    'delta': round(((p_tot - s_tot) / s_tot * 100) if s_tot else 0.0, 2),
-                    'share': p_tot / grand,
-                    'daily': [round(by_day[b].get(d.strftime('%Y%m%d'), 0.0), 2) for d in dates_p],
-                }
+            out[split] = _split_metrics(prim, sec, by_day, dates_p, split)
         return out
     except Exception as e:
         logger.warning('GA4 CONNECTED but device/channel splits unavailable (%s: %s) -- showing zeros',
+                       type(e).__name__, e)
+        return zeros()
+
+
+def _bq_splits(request, bqp, primary_code, compare_code, today):
+    """Premium device/channel splits from BigQuery -- mirrors ga4_splits."""
+    from app.integrations import bigquery as bqmod
+    bq, property_ids = bqp
+    events = bq.event_map
+    p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
+    dates_p = _range_dates(p_start, p_end)
+
+    def zeros():
+        return {split: {b: {'total': 0.0, 'delta': 0.0, 'share': 0.0, 'daily': [0.0] * len(dates_p)}
+                        for b in SPLIT_BUCKETS[split]} for split in ('device', 'channel')}
+    try:
+        client = bqmod.connect(bq.service_account_json)
+        out = {}
+        for split in ('device', 'channel'):
+            prim = _bq_split_totals(client, property_ids, p_start, p_end, split, events)
+            sec = _bq_split_totals(client, property_ids, s_start, s_end, split, events)
+            by_day = _bq_split_daily_visits(client, property_ids, p_start, p_end, split, events)
+            out[split] = _split_metrics(prim, sec, by_day, dates_p, split)
+        return out
+    except Exception as e:
+        logger.warning('Premium (BigQuery) device/channel splits unavailable (%s: %s) -- showing zeros',
                        type(e).__name__, e)
         return zeros()
 
@@ -464,9 +553,9 @@ def _engage_compute(a):
 def ga4_engage_metrics(request, primary_code, compare_code, today=None):
     """Engage card values (+ deltas) from real GA4 events/metrics, or None.
     Keys in _ENGAGE_KEYS, each also with a _delta suffix."""
-    if _premium_connection(request) is not None:
-        logger.info('Premium (BigQuery) engage metrics not wired yet -- showing zeros')
-        return {**{k: 0.0 for k in _ENGAGE_KEYS}, **{k + '_delta': 0.0 for k in _ENGAGE_KEYS}}
+    bqp = _premium_connection(request)
+    if bqp is not None:                            # Premium company -> BigQuery
+        return _bq_engage_metrics(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
         return None
@@ -493,14 +582,46 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
                     acc[e] += ev.get(e, 0.0)
             return acc
 
-        p_c, s_c = _engage_compute(raw(p_start, p_end)), _engage_compute(raw(s_start, s_end))
-        out = {}
-        for k in _ENGAGE_KEYS:
-            out[k] = p_c[k]
-            out[k + '_delta'] = round(((p_c[k] - s_c[k]) / s_c[k] * 100) if s_c[k] else 0.0, 2)
-        return out
+        return _engage_payload(_engage_compute(raw(p_start, p_end)),
+                               _engage_compute(raw(s_start, s_end)))
     except Exception as e:
         logger.warning('GA4 CONNECTED but engage metrics unavailable (%s: %s) -- showing zeros',
+                       type(e).__name__, e)
+        return zeros()
+
+
+def _engage_payload(p_c, s_c):
+    """{key: value, key_delta: pct} for every _ENGAGE_KEYS from two computed periods."""
+    out = {}
+    for k in _ENGAGE_KEYS:
+        out[k] = p_c[k]
+        out[k + '_delta'] = round(((p_c[k] - s_c[k]) / s_c[k] * 100) if s_c[k] else 0.0, 2)
+    return out
+
+
+# Period-totals keys the Engage cards need (subset of BigQuery totals).
+_ENGAGE_TOTALS_KEYS = ['sessions', 'engagedSessions', 'userEngagementDuration',
+                       'screenPageViews', 'addToCarts', 'ecommercePurchases',
+                       'view_item', 'view_item_list', 'view_cart', 'begin_checkout',
+                       'add_shipping_info']
+
+
+def _bq_engage_metrics(request, bqp, primary_code, compare_code, today):
+    """Premium Engage card values (+ deltas) from BigQuery -- mirrors ga4_engage_metrics."""
+    from app.integrations import bigquery as bqmod
+    bq, property_ids = bqp
+    events = bq.event_map
+    p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
+
+    def zeros():
+        return {**{k: 0.0 for k in _ENGAGE_KEYS}, **{k + '_delta': 0.0 for k in _ENGAGE_KEYS}}
+    try:
+        client = bqmod.connect(bq.service_account_json)
+        p_c = _engage_compute(_bq_period_totals(client, property_ids, p_start, p_end, events, _ENGAGE_TOTALS_KEYS))
+        s_c = _engage_compute(_bq_period_totals(client, property_ids, s_start, s_end, events, _ENGAGE_TOTALS_KEYS))
+        return _engage_payload(p_c, s_c)
+    except Exception as e:
+        logger.warning('Premium (BigQuery) engage metrics unavailable (%s: %s) -- showing zeros',
                        type(e).__name__, e)
         return zeros()
 
@@ -513,9 +634,13 @@ STORY_EVENT_NAMES = ['view_item', 'view_item_list', 'view_cart', 'begin_checkout
 
 
 def _story_fundamentals(t):
-    """Storyboard fundamentals from GA4 totals + event counts. Funnel/PDP/category
-    views come from real events; single-SKU stays Premium-approximated."""
+    """Storyboard fundamentals from GA4/BigQuery totals + event counts. Funnel/PDP/
+    category views come from real events. single_sku is real on Premium (from the
+    item arrays) and a 0.30 approximation on Standard (item-level needs BigQuery)."""
     checkouts = t.get('ecommercePurchases', 0.0)
+    single_sku = t.get('single_sku_orders')
+    if single_sku is None:
+        single_sku = checkouts * 0.30   # item/order-level -> Premium tier
     return dict(
         visitors=t.get('totalUsers', 0.0), new_users=t.get('newUsers', 0.0),
         sessions=t.get('sessions', 0.0),
@@ -525,14 +650,47 @@ def _story_fundamentals(t):
         category_pv=t.get('view_item_list', 0.0), pdp_pv=t.get('view_item', 0.0),
         cart_views=t.get('view_cart', 0.0), checkout_views=t.get('begin_checkout', 0.0),
         billing_shipping_views=t.get('add_shipping_info', 0.0),
-        single_sku=checkouts * 0.30,   # item/order-level -> Premium tier
+        single_sku=single_sku,
     )
 
 
-def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
-    if _premium_connection(request) is not None:
-        logger.info('Premium (BigQuery) storyboard metrics not wired yet -- showing zeros')
+STORY_TOTALS_KEYS = STORY_GA4_METRICS + STORY_EVENT_NAMES
+
+
+def _bq_story_fundamentals(request, bqp, primary_code, compare_code, today):
+    """Premium storyboard fundamentals from BigQuery -- mirrors ga4_story_fundamentals.
+    single_sku comes from the real purchase item arrays."""
+    from app.integrations import bigquery as bqmod
+    bq, property_ids = bqp
+    events = bq.event_map
+    p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
+
+    def zeros():
         return _story_fundamentals({}), _story_fundamentals({})
+    try:
+        client = bqmod.connect(bq.service_account_json)
+
+        def totals(start, end):
+            t = _bq_period_totals(client, property_ids, start, end, events, STORY_TOTALS_KEYS)
+            single = 0.0
+            for pid in property_ids:
+                ds = bqmod.dataset_for(pid)
+                if ds:
+                    single += bqmod.fetch_order_item_metrics(client, ds, start, end, events)['single_sku_orders']
+            t['single_sku_orders'] = single
+            return t
+
+        return _story_fundamentals(totals(p_start, p_end)), _story_fundamentals(totals(s_start, s_end))
+    except Exception as e:
+        logger.warning('Premium (BigQuery) storyboard metrics unavailable (%s: %s) -- showing zeros',
+                       type(e).__name__, e)
+        return _story_fundamentals({}), _story_fundamentals({})
+
+
+def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
+    bqp = _premium_connection(request)
+    if bqp is not None:                            # Premium company -> BigQuery
+        return _bq_story_fundamentals(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
         return None
@@ -571,13 +729,9 @@ def ga4_segments(request, primary_code, compare_code, today=None):
 
     {'device': {'Desktop': {'p': {funds}, 's': {funds}}, ...}, 'channel': {...}}
     """
-    if _premium_connection(request) is not None:
-        logger.info('Premium (BigQuery) changeplot segments not wired yet -- showing zeros')
-        out = {}
-        for split, disp in (('device', DEVICE_DISPLAY), ('channel', CHANNEL_DISPLAY)):
-            out[split] = {disp[b]: {'p': {k: 0.0 for k in _FUND_KEYS}, 's': {k: 0.0 for k in _FUND_KEYS}}
-                          for b in SPLIT_BUCKETS[split]}
-        return out
+    bqp = _premium_connection(request)
+    if bqp is not None:                            # Premium company -> BigQuery
+        return _bq_segments(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
         return None
@@ -601,5 +755,83 @@ def ga4_segments(request, primary_code, compare_code, today=None):
         return out
     except Exception as e:
         logger.warning('GA4 CONNECTED but changeplot segments unavailable (%s: %s) -- showing zeros',
+                       type(e).__name__, e)
+        return zeros()
+
+
+def ga4_item_metrics(request, primary_code, compare_code, today=None):
+    """Premium-only item/order-level + per-category metrics for Expand Purchases.
+
+    {'p': {orders, unique_skus_per_order, single_sku_orders}, 's': {...},
+     'categories': {'p': {cat: {orders, units, sales}}, 's': {...}}}
+
+    Returns None for Standard/dummy companies (the GA4 Data API can't produce
+    item/order-level detail -> those stay Premium-gated)."""
+    bqp = _premium_connection(request)
+    if bqp is None:
+        return None
+    from app.integrations import bigquery as bqmod
+    bq, property_ids = bqp
+    events = bq.event_map
+    p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
+    try:
+        client = bqmod.connect(bq.service_account_json)
+
+        def order_item(start, end):
+            orders = skus_weighted = single = 0.0
+            for pid in property_ids:
+                ds = bqmod.dataset_for(pid)
+                if not ds:
+                    continue
+                m = bqmod.fetch_order_item_metrics(client, ds, start, end, events)
+                orders += m['orders']
+                single += m['single_sku_orders']
+                skus_weighted += m['unique_skus_per_order'] * m['orders']  # weighted avg
+            return {'orders': orders, 'single_sku_orders': single,
+                    'unique_skus_per_order': (skus_weighted / orders) if orders else 0.0}
+
+        def categories(start, end):
+            acc = {}
+            for pid in property_ids:
+                ds = bqmod.dataset_for(pid)
+                if not ds:
+                    continue
+                for cat, m in bqmod.fetch_category_metrics(client, ds, start, end, events).items():
+                    a = acc.setdefault(cat, {'orders': 0.0, 'units': 0.0, 'sales': 0.0})
+                    for k in ('orders', 'units', 'sales'):
+                        a[k] += m[k]
+            return acc
+
+        return {'p': order_item(p_start, p_end), 's': order_item(s_start, s_end),
+                'categories': {'p': categories(p_start, p_end), 's': categories(s_start, s_end)}}
+    except Exception as e:
+        logger.warning('Premium (BigQuery) item/category metrics unavailable (%s: %s) -- showing zeros',
+                       type(e).__name__, e)
+        return {'p': {}, 's': {}, 'categories': {'p': {}, 's': {}}}
+
+
+def _bq_segments(request, bqp, primary_code, compare_code, today):
+    """Premium per-device/per-channel changeplot segments from BigQuery."""
+    from app.integrations import bigquery as bqmod
+    bq, property_ids = bqp
+    events = bq.event_map
+    p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
+
+    def zeros():
+        out = {}
+        for split, disp in (('device', DEVICE_DISPLAY), ('channel', CHANNEL_DISPLAY)):
+            out[split] = {disp[b]: {'p': {k: 0.0 for k in _FUND_KEYS}, 's': {k: 0.0 for k in _FUND_KEYS}}
+                          for b in SPLIT_BUCKETS[split]}
+        return out
+    try:
+        client = bqmod.connect(bq.service_account_json)
+        out = {}
+        for split, disp in (('device', DEVICE_DISPLAY), ('channel', CHANNEL_DISPLAY)):
+            prim = _bq_split_totals(client, property_ids, p_start, p_end, split, events)
+            sec = _bq_split_totals(client, property_ids, s_start, s_end, split, events)
+            out[split] = {disp[b]: {'p': prim[b], 's': sec[b]} for b in SPLIT_BUCKETS[split]}
+        return out
+    except Exception as e:
+        logger.warning('Premium (BigQuery) changeplot segments unavailable (%s: %s) -- showing zeros',
                        type(e).__name__, e)
         return zeros()

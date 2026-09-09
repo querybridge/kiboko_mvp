@@ -1282,10 +1282,13 @@ def analytics_expand_purchases(request):
     from app import analytics_data as ad
     primary, compare, ctx = _analytics_filter(request)
     from app.integrations import ga4_dashboard
+    is_premium = ga4_dashboard._premium_connection(request) is not None
     d = ad.build_expand_purchases(
         primary, compare,
         rows=_ga4_rows(request, primary, compare),
-        live=ga4_dashboard.is_connected(request))
+        live=ga4_dashboard.is_connected(request),
+        item=ga4_dashboard.ga4_item_metrics(request, primary, compare),
+        is_premium=is_premium)
     ctx.update({
         'cards': d['cards'],
         'history': d['history'],

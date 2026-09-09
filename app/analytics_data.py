@@ -1030,10 +1030,16 @@ def build_engage_customer(primary_code, compare_code, rows=None, eng=None,
     return {'cards': d.cards, 'charts': d.charts, 'history': d.history, 'scatter': d.scatter}
 
 
-def build_expand_purchases(primary_code, compare_code, rows=None, live=False):
+def build_expand_purchases(primary_code, compare_code, rows=None, live=False,
+                           item=None, is_premium=False):
     """Expand Purchases dashboard — area charts + KPI/history cards + a product
-    category AOV changeplot (scatter). live=True zeros the not-yet-wired deltas
-    and marks the item/order-level widgets as Premium (BigQuery) tier."""
+    category AOV changeplot (scatter).
+
+    Tiering:
+      * is_premium=True  -> item/order-level cards show REAL BigQuery values
+        (``item``) and the 'Premium Tier Required' badge is lifted.
+      * live (Standard) but not premium -> those cards zero out and keep the badge.
+      * dummy/demo -> illustrative values with the badge (a tease)."""
     m = build_metrics(primary_code, compare_code, rows=rows)
     p, pct = m['primary'], m['pct']
     d = Deck(m['labels'], primary_label(primary_code), compare_label(primary_code, compare_code))
@@ -1049,10 +1055,27 @@ def build_expand_purchases(primary_code, compare_code, rows=None, live=False):
         rnd = random.Random(seed)
         return [round(v * (0.86 + rnd.random() * 0.2), 4) for v in series]
 
-    # Item/order-level -> Premium (BigQuery) tier; 0 when live (cards are greyed).
-    unique_skus = 0.0 if live else 2.3
-    cherry_pick = 0.0 if live else 28.0
-    single_sku_orders = p['orders'] * cherry_pick / 100.0
+    # Item/order-level -> Premium (BigQuery) tier. The badge shows unless this
+    # company is Premium, in which case the cards render real values.
+    badge = not is_premium
+    if is_premium:
+        ip, isec = (item or {}).get('p', {}), (item or {}).get('s', {})
+        orders_p = ip.get('orders') or p['orders']
+        unique_skus = ip.get('unique_skus_per_order', 0.0)
+        single_sku_orders = ip.get('single_sku_orders', 0.0)
+        cherry_pick = (single_sku_orders / orders_p * 100) if orders_p else 0.0
+        us_s = isec.get('unique_skus_per_order', 0.0)
+        cp_s = (isec.get('single_sku_orders', 0.0) / isec.get('orders', 0.0) * 100) if isec.get('orders') else 0.0
+        unique_skus_delta = round(_pct_delta(unique_skus, us_s), 2)
+        cherry_pick_delta = round(_pct_delta(cherry_pick, cp_s), 2)
+    elif live:
+        unique_skus = cherry_pick = single_sku_orders = 0.0
+        unique_skus_delta = cherry_pick_delta = 0.0
+    else:
+        unique_skus, cherry_pick = 2.3, 28.0
+        single_sku_orders = p['orders'] * cherry_pick / 100.0
+        unique_skus_delta = _dummy_delta(sd('usk'))
+        cherry_pick_delta = _dummy_delta(sd('chp'))
 
     s_aov = m['daily']['expandAvgOrderValue']
     s_upo = m['daily']['expandUnitsPerOrderValue']
@@ -1088,14 +1111,14 @@ def build_expand_purchases(primary_code, compare_code, rows=None, live=False):
            s1=s_units, s2=s2(s_units, sd('units2')), two_sets=True, fmt_kind='normal', chart_height=150)
     # Item/order-level metrics the GA4 Data API can't produce -> Premium (BigQuery) tier.
     d.history_card('unique_skus', 'expand', 'UNIQUE SKUS PER ORDER', unique_skus, 'normal',
-                   _dummy_delta(sd('usk')), _weeks(unique_skus, 'normal', sd('uskw')),
-                   premium=True)
+                   unique_skus_delta, _weeks(unique_skus, 'normal', sd('uskw')),
+                   premium=badge)
     d.history_card('cherry_pick', 'expand', 'CHERRY PICK RATE', cherry_pick, 'percentage',
-                   _dummy_delta(sd('chp')), _weeks(cherry_pick, 'percentage', sd('chpw')),
+                   cherry_pick_delta, _weeks(cherry_pick, 'percentage', sd('chpw')),
                    reversed_color=True,
                    equation=[E(single_sku_orders, 'integer', 'single-SKU orders  /'),
-                             E(p['orders'], 'integer', 'orders')],
-                   premium=True)
+                             E(p['orders'] if not is_premium else (item or {}).get('p', {}).get('orders', p['orders']), 'integer', 'orders')],
+                   premium=badge)
 
     # SECTION 3 -----------------------------------------------------------
     d.card('enhance_big', 'expand', 'ENHANCE', 'AVERAGE UNIT PRICE',
@@ -1105,15 +1128,27 @@ def build_expand_purchases(primary_code, compare_code, rows=None, live=False):
            s1=s_aup, s2=s2(s_aup, sd('aup2')), two_sets=True, fmt_kind='currency', chart_height=150)
 
     # SECTION 4 — product category changeplot ----------------------------
-    cats = ['Mattresses', 'Bedding', 'Furniture', 'Pillows', 'Frames', 'Accessories']
-    charts = [
-        _scatter_chart(sd('cat1'), 'Units per Order', 'Orders', 'Units', cats, 'normal'),
-        _scatter_chart(sd('cat2'), 'Avg Unit Price', 'Units', 'Sales', cats, 'currency'),
-        _scatter_chart(sd('cat3'), 'AOV', 'Orders', 'Sales', cats, 'currency'),
-    ]
+    cat_data = (item or {}).get('categories') if is_premium else None
+    if is_premium and cat_data and cat_data.get('p'):
+        cp, cs = cat_data['p'], cat_data['s']
+        top = sorted(cp, key=lambda c: cp[c].get('sales', 0), reverse=True)[:8]
+        prim = {c: cp[c] for c in top}
+        sec = {c: cs.get(c, {}) for c in top}
+        charts = [
+            _real_scatter_chart('Units per Order', 'Orders', 'Units', prim, sec, 'orders', 'units', 'normal'),
+            _real_scatter_chart('Avg Unit Price', 'Units', 'Sales', prim, sec, 'units', 'sales', 'currency'),
+            _real_scatter_chart('AOV', 'Orders', 'Sales', prim, sec, 'orders', 'sales', 'currency'),
+        ]
+    else:
+        cats = ['Mattresses', 'Bedding', 'Furniture', 'Pillows', 'Frames', 'Accessories']
+        charts = [
+            _scatter_chart(sd('cat1'), 'Units per Order', 'Orders', 'Units', cats, 'normal'),
+            _scatter_chart(sd('cat2'), 'Avg Unit Price', 'Units', 'Sales', cats, 'currency'),
+            _scatter_chart(sd('cat3'), 'AOV', 'Orders', 'Sales', cats, 'currency'),
+        ]
     # Per-category order metrics need item/order-level data -> Premium (BigQuery) tier.
     d.scatter_widget('category_changeplot', 'expand', 'Product Category AOV Changeplot',
-                     charts, premium=live)
+                     charts, premium=(False if is_premium else live))
 
     _apply_lever_glow(d.cards, primary_code, compare_code, 'expand', rows=rows)
     _apply_backlog_links(d.cards)
