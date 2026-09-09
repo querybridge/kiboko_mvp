@@ -34,23 +34,35 @@ CHANNEL_DISPLAY = {'direct': 'Direct', 'organic': 'Organic Search', 'paid': 'Pai
 # Scope / connection
 # --------------------------------------------------------------------------
 
+def _scope_ids(request):
+    """(company_id, vertical_sel, website_sel) preferring the live URL params over
+    the session, so a just-applied scope is used on the SAME request (the session
+    is only updated later, at template render, by the tenancy context processor)."""
+    def pick(param, key):
+        v = request.GET.get(param)
+        return v if v is not None else request.session.get(key)
+    return (pick('company', 'scope_company'),
+            pick('vertical', 'scope_vertical'),
+            pick('website', 'scope_website'))
+
+
 def _resolve_scope(request):
     """(property_ids, stream_id) for the current top-bar scope, or None."""
     from business_unit.models import Vertical, Website
-    vertical_id = request.session.get('scope_vertical')
-    if vertical_id and vertical_id != 'all':
-        vertical = Vertical.objects.filter(pk=vertical_id).first()
-        if not vertical or not vertical.ga4_property_id:
-            return None
-        stream_id = None
-        website_id = request.session.get('scope_website')
-        if website_id and website_id != 'all':
-            site = Website.objects.filter(pk=website_id, vertical=vertical).first()
-            stream_id = site.ga4_stream_id if site else None
-        return [vertical.ga4_property_id], stream_id
-    company_id = request.session.get('scope_company')
+    company_id, vertical_sel, website_sel = _scope_ids(request)
     if not company_id:
         return None
+    # A specific Vertical -> only if it belongs to the selected company (guards
+    # against a stale session vertical from a previously-scoped company).
+    if vertical_sel and vertical_sel != 'all':
+        vertical = Vertical.objects.filter(pk=vertical_sel, company_id=company_id).first()
+        if vertical and vertical.ga4_property_id:
+            stream_id = None
+            if website_sel and website_sel != 'all':
+                site = Website.objects.filter(pk=website_sel, vertical=vertical).first()
+                stream_id = site.ga4_stream_id if site else None
+            return [vertical.ga4_property_id], stream_id
+    # All Verticals -> every GA4 property in the company.
     property_ids = list(
         Vertical.objects.filter(company_id=company_id)
         .exclude(ga4_property_id='')
@@ -81,7 +93,7 @@ def _premium_connection(request):
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
         return None
-    company_id = request.session.get('scope_company')
+    company_id = _scope_ids(request)[0]
     if not company_id:
         return None
     bq = BigQueryConnection.objects.filter(company_id=company_id).first()

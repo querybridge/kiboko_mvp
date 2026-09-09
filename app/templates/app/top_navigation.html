@@ -82,8 +82,11 @@
         </ul>
       </li>
       {% if tenancy_current_company %}
-      {# navbar-right floats li right-to-left, so order is reversed to read Company -> Vertical -> Website #}
-      <li style="padding: 13px 10px 0 0;" title="Website (data stream)">
+      {# reversed source order (float) -> reads Company -> Vertical -> Website -> Apply; cascade is client-side, only Apply queries #}
+      <li style="padding: 13px 10px 0 0;">
+        <button id="scopeApply" class="btn btn-primary btn-sm" style="margin:0;" disabled>Apply</button>
+      </li>
+      <li style="padding: 13px 4px 0 0;" title="Website (data stream)">
         <select id="scopeWebsite" class="form-control input-sm" style="display:inline-block; width:auto; min-width:140px;" {% if tenancy_vertical_sel == 'all' %}disabled{% endif %}>
           <option value="all" {% if tenancy_website_sel == 'all' %}selected{% endif %}>All Websites</option>
           {% for w in tenancy_websites %}
@@ -110,19 +113,53 @@
     </ul>
   </nav>
 </div>
+{% if tenancy_current_company %}{{ tenancy_tree|json_script:"tenancy-tree" }}{% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Company / Vertical / Website scope selectors -> reload with the chosen param.
-  // The server cascades (new Company resets Vertical+Website; new Vertical resets
-  // Website), so we only need to send the one that changed.
-  [['scopeCompany','company'], ['scopeVertical','vertical'], ['scopeWebsite','website']].forEach(function(pair) {
-    var el = document.getElementById(pair[0]);
-    if (!el) return;
-    el.addEventListener('change', function() {
-      var url = new URL(window.location.href);
-      url.searchParams.set(pair[1], this.value);
-      window.location.href = url.toString();
-    });
+  var selCompany = document.getElementById('scopeCompany');
+  var selVertical = document.getElementById('scopeVertical');
+  var selWebsite = document.getElementById('scopeWebsite');
+  var applyBtn = document.getElementById('scopeApply');
+  if (!selCompany) return;
+  var treeEl = document.getElementById('tenancy-tree');
+  var tree = treeEl ? JSON.parse(treeEl.textContent || '{}') : {};
+
+  function opt(value, text) { var o = document.createElement('option'); o.value = value; o.textContent = text; return o; }
+
+  // Repopulate the Vertical dropdown for a company (client-side; no reload).
+  function fillVerticals(companyId) {
+    selVertical.innerHTML = '';
+    selVertical.appendChild(opt('all', 'All Verticals'));
+    ((tree[companyId] || {}).verticals || []).forEach(function(v) { selVertical.appendChild(opt(v.id, v.name)); });
+  }
+  // Repopulate the Website dropdown for a vertical (client-side).
+  function fillWebsites(companyId, verticalId) {
+    selWebsite.innerHTML = '';
+    selWebsite.appendChild(opt('all', 'All Websites'));
+    var verts = (tree[companyId] || {}).verticals || [];
+    var v = verts.filter(function(x) { return String(x.id) === String(verticalId); })[0];
+    (v && v.websites || []).forEach(function(w) { selWebsite.appendChild(opt(w.id, w.name)); });
+    selWebsite.disabled = (verticalId === 'all' || !verticalId);
+  }
+  function enableApply() { if (applyBtn) applyBtn.disabled = false; }
+
+  selCompany.addEventListener('change', function() {
+    fillVerticals(selCompany.value);          // new company -> reset Vertical to All...
+    fillWebsites(selCompany.value, 'all');     // ...and Website to All
+    enableApply();
+  });
+  selVertical.addEventListener('change', function() {
+    fillWebsites(selCompany.value, selVertical.value);   // new vertical -> reset Website to All
+    enableApply();
+  });
+  selWebsite.addEventListener('change', enableApply);
+
+  if (applyBtn) applyBtn.addEventListener('click', function() {
+    var url = new URL(window.location.href);
+    url.searchParams.set('company', selCompany.value);
+    url.searchParams.set('vertical', selVertical.value);
+    url.searchParams.set('website', selWebsite.value);
+    window.location.href = url.toString();   // the only query trigger
   });
 });
 </script>

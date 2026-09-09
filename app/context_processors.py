@@ -1,4 +1,4 @@
-from business_unit.models import Company, Website
+from business_unit.models import Company, Vertical, Website
 
 
 def google_flags(request):
@@ -67,6 +67,20 @@ def tenancy_selector(request):
     s['scope_website'] = website_sel
     current_website = None if website_sel == 'all' else next(w for w in websites if str(w.id) == website_sel)
 
+    # Full tree (company -> verticals -> websites) for client-side cascade, so the
+    # Vertical/Website dropdowns update without a page load/query until Apply.
+    company_ids_list = [c.id for c in companies]
+    verts_by_company = {}
+    for v in Vertical.objects.filter(company_id__in=company_ids_list):
+        verts_by_company.setdefault(v.company_id, []).append(v)
+    sites_by_vertical = {}
+    for w in Website.objects.filter(vertical__company_id__in=company_ids_list):
+        sites_by_vertical.setdefault(w.vertical_id, []).append(w)
+    tree = {str(c.id): {'verticals': [
+        {'id': v.id, 'name': v.name,
+         'websites': [{'id': w.id, 'name': w.name} for w in sites_by_vertical.get(v.id, [])]}
+        for v in verts_by_company.get(c.id, [])]} for c in companies}
+
     return {
         'tenancy_companies': companies,
         'tenancy_verticals': verticals,
@@ -76,4 +90,5 @@ def tenancy_selector(request):
         'tenancy_website_sel': website_sel,
         'tenancy_current_vertical': current_vertical,
         'tenancy_current_website': current_website,
+        'tenancy_tree': tree,
     }
