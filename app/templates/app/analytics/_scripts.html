@@ -17,13 +17,7 @@
       startDate: startEl.value ? moment(startEl.value) : moment().subtract(29, 'days'),
       endDate: endEl.value ? moment(endEl.value) : moment().subtract(1, 'days'),
       showDropdowns: true, linkedCalendars: false, autoUpdateInput: true,
-      opens: 'center', locale: { format: 'YYYY-MM-DD', firstDay: 1 },
-      ranges: {
-        'Last 7 Days': [moment().subtract(6, 'days'), moment().subtract(1, 'days')],
-        'Last 30 Days': [moment().subtract(29, 'days'), moment().subtract(1, 'days')],
-        'This Month': [moment().startOf('month'), moment().subtract(1, 'days')],
-        'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
-      }
+      opens: 'center', locale: { format: 'YYYY-MM-DD', firstDay: 1 }
     }, function(start, end) {
       startEl.value = start.format('YYYY-MM-DD');
       endEl.value = end.format('YYYY-MM-DD');

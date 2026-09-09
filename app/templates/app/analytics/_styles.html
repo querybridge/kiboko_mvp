@@ -48,6 +48,10 @@
   #analytics-page #analytics-filter .af-daterange:hover { border-color: var(--ac-grow); }
   #analytics-page #analytics-filter .af-daterange .fa-calendar { color: var(--ac-grow); }
   #analytics-page #analytics-filter .af-daterange .fa-caret-down { margin-left: auto; color: var(--ac-muted); }
+  /* daterangepicker popup renders on <body> (outside #analytics-page): move the
+     Apply/Cancel buttons to the bottom-left, below the calendars. */
+  .daterangepicker .drp-buttons { text-align: left; }
+  .daterangepicker .drp-buttons .drp-selected { display: none; }
 
   /* Section subtitles */
   #analytics-page .analytics-subtitle { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ac-secondary); margin: 14px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--ac-edge); }
