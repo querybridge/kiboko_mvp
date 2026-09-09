@@ -33,6 +33,7 @@
 
     <!-- Date + comparison filter -->
     {% include "app/analytics/_filter.html" %}
+    {% if signin_prompt %}{% include "app/analytics/_signin_banner.html" %}{% else %}
 
     <!-- Row 1: hero -->
     <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.grow_sales %}</div></div>
@@ -72,6 +73,7 @@
       <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.attract_traffic %}</div>
       <div class="col-md-8">{% include "app/analytics/_card.html" with card=cards.engage_expand %}</div>
     </div>
+    {% endif %}
   </div>
 {% endblock content %}
 

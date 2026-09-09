@@ -115,6 +115,27 @@ def is_connected(request):
     return _premium_connection(request) is not None or _connected_scope(request) is not None
 
 
+def signin_prompt(request):
+    """True when the scoped company has real (Standard/GA4) data but the current
+    login can't fetch it because it isn't signed in with Google. Dashboards then
+    show a 'Sign in with Google' banner instead of misleading dummy data. Pure
+    demo companies (no GA4 property) stay on dummy -> return False."""
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return False
+    if not google_oauth.is_enabled():
+        return False                              # can't sign in -> dummy is all we have
+    if getattr(user, 'google_identity', None):
+        return False                              # already linked a Google account
+    if _premium_connection(request) is not None:
+        return False                              # Premium fetches via the service account
+    company_id = _scope_ids(request)[0]
+    if not company_id:
+        return False
+    from business_unit.models import Vertical
+    return Vertical.objects.filter(company_id=company_id).exclude(ga4_property_id='').exists()
+
+
 def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):
     """Premium daily rows from BigQuery (summed across the company's datasets),
     aggregated over the full period then bucketed -- mirrors ga4_rows."""

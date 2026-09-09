@@ -15,6 +15,7 @@
     <div class="clearfix"></div>
 
     {% include "app/analytics/_filter.html" %}
+    {% if signin_prompt %}{% include "app/analytics/_signin_banner.html" %}{% else %}
 
     <!-- ATTRACT / Visits -->
     <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.attract_visits %}</div></div>
@@ -50,6 +51,7 @@
       <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_referral %}</div>
       <div class="col-md-4">{% include "app/analytics/_card.html" with card=cards.ch_other %}</div>
     </div>
+    {% endif %}
   </div>
 {% endblock content %}
 

@@ -53,6 +53,17 @@
   .daterangepicker .drp-buttons { text-align: left; }
   .daterangepicker .drp-buttons .drp-selected { display: none; }
 
+  /* "Sign in with Google" banner (shown instead of dummy for real Standard cos) */
+  #analytics-page .signin-banner {
+    border: 1px solid rgba(122,92,255,.45); border-radius: 14px; padding: 26px 24px; margin: 8px 0 22px;
+    background: linear-gradient(180deg, rgba(122,92,255,.10), rgba(122,92,255,.03));
+  }
+  #analytics-page .signin-banner-inner { display: flex; align-items: center; gap: 18px; }
+  #analytics-page .signin-banner-icon { font-size: 30px; color: var(--ac-grow); }
+  #analytics-page .signin-banner-text { flex: 1; min-width: 0; }
+  #analytics-page .signin-banner-title { font-size: 16px; font-weight: 800; color: var(--ac-primary); }
+  #analytics-page .signin-banner-sub { color: var(--ac-secondary); font-size: 13px; margin-top: 2px; }
+
   /* Section subtitles */
   #analytics-page .analytics-subtitle { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ac-secondary); margin: 14px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--ac-edge); }
 

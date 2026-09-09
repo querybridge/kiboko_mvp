@@ -1,0 +1,12 @@
+{# Shown instead of the dummy dashboard when the scoped company has real GA4 data #}
+{# the current login can't fetch. Expects signin_prompt + tenancy_current_company. #}
+<div class="signin-banner">
+  <div class="signin-banner-inner">
+    <i class="fa fa-line-chart signin-banner-icon"></i>
+    <div class="signin-banner-text">
+      <div class="signin-banner-title">Live data available</div>
+      <div class="signin-banner-sub">Sign in with Google to see{% if tenancy_current_company %} {{ tenancy_current_company.name }}'s{% endif %} live data.</div>
+    </div>
+    <a href="{% url 'google_login' %}" class="btn btn-primary"><i class="fa fa-google"></i>&nbsp; Sign in with Google</a>
+  </div>
+</div>

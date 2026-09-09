@@ -1202,6 +1202,8 @@ def _analytics_filter(request):
         'selected_custom_start': custom_start,
         'selected_custom_end': custom_end,
     }
+    from app.integrations import ga4_dashboard
+    ctx['signin_prompt'] = ga4_dashboard.signin_prompt(request)
     return primary, compare, ctx
 
 

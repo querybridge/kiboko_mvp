@@ -61,6 +61,7 @@
     <div class="clearfix"></div>
 
     {% include "app/analytics/_filter.html" %}
+    {% if signin_prompt %}{% include "app/analytics/_signin_banner.html" %}{% else %}
 
     <div class="ps-toolbar">
       <div class="ps-colhead">
@@ -104,6 +105,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
 {% endblock content %}
 
