@@ -6,11 +6,36 @@
   var period = document.getElementById('af-period');
   var compare = document.getElementById('af-compare');
   var afCustom = document.getElementById('af-custom');
+
+  // Custom range: a calendar-icon chip opens the bootstrap-daterangepicker.
+  var $dr = (window.jQuery && jQuery.fn.daterangepicker) ? jQuery('#af-daterange') : null;
+  if ($dr && $dr.length) {
+    var startEl = document.getElementById('af-custom-start');
+    var endEl = document.getElementById('af-custom-end');
+    var labelEl = document.getElementById('af-daterange-label');
+    $dr.daterangepicker({
+      startDate: startEl.value ? moment(startEl.value) : moment().subtract(29, 'days'),
+      endDate: endEl.value ? moment(endEl.value) : moment().subtract(1, 'days'),
+      showDropdowns: true, linkedCalendars: false, autoUpdateInput: true,
+      opens: 'center', locale: { format: 'YYYY-MM-DD', firstDay: 1 },
+      ranges: {
+        'Last 7 Days': [moment().subtract(6, 'days'), moment().subtract(1, 'days')],
+        'Last 30 Days': [moment().subtract(29, 'days'), moment().subtract(1, 'days')],
+        'This Month': [moment().startOf('month'), moment().subtract(1, 'days')],
+        'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+      }
+    }, function(start, end) {
+      startEl.value = start.format('YYYY-MM-DD');
+      endEl.value = end.format('YYYY-MM-DD');
+      if (labelEl) labelEl.textContent = start.format('MMM D, YYYY') + ' – ' + end.format('MMM D, YYYY');
+      document.getElementById('analytics-filter').submit();   // apply the range
+    });
+  }
+
   if (period) period.addEventListener('change', function() {
     if (period.value === 'CUSTOM') {
-      // Reveal the calendar; the user picks From/To then clicks Apply (the form
-      // submits with period=CUSTOM + custom_start + custom_end).
-      if (afCustom) afCustom.style.display = '';
+      if (afCustom) afCustom.style.display = '';   // reveal the calendar chip...
+      if ($dr && $dr.data('daterangepicker')) $dr.data('daterangepicker').show();  // ...and open it
     } else {
       window.location.search = '?period=' + encodeURIComponent(period.value);
     }

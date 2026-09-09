@@ -39,6 +39,15 @@
   #analytics-page #analytics-filter select { min-width: 240px; height: 36px; border: 1px solid var(--ac-edge); border-radius: 8px; padding: 0 10px; background: #2A1B4D; color: var(--ac-primary); font-size: 13px; }
   #analytics-page #analytics-filter select:focus { outline: none; border-color: var(--ac-grow); }
   #analytics-page #analytics-filter .af-vs { padding-bottom: 9px; color: var(--ac-muted); font-style: italic; font-size: 12px; }
+  /* Custom range: a calendar-icon chip that opens the range picker. */
+  #analytics-page #analytics-filter .af-daterange {
+    display: inline-flex; align-items: center; gap: 8px; height: 36px; min-width: 210px;
+    border: 1px solid var(--ac-edge); border-radius: 8px; padding: 0 12px;
+    background: #2A1B4D; color: var(--ac-primary); font-size: 13px; cursor: pointer; user-select: none;
+  }
+  #analytics-page #analytics-filter .af-daterange:hover { border-color: var(--ac-grow); }
+  #analytics-page #analytics-filter .af-daterange .fa-calendar { color: var(--ac-grow); }
+  #analytics-page #analytics-filter .af-daterange .fa-caret-down { margin-left: auto; color: var(--ac-muted); }
 
   /* Section subtitles */
   #analytics-page .analytics-subtitle { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ac-secondary); margin: 14px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--ac-edge); }
