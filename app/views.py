@@ -1180,6 +1180,18 @@ def _analytics_filter(request):
     request.session['analytics_period'] = primary
     request.session['analytics_compare'] = compare
 
+    # Custom period: explicit start/end dates (from GET, else session).
+    custom_start = request.GET.get('custom_start') or request.session.get('analytics_custom_start') or ''
+    custom_end = request.GET.get('custom_end') or request.session.get('analytics_custom_end') or ''
+    if primary == 'CUSTOM':
+        cs, ce = _parse_iso(custom_start), _parse_iso(custom_end)
+        if not (cs and ce and cs <= ce):  # default to the last 30 days
+            ce = date.today() - timedelta(days=1)
+            cs = ce - timedelta(days=29)
+        custom_start, custom_end = cs.isoformat(), ce.isoformat()
+        request.session['analytics_custom_start'] = custom_start
+        request.session['analytics_custom_end'] = custom_end
+
     ctx = {
         'primary_options': ad.PRIMARY_OPTIONS,
         'compare_options': ad.COMPARE_OPTIONS.get(primary, []),
@@ -1187,8 +1199,17 @@ def _analytics_filter(request):
         'selected_compare': compare,
         'primary_label': ad.primary_label(primary),
         'compare_label': ad.compare_label(primary, compare),
+        'selected_custom_start': custom_start,
+        'selected_custom_end': custom_end,
     }
     return primary, compare, ctx
+
+
+def _parse_iso(s):
+    try:
+        return date.fromisoformat(s)
+    except (TypeError, ValueError):
+        return None
 
 
 def _ga4_rows(request, primary, compare):

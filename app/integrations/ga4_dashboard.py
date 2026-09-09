@@ -103,11 +103,11 @@ def is_connected(request):
     return _premium_connection(request) is not None or _connected_scope(request) is not None
 
 
-def _bq_rows(bq, property_ids, primary_code, compare_code, today):
+def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):
     """Premium daily rows from BigQuery (summed across the company's datasets),
     aggregated over the full period then bucketed -- mirrors ga4_rows."""
     from app.integrations import bigquery as bqmod
-    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today, custom)
     labels = [d.strftime('%m-%d') for d in _range_dates(p_start, p_end)]
     try:
         client = bqmod.connect(bq.service_account_json)
@@ -188,10 +188,28 @@ def _comparison_range(compare_code, p_start, p_end):
     return s_end - datetime.timedelta(days=length - 1), s_end
 
 
-def _date_ranges(primary_code, compare_code, today):
-    p_start, p_end = _period_range(primary_code, today)
+def _custom_dates(request):
+    """(start, end) date objects for a Custom period from the session, or None."""
+    cs, ce = request.session.get('analytics_custom_start'), request.session.get('analytics_custom_end')
+    try:
+        return datetime.date.fromisoformat(cs), datetime.date.fromisoformat(ce)
+    except (TypeError, ValueError):
+        return None
+
+
+def _date_ranges(primary_code, compare_code, today, custom=None):
+    if primary_code == 'CUSTOM' and custom:
+        p_start, p_end = custom
+    else:
+        p_start, p_end = _period_range(primary_code, today)
     s_start, s_end = _comparison_range(compare_code, p_start, p_end)
     return p_start, p_end, s_start, s_end
+
+
+def _ranges(request, primary_code, compare_code, today):
+    """Date ranges honoring a Custom period's session start/end when applicable."""
+    custom = _custom_dates(request) if primary_code == 'CUSTOM' else None
+    return _date_ranges(primary_code, compare_code, today, custom)
 
 
 def _order_days(by_day, start, end):
@@ -304,14 +322,15 @@ def _bq_today(bq, today):
 
 def ga4_rows(request, primary_code, compare_code, today=None):
     today = today or datetime.date.today()
+    custom = _custom_dates(request) if primary_code == 'CUSTOM' else None
     bqp = _premium_connection(request)
     if bqp is not None:                      # Premium company -> BigQuery
-        return _bq_rows(bqp[0], bqp[1], primary_code, compare_code, _bq_today(bqp[0], today))
+        return _bq_rows(bqp[0], bqp[1], primary_code, compare_code, _bq_today(bqp[0], today), custom)
     sc = _connected_scope(request)
     if sc is None:
         return None
     identity, property_ids, stream_id = sc
-    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+    p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
     try:
         creds = google_oauth.credentials_from_identity(identity)
         # Aggregate over the FULL period (correct KPI totals), then bucket the
@@ -334,7 +353,7 @@ def ga4_splits(request, primary_code, compare_code, today=None):
     today = today or datetime.date.today()
     if _premium_connection(request) is not None:
         logger.info('Premium (BigQuery) device/channel splits not wired yet -- showing zeros')
-        p_start, p_end, _s, _e = _date_ranges(primary_code, compare_code, today)
+        p_start, p_end, _s, _e = _ranges(request, primary_code, compare_code, today)
         n = len(_range_dates(p_start, p_end))
         return {split: {b: {'total': 0.0, 'delta': 0.0, 'share': 0.0, 'daily': [0.0] * n}
                         for b in SPLIT_BUCKETS[split]} for split in ('device', 'channel')}
@@ -342,7 +361,7 @@ def ga4_splits(request, primary_code, compare_code, today=None):
     if sc is None:
         return None
     identity, property_ids, stream_id = sc
-    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+    p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
     dates_p = _range_dates(p_start, p_end)
 
     def zeros():
@@ -420,7 +439,7 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
         return None
     identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
-    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+    p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
 
     def zeros():
         return {**{k: 0.0 for k in _ENGAGE_KEYS}, **{k + '_delta': 0.0 for k in _ENGAGE_KEYS}}
@@ -486,7 +505,7 @@ def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
         return None
     identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
-    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+    p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
 
     def zeros():
         return _story_fundamentals({}), _story_fundamentals({})
@@ -531,7 +550,7 @@ def ga4_segments(request, primary_code, compare_code, today=None):
         return None
     identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
-    p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today)
+    p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
 
     def zeros():
         out = {}

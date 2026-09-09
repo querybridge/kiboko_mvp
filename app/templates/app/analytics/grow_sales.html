@@ -32,26 +32,7 @@
     <div class="clearfix"></div>
 
     <!-- Date + comparison filter -->
-    <form id="analytics-filter" method="get">
-      <div class="af-group">
-        <label for="af-period">Period</label>
-        <select id="af-period" name="period">
-          {% for code, label, days in primary_options %}
-            <option value="{{ code }}" {% if code == selected_primary %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="af-vs">compared to</div>
-      <div class="af-group">
-        <label for="af-compare">Comparison period</label>
-        <select id="af-compare" name="compare">
-          {% for code, label in compare_options %}
-            <option value="{{ code }}" {% if code == selected_compare %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <noscript><button type="submit" class="btn btn-primary btn-sm">Apply</button></noscript>
-    </form>
+    {% include "app/analytics/_filter.html" %}
 
     <!-- Row 1: hero -->
     <div class="row"><div class="col-md-12">{% include "app/analytics/_card.html" with card=cards.grow_sales %}</div></div>

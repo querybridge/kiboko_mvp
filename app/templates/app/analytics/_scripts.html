@@ -5,12 +5,23 @@
   // ---- Filter auto-submit -------------------------------------------------
   var period = document.getElementById('af-period');
   var compare = document.getElementById('af-compare');
+  var afCustom = document.getElementById('af-custom');
   if (period) period.addEventListener('change', function() {
-    window.location.search = '?period=' + encodeURIComponent(period.value);
+    if (period.value === 'CUSTOM') {
+      // Reveal the calendar; the user picks From/To then clicks Apply (the form
+      // submits with period=CUSTOM + custom_start + custom_end).
+      if (afCustom) afCustom.style.display = '';
+    } else {
+      window.location.search = '?period=' + encodeURIComponent(period.value);
+    }
   });
   if (compare) compare.addEventListener('change', function() {
-    window.location.search = '?period=' + encodeURIComponent(period.value) +
-                             '&compare=' + encodeURIComponent(compare.value);
+    if (period && period.value === 'CUSTOM') {
+      document.getElementById('analytics-filter').submit();   // keep the custom dates
+    } else {
+      window.location.search = '?period=' + encodeURIComponent(period.value) +
+                               '&compare=' + encodeURIComponent(compare.value);
+    }
   });
 
   // ---- Drill-down: clicking a linked card navigates to its dashboard ------

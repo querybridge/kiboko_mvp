@@ -8,6 +8,13 @@
       {% endfor %}
     </select>
   </div>
+  <div class="af-group af-custom" id="af-custom" {% if selected_primary != 'CUSTOM' %}style="display:none;"{% endif %}>
+    <label for="af-custom-start">From</label>
+    <input type="date" id="af-custom-start" name="custom_start" value="{{ selected_custom_start }}">
+    <label for="af-custom-end" style="margin-left:8px;">To</label>
+    <input type="date" id="af-custom-end" name="custom_end" value="{{ selected_custom_end }}">
+    <button type="submit" id="af-custom-apply" class="btn btn-primary btn-sm" style="margin-left:8px;">Apply</button>
+  </div>
   <div class="af-vs">compared to</div>
   <div class="af-group">
     <label for="af-compare">Comparison period</label>
