@@ -1430,6 +1430,12 @@ def data_connection(request):
 
 @login_required
 def settings_users(request):
+    """Deprecated — user + role management is now merged into manage_users
+    (Manage Users). Kept as a redirect so old links/bookmarks still resolve."""
+    return redirect('app:manage_users')
+
+
+def _settings_users_legacy(request):
     """Manage Users — restricted to admin and senior_leadership roles."""
     profile = getattr(request.user, 'profile', None)
     if not profile or profile.role not in ('admin', 'senior_leadership'):
@@ -1486,4 +1492,98 @@ def settings_users(request):
         'all_users': all_users,
         'role_choices': ROLE_CHOICES,
         'departments': departments,
+    })
+
+
+@login_required
+def manage_users(request):
+    """Unified user + role + company-access management.
+
+    One screen, company-centric: adding a person to a company assigns their role
+    in the same step. It creates/links their user (matched by email, so a later
+    Google sign-in inherits access), sets their role, and grants a
+    CompanyMembership. Company data access is by membership existence; the
+    membership's admin/member level mirrors the assigned role so company admins
+    can manage their own company.
+    """
+    from business_unit.models import Company, CompanyMembership
+    from users.models import ROLE_CHOICES
+
+    ROLE_LABELS = dict(ROLE_CHOICES)
+    ELEVATED = ('admin', 'senior_leadership')  # roles that also administer a company
+
+    user = request.user
+    profile = getattr(user, 'profile', None)
+    is_global_admin = user.is_superuser or (profile and profile.role in ELEVATED)
+    if is_global_admin:
+        companies = Company.objects.all().order_by('name')
+    else:
+        companies = Company.objects.filter(
+            memberships__user=user, memberships__role='admin',
+        ).distinct().order_by('name')
+    if not is_global_admin and not companies.exists():
+        return HttpResponseForbidden('You do not have permission to manage users.')
+
+    def _set_role(member, role):
+        """Set the user's role and mirror it onto every one of their memberships."""
+        if member.profile.role != role:
+            member.profile.role = role
+            member.profile.save(update_fields=['role'])
+        CompanyMembership.objects.filter(user=member).update(
+            role='admin' if role in ELEVATED else 'member')
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        company = companies.filter(pk=request.POST.get('company', '')).first()
+        role = request.POST.get('role', 'staff')
+        if role not in ROLE_LABELS:
+            role = 'staff'
+
+        if action == 'add_member' and company:
+            email = request.POST.get('email', '').strip()
+            first = request.POST.get('first_name', '').strip()
+            last = request.POST.get('last_name', '').strip()
+            if not email:
+                messages.error(request, 'Enter an email or Google account.')
+            else:
+                member = (User.objects.filter(email__iexact=email).first()
+                          or User.objects.filter(username__iexact=email).first())
+                if member is None:
+                    member = User.objects.create_user(
+                        username=email[:150], email=email, first_name=first, last_name=last)
+                elif first or last:
+                    member.first_name = first or member.first_name
+                    member.last_name = last or member.last_name
+                    member.save(update_fields=['first_name', 'last_name'])
+                CompanyMembership.objects.get_or_create(
+                    company=company, user=member,
+                    defaults={'role': 'admin' if role in ELEVATED else 'member'})
+                _set_role(member, role)
+                messages.success(
+                    request, f'Added {email} to {company.name} as {ROLE_LABELS[role]}.')
+
+        elif action == 'set_role' and company:
+            member = User.objects.filter(pk=request.POST.get('user_id', '')).first()
+            if member and CompanyMembership.objects.filter(company=company, user=member).exists():
+                _set_role(member, role)
+                messages.success(
+                    request, f'{member.email or member.username} is now {ROLE_LABELS[role]}.')
+
+        elif action == 'remove_member' and company:
+            CompanyMembership.objects.filter(
+                pk=request.POST.get('membership_id', ''), company=company).delete()
+            messages.success(request, 'Removed access.')
+
+        return redirect('app:manage_users')
+
+    companies_ctx = [{
+        'company': c,
+        'members': (CompanyMembership.objects.filter(company=c)
+                    .select_related('user', 'user__profile')
+                    .order_by('user__email', 'user__username')),
+    } for c in companies]
+
+    return render(request, 'app/manage_users.html', {
+        'companies_ctx': companies_ctx,
+        'role_choices': ROLE_CHOICES,
     })

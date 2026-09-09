@@ -1,0 +1,128 @@
+{% extends "app/base_site.html" %}
+{% block title %} Manage Users {% endblock title %}
+{% block stylesheets %}
+{{ block.super }}
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Manage Users <small>Access &amp; roles</small></h3>
+      </div>
+      <div class="clearfix"></div>
+    </div>
+
+    {% if messages %}
+    <div class="row"><div class="col-md-12">
+      {% for message in messages %}
+      <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}" role="alert">{{ message }}</div>
+      {% endfor %}
+    </div></div>
+    {% endif %}
+
+    <div class="row"><div class="col-md-12">
+      <p class="text-muted" style="margin-bottom:18px;">
+        Add a person to a company by their email or Google account and assign their role in the same
+        step. When they sign in with Google using that email, they inherit access automatically &mdash;
+        no need to switch logins. Premium (BigQuery) companies read through the shared service account,
+        so the person doesn't need their own GA4 access to the client. <strong>Admin</strong> and
+        <strong>Senior Leadership</strong> can administer the company and manage its users.
+      </p>
+    </div></div>
+
+    {% for entry in companies_ctx %}
+    <div class="row">
+      <div class="col-md-12 col-sm-12 col-xs-12">
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>{{ entry.company.name }}</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <table class="table table-striped table-bordered">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th style="width:210px;">Role</th>
+                  <th style="width:120px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in entry.members %}
+                <tr>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="set_role">
+                    <input type="hidden" name="company" value="{{ entry.company.id }}">
+                    <input type="hidden" name="user_id" value="{{ m.user.id }}">
+                    <td>{{ m.user.get_full_name|default:m.user.username }}</td>
+                    <td>{{ m.user.email|default:"—" }}</td>
+                    <td>
+                      <div style="display:flex; gap:6px;">
+                        <select name="role" class="form-control">
+                          {% for value, label in role_choices %}
+                          <option value="{{ value }}" {% if m.user.profile.role == value %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-info btn-xs" style="white-space:nowrap;">Save</button>
+                      </div>
+                    </td>
+                  </form>
+                  <td>
+                    <form method="post" style="display:inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="remove_member">
+                      <input type="hidden" name="company" value="{{ entry.company.id }}">
+                      <input type="hidden" name="membership_id" value="{{ m.id }}">
+                      <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Remove this person\'s access to {{ entry.company.name|escapejs }}?')">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" style="text-align:center;">No one has been given access yet.</td></tr>
+                {% endfor %}
+                <!-- Add access + assign role -->
+                <tr>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_member">
+                    <input type="hidden" name="company" value="{{ entry.company.id }}">
+                    <td>
+                      <input type="text" name="first_name" placeholder="First name" class="form-control" style="margin-bottom:5px;">
+                      <input type="text" name="last_name" placeholder="Last name" class="form-control">
+                    </td>
+                    <td>
+                      <input type="email" name="email" placeholder="name@example.com (email or Google account)" class="form-control" required>
+                    </td>
+                    <td>
+                      <select name="role" class="form-control">
+                        {% for value, label in role_choices %}
+                        <option value="{{ value }}" {% if value == 'staff' %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <button type="submit" class="btn btn-success btn-xs">Add</button>
+                    </td>
+                  </form>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="row"><div class="col-md-12">
+      <div class="alert alert-info">You don't administer any companies yet.</div>
+    </div></div>
+    {% endfor %}
+
+  </div>
+</div>
+{% endblock content %}
+{% block javascripts %}
+{{ block.super }}
+{% endblock javascripts %}
