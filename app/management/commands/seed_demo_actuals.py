@@ -18,7 +18,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Max
 
 from app.models import DailyActual, MonthlyGoal
-from business_unit.models import Vertical
+from business_unit.models import BusinessUnit
 
 
 DOW_MULT = {0: 1.05, 1: 1.10, 2: 1.10, 3: 1.05, 4: 0.95, 5: 0.85, 6: 0.90}
@@ -64,7 +64,7 @@ class Command(BaseCommand):
         parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility (default: 42)')
 
     def handle(self, *args, **options):
-        verticals = list(Vertical.objects.all())
+        verticals = list(BusinessUnit.objects.all())
         if not verticals:
             raise CommandError('No verticals found. Run seed_revenue first.')
 

@@ -37,7 +37,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 
 from app.models import DailyActual, MonthlyGoal
-from business_unit.models import Vertical
+from business_unit.models import BusinessUnit
 
 
 # ---------- constants ----------
@@ -222,7 +222,7 @@ class Command(BaseCommand):
         # Ensure verticals exist
         verticals = {}
         for name in VERTICAL_SPLITS:
-            vert, _ = Vertical.objects.get_or_create(name=name)
+            vert, _ = BusinessUnit.objects.get_or_create(name=name)
             verticals[name] = vert
 
         end_2026 = date(2026, 3, 13)

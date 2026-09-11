@@ -8,25 +8,25 @@ import datetime
 # Create your models here.
 
 
-class Vertical(models.Model):
+class BusinessUnit(models.Model):
     """A business unit that maps to one GA4 property. Belongs to a Company."""
     name = models.CharField(max_length=140)
     general_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    # GA4 tenancy: Company -> Vertical (GA4 property) -> Website (data stream)
+    # GA4 tenancy: Company -> BusinessUnit (GA4 property) -> Website (data stream)
     company = models.ForeignKey('Company', on_delete=models.CASCADE, null=True, blank=True, related_name='verticals')
     ga4_property_id = models.CharField(max_length=50, blank=True, help_text='Numeric GA4 property id')
     timezone = models.CharField(max_length=64, blank=True)
     currency = models.CharField(max_length=8, blank=True)
 
     class Meta:
-        verbose_name = 'Vertical'
-        verbose_name_plural = 'Verticals'
+        verbose_name = 'Business Unit'
+        verbose_name_plural = 'Business Units'
 
     def __str__(self):
         return self.name
 
 
-class BusinessUnit(models.Model):
+class Department(models.Model):
 	name = models.CharField(max_length=140)
 	owner = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
@@ -122,8 +122,8 @@ class CompanyMembership(models.Model):
 
 
 class Website(models.Model):
-	"""Data Stream == one website within a GA4 property (Vertical)."""
-	vertical = models.ForeignKey(Vertical, on_delete=models.CASCADE, null=True, blank=True, related_name='websites')
+	"""Data Stream == one website within a GA4 property (BusinessUnit)."""
+	vertical = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE, null=True, blank=True, related_name='websites')
 	name = models.CharField(max_length=200)
 	ga4_stream_id = models.CharField(max_length=50, blank=True)
 	measurement_id = models.CharField(max_length=50, blank=True, help_text='G-XXXXXXX')

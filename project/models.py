@@ -5,7 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 from multiselectfield import MultiSelectField
 from strategy.models import Project, Objective, Measure
-from business_unit.models import BusinessUnit, Vertical, Team
+from business_unit.models import Department, BusinessUnit, Team
 from .project_field_options import locations, status_options, STRATEGY_TAG_CHOICES, AEE_ALIGNMENT_CHOICES
 from .scoring import CRITERIA, weighted_score
 
@@ -41,11 +41,11 @@ class Action(models.Model):
 	# stored column is authoritative.
 	status = models.CharField(choices=status_options, max_length=350, null=True, blank=True, default=None)
 	archived = models.BooleanField(default=False)
-	business_unit = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE)
+	business_unit = models.ForeignKey(Department, on_delete=models.CASCADE)
 
 	# Hierarchy + measurement
 	objective = models.ForeignKey(Objective, on_delete=models.SET_NULL, null=True, blank=True)
-	vertical = models.ForeignKey(Vertical, on_delete=models.SET_NULL, null=True, blank=True)
+	vertical = models.ForeignKey(BusinessUnit, on_delete=models.SET_NULL, null=True, blank=True)
 	measure = models.ForeignKey(Measure, on_delete=models.SET_NULL, null=True, blank=True)
 	team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True)
 

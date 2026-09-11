@@ -1,7 +1,7 @@
 """Turn a discovered GA4 hierarchy into Kiboko tenancy records + membership.
 
 GA4 Account  -> Company
-GA4 Property -> Vertical
+GA4 Property -> BusinessUnit
 GA4 Stream   -> Website
 
 Idempotent: re-importing updates in place (keyed on the GA4 ids), so a user can
@@ -10,7 +10,7 @@ re-run discovery to pick up new properties/streams without creating duplicates.
 from django.db import transaction
 from django.utils.text import slugify
 
-from business_unit.models import Company, CompanyMembership, Vertical, Website
+from business_unit.models import Company, CompanyMembership, BusinessUnit, Website
 
 
 def _get_or_create_company(account):
@@ -34,12 +34,12 @@ def _get_or_create_company(account):
 
 def _get_or_create_vertical(company, prop):
     prop_id = str(prop.get('property_id') or '')
-    vertical = Vertical.objects.filter(company=company, ga4_property_id=prop_id).first()
+    vertical = BusinessUnit.objects.filter(company=company, ga4_property_id=prop_id).first()
     if vertical is None:
         # Adopt a same-named company-less vertical if one exists (e.g. from PPM).
-        vertical = Vertical.objects.filter(company=company, name=prop['display_name']).first()
+        vertical = BusinessUnit.objects.filter(company=company, name=prop['display_name']).first()
     if vertical is None:
-        vertical = Vertical.objects.create(
+        vertical = BusinessUnit.objects.create(
             company=company, name=prop['display_name'], ga4_property_id=prop_id,
             timezone=prop.get('time_zone', ''), currency=prop.get('currency', ''))
     else:
@@ -66,7 +66,7 @@ def _get_or_create_website(vertical, stream):
 def import_hierarchy(user, hierarchy, property_ids):
     """Import the selected GA4 property ids from ``hierarchy`` for ``user``.
 
-    Creates/updates Company/Vertical/Website and grants the user admin
+    Creates/updates Company/BusinessUnit/Website and grants the user admin
     membership on each affected company. Returns a summary dict.
     """
     wanted = {str(pid) for pid in property_ids}
@@ -92,7 +92,7 @@ def import_hierarchy(user, hierarchy, property_ids):
 def imported_property_ids(user):
     """GA4 property ids already imported into companies the user belongs to."""
     return set(
-        Vertical.objects
+        BusinessUnit.objects
         .filter(company__memberships__user=user)
         .exclude(ga4_property_id='')
         .values_list('ga4_property_id', flat=True)

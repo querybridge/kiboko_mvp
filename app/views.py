@@ -24,7 +24,7 @@ from django.http import HttpResponseForbidden
 from app.forms import StrategyForm
 from users.models import ROLE_CHOICES, UserProfile
 from app.models import MonthlyGoal, DailyActual
-from business_unit.models import BusinessUnit, Vertical
+from business_unit.models import Department, BusinessUnit
 from business_unit.scope import scoped_vertical_id
 from project.models import Action
 from strategy.models import Project, Objective, Metric, KPI
@@ -866,7 +866,7 @@ def edit_goals(request):
 
 @login_required
 def upload_actuals(request):
-    verticals = Vertical.objects.all()
+    verticals = BusinessUnit.objects.all()
 
     if request.method == 'POST':
         csv_file = request.FILES.get('csv_file')
@@ -877,12 +877,12 @@ def upload_actuals(request):
             return redirect('app:upload_actuals')
 
         if not vertical_id:
-            messages.error(request, 'Please select a Vertical.')
+            messages.error(request, 'Please select a Business Unit.')
             return redirect('app:upload_actuals')
 
         try:
-            vertical_obj = Vertical.objects.get(pk=int(vertical_id))
-        except (Vertical.DoesNotExist, ValueError):
+            vertical_obj = BusinessUnit.objects.get(pk=int(vertical_id))
+        except (BusinessUnit.DoesNotExist, ValueError):
             messages.error(request, 'Invalid vertical selected.')
             return redirect('app:upload_actuals')
 
@@ -947,14 +947,14 @@ def settings_company(request):
             name = request.POST.get('dept_name', '').strip()
             owner_id = request.POST.get('dept_owner', '').strip()
             if name:
-                BusinessUnit.objects.create(
+                Department.objects.create(
                     name=name,
                     owner_id=int(owner_id) if owner_id else None,
                 )
 
         elif action == 'edit_department':
             dept_id = request.POST.get('item_id')
-            dept = BusinessUnit.objects.filter(pk=dept_id).first()
+            dept = Department.objects.filter(pk=dept_id).first()
             if dept:
                 dept.name = request.POST.get('dept_name', dept.name).strip()
                 owner_id = request.POST.get('dept_owner', '').strip()
@@ -963,20 +963,20 @@ def settings_company(request):
 
         elif action == 'delete_department':
             item_id = request.POST.get('item_id')
-            BusinessUnit.objects.filter(pk=item_id).delete()
+            Department.objects.filter(pk=item_id).delete()
 
         elif action == 'add_vertical':
             name = request.POST.get('vert_name', '').strip()
             gm_id = request.POST.get('vert_gm', '').strip()
             if name:
-                Vertical.objects.create(
+                BusinessUnit.objects.create(
                     name=name,
                     general_manager_id=int(gm_id) if gm_id else None,
                 )
 
         elif action == 'edit_vertical':
             item_id = request.POST.get('item_id')
-            vert = Vertical.objects.filter(pk=item_id).first()
+            vert = BusinessUnit.objects.filter(pk=item_id).first()
             if vert:
                 vert.name = request.POST.get('vert_name', vert.name).strip()
                 gm_id = request.POST.get('vert_gm', '').strip()
@@ -985,12 +985,12 @@ def settings_company(request):
 
         elif action == 'delete_vertical':
             item_id = request.POST.get('item_id')
-            Vertical.objects.filter(pk=item_id).delete()
+            BusinessUnit.objects.filter(pk=item_id).delete()
 
         return redirect('app:settings_company')
 
-    departments = BusinessUnit.objects.all()
-    verticals = Vertical.objects.all()
+    departments = Department.objects.all()
+    verticals = BusinessUnit.objects.all()
     users = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
 
     return render(request, 'app/settings_company.html', {
@@ -1074,7 +1074,7 @@ def settings_rocks(request):
 
     annual_rocks = Objective.objects.order_by('year', 'name')
     quarterly_rocks = Project.objects.order_by('date_created')
-    departments = BusinessUnit.objects.all()
+    departments = Department.objects.all()
 
     return render(request, 'app/settings_rocks.html', {
         'annual_rocks': annual_rocks,
@@ -1349,7 +1349,7 @@ def data_connection(request):
     from django.utils.text import slugify
     from app.integrations import google_oauth, ga4_admin, bigquery as bqmod
     from business_unit import provisioning
-    from business_unit.models import Company, Vertical, CompanyMembership, BigQueryConnection
+    from business_unit.models import Company, BusinessUnit, CompanyMembership, BigQueryConnection
 
     identity = getattr(request.user, 'google_identity', None)
     ctx = {'title': 'Data Connection', 'has_google': identity is not None,
@@ -1380,7 +1380,7 @@ def data_connection(request):
             if actual and actual != ev:
                 event_map[ev] = actual
         company, _ = Company.objects.get_or_create(slug=slugify(name), defaults={'name': name})
-        Vertical.objects.get_or_create(company=company, ga4_property_id=prop, defaults={'name': name})
+        BusinessUnit.objects.get_or_create(company=company, ga4_property_id=prop, defaults={'name': name})
         BigQueryConnection.objects.update_or_create(company=company, defaults={
             'service_account_json': sa, 'gcp_project': sa.get('project_id', ''),
             'event_map': event_map, 'data_through': latest, 'created_by': request.user})
@@ -1489,7 +1489,7 @@ def _settings_users_legacy(request):
         return redirect('app:settings_users')
 
     all_users = User.objects.select_related('profile', 'profile__department').filter(is_active=True).order_by('username')
-    departments = BusinessUnit.objects.all()
+    departments = Department.objects.all()
 
     return render(request, 'app/settings_users.html', {
         'all_users': all_users,

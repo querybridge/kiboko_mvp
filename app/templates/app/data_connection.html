@@ -132,7 +132,7 @@
 
             {% else %}
               <p class="text-muted">Tick the GA4 properties to bring into Kiboko. Each property becomes a
-                <strong>Vertical</strong>, its account a <strong>Company</strong>, and its data streams
+                <strong>Business Unit</strong>, its account a <strong>Company</strong>, and its data streams
                 <strong>Websites</strong>.</p>
               <form method="post" action="{% url 'app:data_connection' %}">
                 {% csrf_token %}
@@ -148,7 +148,7 @@
                         <input type="checkbox" name="property_ids" value="{{ prop.property_id }}"
                                {% if prop.property_id in imported_ids %}checked{% endif %}>
                         {{ prop.display_name }}
-                        <small class="text-muted">Vertical &middot; property {{ prop.property_id }}{% if prop.property_id in imported_ids %} &middot; <span style="color:#2ecc71;">imported</span>{% endif %}</small>
+                        <small class="text-muted">Business Unit &middot; property {{ prop.property_id }}{% if prop.property_id in imported_ids %} &middot; <span style="color:#2ecc71;">imported</span>{% endif %}</small>
                       </label>
                       <div style="padding-left:26px; color:#9aa;">
                         {% for s in prop.data_streams %}

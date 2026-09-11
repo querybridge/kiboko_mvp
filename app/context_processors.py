@@ -1,4 +1,4 @@
-from business_unit.models import Company, Vertical, Website
+from business_unit.models import Company, BusinessUnit, Website
 
 
 def google_flags(request):
@@ -8,15 +8,15 @@ def google_flags(request):
 
 
 def tenancy_selector(request):
-    """Cascading Company -> Vertical -> Website scope for the top bar.
+    """Cascading Company -> BusinessUnit -> Website scope for the top bar.
 
     - Company: the customer (a user only sees companies they belong to; a
       superuser sees all).
-    - Vertical: a GA4 property / business unit. 'all' = company roll-up (Summary).
-    - Website: a GA4 data stream. 'all' = Vertical roll-up (sum of its streams).
+    - BusinessUnit: a GA4 property / business unit. 'all' = company roll-up (Summary).
+    - Website: a GA4 data stream. 'all' = BusinessUnit roll-up (sum of its streams).
 
     Selection persists in the session and cascades (changing Company resets
-    Vertical + Website; changing Vertical resets Website). The Vertical scope also
+    BusinessUnit + Website; changing BusinessUnit resets Website). The BusinessUnit scope also
     drives the existing PPM vertical filtering via business_unit.scope.
     """
     user = getattr(request, 'user', None)
@@ -32,7 +32,7 @@ def tenancy_selector(request):
 
     s = request.session
 
-    # --- Company (cascade-resets Vertical + Website when it changes) ---
+    # --- Company (cascade-resets BusinessUnit + Website when it changes) ---
     if 'company' in request.GET:
         if str(s.get('scope_company')) != str(request.GET['company']):
             s['scope_vertical'] = 'all'
@@ -45,7 +45,7 @@ def tenancy_selector(request):
 
     verticals = list(current_company.verticals.all())
 
-    # --- Vertical ('all' = company roll-up / Summary; resets Website) ---
+    # --- BusinessUnit ('all' = company roll-up / Summary; resets Website) ---
     if 'vertical' in request.GET:
         if str(s.get('scope_vertical')) != str(request.GET['vertical']):
             s['scope_website'] = 'all'
@@ -58,7 +58,7 @@ def tenancy_selector(request):
 
     websites = list(Website.objects.filter(vertical=current_vertical)) if current_vertical else []
 
-    # --- Website ('all' = Vertical roll-up, i.e. summed streams) ---
+    # --- Website ('all' = BusinessUnit roll-up, i.e. summed streams) ---
     if 'website' in request.GET:
         s['scope_website'] = request.GET['website']
     website_sel = str(s.get('scope_website', 'all'))
@@ -68,10 +68,10 @@ def tenancy_selector(request):
     current_website = None if website_sel == 'all' else next(w for w in websites if str(w.id) == website_sel)
 
     # Full tree (company -> verticals -> websites) for client-side cascade, so the
-    # Vertical/Website dropdowns update without a page load/query until Apply.
+    # BusinessUnit/Website dropdowns update without a page load/query until Apply.
     company_ids_list = [c.id for c in companies]
     verts_by_company = {}
-    for v in Vertical.objects.filter(company_id__in=company_ids_list):
+    for v in BusinessUnit.objects.filter(company_id__in=company_ids_list):
         verts_by_company.setdefault(v.company_id, []).append(v)
     sites_by_vertical = {}
     for w in Website.objects.filter(vertical__company_id__in=company_ids_list):

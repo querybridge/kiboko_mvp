@@ -82,7 +82,7 @@
         </ul>
       </li>
       {% if tenancy_current_company %}
-      {# reversed source order (float) -> reads Company -> Vertical -> Website -> Apply; cascade is client-side, only Apply queries #}
+      {# reversed source order (float) -> reads Company -> Business Unit -> Website -> Apply; cascade is client-side, only Apply queries #}
       <li style="padding: 13px 10px 0 0;">
         <button id="scopeApply" class="btn btn-primary btn-sm" style="margin:0;" disabled>Apply</button>
       </li>
@@ -94,9 +94,9 @@
           {% endfor %}
         </select>
       </li>
-      <li style="padding: 13px 4px 0 0;" title="Vertical (GA4 property)">
+      <li style="padding: 13px 4px 0 0;" title="Business Unit (GA4 property)">
         <select id="scopeVertical" class="form-control input-sm" style="display:inline-block; width:auto; min-width:140px;">
-          <option value="all" {% if tenancy_vertical_sel == 'all' %}selected{% endif %}>All Verticals</option>
+          <option value="all" {% if tenancy_vertical_sel == 'all' %}selected{% endif %}>All Business Units</option>
           {% for v in tenancy_verticals %}
           <option value="{{ v.id }}" {% if tenancy_vertical_sel == v.id|stringformat:'s' %}selected{% endif %}>{{ v.name }}</option>
           {% endfor %}
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Repopulate the Vertical dropdown for a company (client-side; no reload).
   function fillVerticals(companyId) {
     selVertical.innerHTML = '';
-    selVertical.appendChild(opt('all', 'All Verticals'));
+    selVertical.appendChild(opt('all', 'All Business Units'));
     ((tree[companyId] || {}).verticals || []).forEach(function(v) { selVertical.appendChild(opt(v.id, v.name)); });
   }
   // Repopulate the Website dropdown for a vertical (client-side).

@@ -92,7 +92,7 @@ class Project(models.Model):
     goal = models.CharField(max_length=75, null=True)
     objective = models.ForeignKey(Objective, on_delete=models.SET_NULL, null=True, blank=True, related_name='projects')
     metric = models.ForeignKey(Metric, on_delete=models.SET_NULL, null=True, blank=True)
-    department = models.ForeignKey('business_unit.BusinessUnit', on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey('business_unit.Department', on_delete=models.SET_NULL, null=True, blank=True)
     year = models.IntegerField(null=True, blank=True)
     quarter = models.IntegerField(choices=[(1, 'Q1'), (2, 'Q2'), (3, 'Q3'), (4, 'Q4')], null=True, blank=True)
     level = models.CharField(max_length=75, choices=level_options, blank=False, null=True, default="Corporate")

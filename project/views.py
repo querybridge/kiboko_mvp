@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
 from .models import Action
 from .forms import ProjectAdd, ProjectEdit, CommentForm, ProjectValue, ProjectLoe, ProjectEditManager
-from business_unit.models import BusinessUnit
+from business_unit.models import Department
 from django.contrib.auth.decorators import login_required
 from django.db.models import F, Q
 from .services.kanban import (
@@ -67,7 +67,7 @@ def view(request):
 
     # Business-unit owners only see their own units' not-yet-in-flight work
     # (blocked / incomplete / awaiting review); WIP & On Deck stay visible to all.
-    owned_bus = BusinessUnit.objects.filter(owner=request.user)
+    owned_bus = Department.objects.filter(owner=request.user)
     if owned_bus.exists():
         owned_ids = set(owned_bus.values_list('id', flat=True))
         for key in ('blocked', 'incomplete_entry', 'ready_to_score', 'scored'):

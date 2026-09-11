@@ -34,14 +34,14 @@
                 <li><strong>Date</strong> - The date of revenue (e.g., 2026-01-15 or 01/15/2026)</li>
                 <li><strong>Actual Revenue</strong> - The revenue amount for that date (e.g., 15000.00)</li>
               </ul>
-              <p>Select the Vertical this data belongs to. Re-uploading a date for the same vertical will update the existing record.</p>
+              <p>Select the Business Unit this data belongs to. Re-uploading a date for the same vertical will update the existing record.</p>
               <hr>
               <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="form-group">
-                  <label for="vertical">Vertical <span class="text-danger">*</span></label>
+                  <label for="vertical">Business Unit <span class="text-danger">*</span></label>
                   <select name="vertical" id="vertical" class="form-control" required>
-                    <option value="">-- Select Vertical --</option>
+                    <option value="">-- Select Business Unit --</option>
                     {% for v in verticals %}
                     <option value="{{ v.id }}">{{ v.name }}</option>
                     {% endfor %}

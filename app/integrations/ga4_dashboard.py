@@ -48,14 +48,14 @@ def _scope_ids(request):
 
 def _resolve_scope(request):
     """(property_ids, stream_id) for the current top-bar scope, or None."""
-    from business_unit.models import Vertical, Website
+    from business_unit.models import BusinessUnit, Website
     company_id, vertical_sel, website_sel = _scope_ids(request)
     if not company_id:
         return None
-    # A specific Vertical -> only if it belongs to the selected company (guards
+    # A specific BusinessUnit -> only if it belongs to the selected company (guards
     # against a stale session vertical from a previously-scoped company).
     if vertical_sel and vertical_sel != 'all':
-        vertical = Vertical.objects.filter(pk=vertical_sel, company_id=company_id).first()
+        vertical = BusinessUnit.objects.filter(pk=vertical_sel, company_id=company_id).first()
         if vertical and vertical.ga4_property_id:
             stream_id = None
             if website_sel and website_sel != 'all':
@@ -64,7 +64,7 @@ def _resolve_scope(request):
             return [vertical.ga4_property_id], stream_id
     # All Verticals -> every GA4 property in the company.
     property_ids = list(
-        Vertical.objects.filter(company_id=company_id)
+        BusinessUnit.objects.filter(company_id=company_id)
         .exclude(ga4_property_id='')
         .values_list('ga4_property_id', flat=True))
     return (property_ids, None) if property_ids else None
@@ -132,8 +132,8 @@ def signin_prompt(request):
     company_id = _scope_ids(request)[0]
     if not company_id:
         return False
-    from business_unit.models import Vertical
-    return Vertical.objects.filter(company_id=company_id).exclude(ga4_property_id='').exists()
+    from business_unit.models import BusinessUnit
+    return BusinessUnit.objects.filter(company_id=company_id).exclude(ga4_property_id='').exists()
 
 
 def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):

@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
-from business_unit.models import BusinessUnit, Vertical, Team
+from business_unit.models import Department, BusinessUnit, Team
 from project.models import Action
 from strategy.models import Project, Objective, Metric, Measure
 
@@ -66,8 +66,8 @@ class Command(BaseCommand):
 
         users = list(User.objects.all())
         today = date.today()
-        departments = list(BusinessUnit.objects.all())
-        verticals = list(Vertical.objects.all())
+        departments = list(Department.objects.all())
+        verticals = list(BusinessUnit.objects.all())
         teams = list(Team.objects.all())
         objectives = list(Objective.objects.filter(year=2026))
         metrics = list(Metric.objects.filter(active=True))

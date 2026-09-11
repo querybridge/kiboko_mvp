@@ -1,4 +1,4 @@
-"""Seed demo GA4 tenancy (Company -> Vertical -> Website) and add every existing
+"""Seed demo GA4 tenancy (Company -> BusinessUnit -> Website) and add every existing
 superuser as an admin member, so the top-bar selectors have something to show
 before real Google/GA4 connections exist.
 
@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from business_unit.models import Company, CompanyMembership, Vertical, Website
+from business_unit.models import Company, CompanyMembership, BusinessUnit, Website
 
 DEMO = {
     'Belami': [
@@ -25,7 +25,7 @@ DEMO = {
 
 
 class Command(BaseCommand):
-    help = 'Create demo Company/Vertical/Website tenancy and grant superusers admin access.'
+    help = 'Create demo Company/BusinessUnit/Website tenancy and grant superusers admin access.'
 
     def handle(self, *args, **options):
         companies = {}
@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 slug=slugify(company_name), defaults={'name': company_name})
             companies[company_name] = company
             for vert_name, websites in verticals:
-                vert, _ = Vertical.objects.get_or_create(
+                vert, _ = BusinessUnit.objects.get_or_create(
                     name=vert_name, defaults={'company': company})
                 if vert.company_id is None:
                     vert.company = company
@@ -46,7 +46,7 @@ class Command(BaseCommand):
 
         # Fold any orphan (company-less) verticals into the first demo company.
         default_company = companies['Belami']
-        orphans = Vertical.objects.filter(company__isnull=True)
+        orphans = BusinessUnit.objects.filter(company__isnull=True)
         n = orphans.update(company=default_company)
         if n:
             self.stdout.write(f'  attached {n} existing vertical(s) to {default_company.name}')

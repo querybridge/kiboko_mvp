@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from business_unit.models import BusinessUnit
+from business_unit.models import Department
 
 
 ROLE_CHOICES = [
@@ -18,7 +18,7 @@ ROLE_CHOICES = [
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='staff')
-    department = models.ForeignKey(BusinessUnit, on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"

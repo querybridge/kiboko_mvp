@@ -24,7 +24,7 @@ class ProjectAdd(ModelForm):
             'team': 'Team',
             'objective': 'Objective',
             'aee_alignment': 'AEE Alignment',
-            'vertical': 'Vertical',
+            'vertical': 'Business Unit',
             'name': 'Action Name',
             'measure': 'Measure',
         }
@@ -68,7 +68,7 @@ class ProjectEdit(ModelForm):
             'team': 'Team',
             'objective': 'Objective',
             'aee_alignment': 'AEE Alignment',
-            'vertical': 'Vertical',
+            'vertical': 'Business Unit',
             'measure': 'Measure',
         }
         help_texts = {

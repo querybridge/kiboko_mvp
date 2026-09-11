@@ -1,7 +1,7 @@
 from django.db import models
 from django.forms import ModelForm
 from django import forms
-from business_unit.models import Vertical
+from business_unit.models import BusinessUnit
 
 # Create your all your models here
 
@@ -140,18 +140,6 @@ def __str__(self):
 
 
 ########################################
-## BusinessUnit DB Model             ##
-########################################
-
-class BusinessUnit(models.Model):
-	date_created = models.DateField()
-	date_modified = models.DateField()
-	project = models.ForeignKey(Project, on_delete=models.CASCADE)
-	name = models.CharField(max_length=75)
-	#members = models.ManyToOneField(Member)
-
-
-########################################
 ## Members DB Model                   ##
 ########################################
 
@@ -262,7 +250,7 @@ class StrategyForm(ModelForm):
 
 class MonthlyGoal(models.Model):
     month = models.DateField()  # Store as first day of month
-    vertical = models.ForeignKey(Vertical, on_delete=models.CASCADE, null=True, blank=True)
+    vertical = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE, null=True, blank=True)
     budget = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     class Meta:
@@ -275,7 +263,7 @@ class MonthlyGoal(models.Model):
 
 class DailyActual(models.Model):
     date = models.DateField()
-    vertical = models.ForeignKey(Vertical, on_delete=models.CASCADE, null=True, blank=True)
+    vertical = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE, null=True, blank=True)
     revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     visits = models.IntegerField(default=0)
     orders = models.IntegerField(default=0)
