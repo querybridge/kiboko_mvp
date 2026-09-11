@@ -60,6 +60,9 @@
             {% if user.is_superuser or user.profile.role == 'admin' or user.profile.role == 'senior_leadership' or user.company_memberships.exists %}
             <li><a href="{% url 'app:manage_users' %}">Manage Users</a></li>
             {% endif %}
+            {% if user.is_superuser or user.administered_orgs.exists %}
+            <li><a href="{% url 'app:billing' %}">Billing</a></li>
+            {% endif %}
           </ul>
         </li>
 

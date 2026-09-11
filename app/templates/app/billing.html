@@ -1,0 +1,25 @@
+{% extends "app/base_site.html" %}
+{% block title %} Billing {% endblock title %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left">
+        <h3>Billing{% if organization %} <small>{{ organization.name }}</small>{% endif %}</h3>
+      </div>
+      <div class="clearfix"></div>
+    </div>
+
+    <div class="row"><div class="col-md-12">
+      <div class="x_panel">
+        <div class="x_content" style="padding:40px; text-align:center; color:#888;">
+          <i class="fa fa-credit-card" style="font-size:36px; margin-bottom:12px;"></i>
+          <p>Billing is coming soon. This is where your organization's plan and
+             payment details will live.</p>
+        </div>
+      </div>
+    </div></div>
+
+  </div>
+</div>
+{% endblock content %}

@@ -1590,3 +1590,13 @@ def manage_users(request):
         'companies_ctx': companies_ctx,
         'role_choices': ROLE_CHOICES,
     })
+
+
+@login_required
+def billing(request):
+    """Billing — visible only to organization admins. Blank placeholder for now
+    (real billing wired in a later phase; it will define the Organization)."""
+    if not (request.user.is_superuser or request.user.administered_orgs.exists()):
+        return HttpResponseForbidden('Billing is available to organization admins only.')
+    org = request.user.administered_orgs.first()
+    return render(request, 'app/billing.html', {'title': 'Billing', 'organization': org})

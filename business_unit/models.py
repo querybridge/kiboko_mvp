@@ -58,9 +58,40 @@ class Team(models.Model):
 # Google account can access in GA4 (access is enforced live via their token).
 # ---------------------------------------------------------------------------
 
+class Organization(models.Model):
+	"""Top tenant / billing entity. An agency org has many companies ("clients");
+	a direct org has one (org and company usually share a name). Exactly one org
+	admin. Billing defines the organization (wired later)."""
+	KIND_CHOICES = [('agency', 'Agency'), ('direct', 'Direct')]
+	name = models.CharField(max_length=200)
+	slug = models.SlugField(max_length=200, unique=True)
+	kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='direct')
+	org_admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+	                              related_name='administered_orgs')
+	is_platform_demo = models.BooleanField(default=False, help_text='Demo org shown to all trial orgs')
+	trial_started = models.DateField(null=True, blank=True,
+	                                 help_text='Trial clock start; null once on a paid plan or internal')
+	plan_status = models.CharField(max_length=20, default='trial',
+	                               help_text='trial | active | past_due (billing wired later)')
+	created = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['name']
+
+	def __str__(self):
+		return self.name
+
+	@property
+	def client_noun(self):
+		"""What this org calls its companies in the UI."""
+		return 'Client' if self.kind == 'agency' else 'Company'
+
+
 class Company(models.Model):
 	"""Top tenant -- a customer company (a Kiboko Account). Maps loosely to a
 	GA4 Account, but Kiboko groups by company, not by GA4 account."""
+	organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True,
+	                                 related_name='companies')
 	name = models.CharField(max_length=200)
 	slug = models.SlugField(max_length=200, unique=True)
 	ga4_account_id = models.CharField(max_length=50, blank=True, help_text='GA4 account id this company was imported from')
