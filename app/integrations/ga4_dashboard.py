@@ -769,6 +769,35 @@ def ga4_segments(request, primary_code, compare_code, today=None):
         return zeros()
 
 
+def ga4_daily_actuals(request, start, end):
+    """{'YYYY-MM-DD': {'revenue': float, 'visits': int, 'orders': int}} for the
+    scoped **Standard** GA4 property(ies) over [start, end], or None when not
+    Standard-connected. Used by the Project Value Pipeline so actual revenue comes
+    from GA4 instead of uploaded DailyActual rows. (Premium/BigQuery is not used
+    here -- the PPM pipeline is a GA4 Data API path.)"""
+    sc = _connected_scope(request)
+    if sc is None:
+        return None
+    identity, property_ids, stream_id = sc
+    try:
+        creds = google_oauth.credentials_from_identity(identity)
+        out = {}
+        for pid in property_ids:
+            by_day = ga4_data.fetch_daily_fundamentals(
+                creds, pid, start.isoformat(), end.isoformat(), stream_id=stream_id)
+            for day, rec in by_day.items():                # day == 'YYYYMMDD'
+                iso = f'{day[:4]}-{day[4:6]}-{day[6:8]}'
+                acc = out.setdefault(iso, {'revenue': 0.0, 'visits': 0, 'orders': 0})
+                acc['revenue'] += float(rec.get('sales', 0) or 0)
+                acc['visits'] += int(rec.get('visits', 0) or 0)
+                acc['orders'] += int(rec.get('orders', 0) or 0)
+        return out
+    except Exception as e:
+        logger.warning('PPM pipeline: GA4 daily actuals unavailable (%s: %s) -- using uploaded actuals',
+                       type(e).__name__, e)
+        return None
+
+
 def ga4_item_metrics(request, primary_code, compare_code, today=None):
     """Premium-only item/order-level + per-category metrics for Expand Purchases.
 

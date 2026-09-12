@@ -31,7 +31,23 @@ from strategy.models import Project, Objective, Metric, KPI
 from project.views import project_detail
 
 
-def calculate_forecast(year, month, return_components=False, vertical_id=None):
+def _actuals_map_agg(actuals, start, end):
+    """Sum a GA4 daily-actuals map {iso_date: {revenue,visits,orders}} over
+    [start, end] -> {'revenue': float, 'visits': int, 'orders': int}."""
+    rev = 0.0
+    visits = orders = 0
+    d = start
+    while d <= end:
+        rec = actuals.get(d.isoformat())
+        if rec:
+            rev += rec.get('revenue', 0) or 0
+            visits += rec.get('visits', 0) or 0
+            orders += rec.get('orders', 0) or 0
+        d += timedelta(days=1)
+    return {'revenue': rev, 'visits': int(visits), 'orders': int(orders)}
+
+
+def calculate_forecast(year, month, return_components=False, vertical_id=None, actuals=None):
     """Calculate forecast for a given month using weekday-weighted projection.
 
     For the current month: uses actuals-to-date + day-of-week projected remainder.
@@ -46,19 +62,30 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None):
     days_in_month = calendar.monthrange(year, month)[1]
     last_of_month = date(year, month, days_in_month)
 
-    actuals_qs = DailyActual.objects.filter(
-        date__year=year, date__month=month, date__lte=today
-    )
-    if vertical_id:
-        actuals_qs = actuals_qs.filter(vertical_id=vertical_id)
-    actuals_total = actuals_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+    # Actual daily revenue this month (through today): from GA4 when provided
+    # (Standard connection), else from uploaded DailyActual rows.
+    if actuals is not None:
+        daily = []
+        d = first_of_month
+        while d <= min(last_of_month, today):
+            rec = actuals.get(d.isoformat())
+            daily.append((d, Decimal(str((rec or {}).get('revenue', 0) or 0))))
+            d += timedelta(days=1)
+    else:
+        actuals_qs = DailyActual.objects.filter(
+            date__year=year, date__month=month, date__lte=today)
+        if vertical_id:
+            actuals_qs = actuals_qs.filter(vertical_id=vertical_id)
+        daily = [(a.date, a.revenue) for a in actuals_qs]
+
+    actuals_total = sum((r for _, r in daily), Decimal('0'))
 
     # Group actuals by day-of-week and compute averages
     dow_totals = defaultdict(Decimal)
     dow_counts = defaultdict(int)
-    for a in actuals_qs:
-        dow = a.date.weekday()  # 0=Mon ... 6=Sun
-        dow_totals[dow] += a.revenue
+    for d_, r in daily:
+        dow = d_.weekday()  # 0=Mon ... 6=Sun
+        dow_totals[dow] += r
         dow_counts[dow] += 1
 
     dow_avg = {}
@@ -92,16 +119,25 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None):
     # actuals scaled by (this year's budget / last year's actual total).
     if base_forecast == 0 and first_of_month > today:
         prior_year = year - 1
-        py_qs = DailyActual.objects.filter(date__year=prior_year, date__month=month)
-        if vertical_id:
-            py_qs = py_qs.filter(vertical_id=vertical_id)
-        py_month_total = py_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+        if actuals is not None:
+            py_days = calendar.monthrange(prior_year, month)[1]
+            py_month_total = Decimal(str(_actuals_map_agg(
+                actuals, date(prior_year, month, 1), date(prior_year, month, py_days))['revenue']))
+        else:
+            py_qs = DailyActual.objects.filter(date__year=prior_year, date__month=month)
+            if vertical_id:
+                py_qs = py_qs.filter(vertical_id=vertical_id)
+            py_month_total = py_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
         if py_month_total > 0:
-            py_year_qs = DailyActual.objects.filter(date__year=prior_year)
-            if vertical_id:
-                py_year_qs = py_year_qs.filter(vertical_id=vertical_id)
-            py_year_total = py_year_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+            if actuals is not None:
+                py_year_total = Decimal(str(_actuals_map_agg(
+                    actuals, date(prior_year, 1, 1), date(prior_year, 12, 31))['revenue']))
+            else:
+                py_year_qs = DailyActual.objects.filter(date__year=prior_year)
+                if vertical_id:
+                    py_year_qs = py_year_qs.filter(vertical_id=vertical_id)
+                py_year_total = py_year_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
             budget_qs = MonthlyGoal.objects.filter(month__year=year)
             if vertical_id:
@@ -136,8 +172,12 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None):
     return base_forecast + project_uplift
 
 
-def _build_chart_data(year, vertical_id=None):
-    """Build MTD, QTD, and YTD chart data series for the dashboard."""
+def _build_chart_data(year, vertical_id=None, actuals=None):
+    """Build MTD, QTD, and YTD chart data series for the dashboard.
+
+    ``actuals`` (optional) is a GA4 daily-actuals map {iso_date: {revenue,...}}
+    from a Standard connection; when present, actual revenue comes from GA4
+    instead of uploaded DailyActual rows."""
     today = date.today()
     current_month = today.month
     current_year = today.year
@@ -176,9 +216,13 @@ def _build_chart_data(year, vertical_id=None):
         last_day_of_month = date(year, m, calendar.monthrange(year, m)[1])
         has_actuals = last_day_of_month < today
 
-        actual_sum = _filter_actuals(DailyActual.objects.filter(
-            date__year=year, date__month=m, date__lte=today
-        )).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+        if actuals is not None:
+            actual_sum = Decimal(str(_actuals_map_agg(
+                actuals, date(year, m, 1), min(last_day_of_month, today))['revenue']))
+        else:
+            actual_sum = _filter_actuals(DailyActual.objects.filter(
+                date__year=year, date__month=m, date__lte=today
+            )).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
         if has_actuals:
             # Past month: show actual, hide forecast
@@ -187,7 +231,7 @@ def _build_chart_data(year, vertical_id=None):
             ytd_project_value_add.append(0)
         else:
             # Current/future month: show forecast, hide actual (or show partial actual)
-            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
+            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
             ytd_forecast_base.append(float(base))
             ytd_project_value_add.append(float(proj_uplift))
             # For current month, show actual so far; for future, null
@@ -217,9 +261,13 @@ def _build_chart_data(year, vertical_id=None):
         last_day_of_month = date(year, m, calendar.monthrange(year, m)[1])
         has_actuals = last_day_of_month < today
 
-        actual_sum = _filter_actuals(DailyActual.objects.filter(
-            date__year=year, date__month=m, date__lte=today
-        )).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
+        if actuals is not None:
+            actual_sum = Decimal(str(_actuals_map_agg(
+                actuals, date(year, m, 1), min(last_day_of_month, today))['revenue']))
+        else:
+            actual_sum = _filter_actuals(DailyActual.objects.filter(
+                date__year=year, date__month=m, date__lte=today
+            )).aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
         if has_actuals:
             # Past month: show actual, hide forecast
@@ -228,7 +276,7 @@ def _build_chart_data(year, vertical_id=None):
             qtd_project_value_add.append(0)
         else:
             # Current/future month: show forecast, hide actual (or show partial actual)
-            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
+            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
             qtd_forecast_base.append(float(base))
             qtd_project_value_add.append(float(proj_uplift))
             # For current month, show actual so far; for future, null
@@ -243,20 +291,26 @@ def _build_chart_data(year, vertical_id=None):
     daily_budget_rate = monthly_budget / days_in_current_month if days_in_current_month else 0
 
     # Gather daily actuals for the month (only through today)
-    daily_actuals_qs = _filter_actuals(DailyActual.objects.filter(
-        date__year=year, date__month=current_month, date__lte=today
-    ))
     daily_actuals_map = {}
-    for a in daily_actuals_qs:
-        daily_actuals_map[a.date.day] = daily_actuals_map.get(a.date.day, 0) + float(a.revenue)
-
-    # Weekday averages for projection
     dow_totals = defaultdict(float)
     dow_counts = defaultdict(int)
-    for a in daily_actuals_qs:
-        dow = a.date.weekday()
-        dow_totals[dow] += float(a.revenue)
-        dow_counts[dow] += 1
+    if actuals is not None:
+        # GA4 (Standard): one record per elapsed day of the current month.
+        d = date(year, current_month, 1)
+        while d <= today:
+            rev = float((actuals.get(d.isoformat()) or {}).get('revenue', 0) or 0)
+            if rev:
+                daily_actuals_map[d.day] = daily_actuals_map.get(d.day, 0) + rev
+            dow_totals[d.weekday()] += rev
+            dow_counts[d.weekday()] += 1
+            d += timedelta(days=1)
+    else:
+        daily_actuals_qs = _filter_actuals(DailyActual.objects.filter(
+            date__year=year, date__month=current_month, date__lte=today))
+        for a in daily_actuals_qs:
+            daily_actuals_map[a.date.day] = daily_actuals_map.get(a.date.day, 0) + float(a.revenue)
+            dow_totals[a.date.weekday()] += float(a.revenue)
+            dow_counts[a.date.weekday()] += 1
 
     dow_avg = {}
     for dow in range(7):
@@ -351,7 +405,7 @@ def _build_chart_data(year, vertical_id=None):
     qtd_forecast_base_total = 0
     qtd_project_value_total = 0
     for m in range(quarter_start_month, min(quarter_start_month + 3, 13)):
-        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
+        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
         qtd_forecast_base_total += float(base)
         qtd_project_value_total += float(proj_uplift)
     qtd_forecast_base_total = round(qtd_forecast_base_total, 2)
@@ -366,7 +420,7 @@ def _build_chart_data(year, vertical_id=None):
     ytd_forecast_base_total = 0
     ytd_project_value_total = 0
     for m in range(1, 13):
-        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id)
+        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
         ytd_forecast_base_total += float(base)
         ytd_project_value_total += float(proj_uplift)
     ytd_forecast_base_total = round(ytd_forecast_base_total, 2)
@@ -465,11 +519,18 @@ def index(request):
 
     annual_rocks_data.sort(key=_rock_sort_key)
 
+    # Actual revenue source: GA4 when the scope is a Standard connection, else
+    # uploaded DailyActual rows. Fetch prior-year-start -> today so YoY deltas and
+    # the forecast fallback are covered.
+    from app.integrations import ga4_dashboard
+    _t = date.today()
+    ga4_actuals = ga4_dashboard.ga4_daily_actuals(request, date(_t.year - 1, 1, 1), _t)
+
     # Build revenue chart data
-    chart_data = _build_chart_data(date.today().year, vertical_id=vertical_id)
+    chart_data = _build_chart_data(_t.year, vertical_id=vertical_id, actuals=ga4_actuals)
 
     # Build performance scorecard data
-    performance_data = _build_performance_data(date.today(), vertical_id=vertical_id)
+    performance_data = _build_performance_data(_t, vertical_id=vertical_id, actuals=ga4_actuals)
 
     # Build initiatives summary
     initiatives = _build_initiatives_summary(vertical_id=vertical_id)
@@ -571,9 +632,12 @@ PERFORMANCE_AOV_GOAL = 475.0           # target average order value ($)
 PERFORMANCE_CLOSE_RATE_GOAL = 0.0150   # target close rate (1.5%)
 
 
-def _build_performance_data(today, vertical_id=None):
+def _build_performance_data(today, vertical_id=None, actuals=None):
     """Aggregate Sales / Visits / Close Rate / AOV per period (MTD/QTD/YTD)
     with deltas vs same period last year and vs prorated goal.
+
+    ``actuals`` (optional) is a GA4 daily-actuals map from a Standard connection;
+    when present, sales/visits/orders come from GA4 instead of DailyActual.
     """
     year = today.year
     month = today.month
@@ -593,13 +657,17 @@ def _build_performance_data(today, vertical_id=None):
             return date(d.year - 1, d.month, d.day - 1)
 
     def _aggregate(start, end):
-        qs = DailyActual.objects.filter(date__gte=start, date__lte=end)
-        if vertical_id:
-            qs = qs.filter(vertical_id=vertical_id)
-        agg = qs.aggregate(rev=Sum('revenue'), v=Sum('visits'), o=Sum('orders'))
-        revenue = float(agg['rev'] or 0)
-        visits = int(agg['v'] or 0)
-        orders = int(agg['o'] or 0)
+        if actuals is not None:
+            a = _actuals_map_agg(actuals, start, end)
+            revenue, visits, orders = a['revenue'], a['visits'], a['orders']
+        else:
+            qs = DailyActual.objects.filter(date__gte=start, date__lte=end)
+            if vertical_id:
+                qs = qs.filter(vertical_id=vertical_id)
+            agg = qs.aggregate(rev=Sum('revenue'), v=Sum('visits'), o=Sum('orders'))
+            revenue = float(agg['rev'] or 0)
+            visits = int(agg['v'] or 0)
+            orders = int(agg['o'] or 0)
         return {
             'sales': revenue,
             'visits': visits,
