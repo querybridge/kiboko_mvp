@@ -47,26 +47,35 @@ def _scope_ids(request):
 
 
 def _resolve_scope(request):
-    """(property_ids, stream_id) for the current top-bar scope, or None."""
-    from business_unit.models import BusinessUnit, Website
+    """(property_ids, stream_id) for the current top-bar scope, or None.
+
+    Enforces org access + per-user business-unit visibility: the user must be
+    able to see the company, and only their allowed business units' properties
+    are ever returned (defense-in-depth against a forged ?vertical= param)."""
+    from business_unit.models import BusinessUnit, Website, Company
+    from business_unit.access import can_access_company, allowed_bu_ids
+    user = getattr(request, 'user', None)
     company_id, vertical_sel, website_sel = _scope_ids(request)
     if not company_id:
         return None
-    # A specific BusinessUnit -> only if it belongs to the selected company (guards
-    # against a stale session vertical from a previously-scoped company).
+    company = Company.objects.filter(pk=company_id).first()
+    if not company or not can_access_company(user, company):
+        return None
+    allowed = allowed_bu_ids(user, company)                 # None = all
+    bu_qs = BusinessUnit.objects.filter(company_id=company_id).exclude(ga4_property_id='')
+    if allowed is not None:
+        bu_qs = bu_qs.filter(id__in=allowed)
+    # A specific BusinessUnit -> only if it belongs to the company AND is allowed.
     if vertical_sel and vertical_sel != 'all':
-        vertical = BusinessUnit.objects.filter(pk=vertical_sel, company_id=company_id).first()
+        vertical = bu_qs.filter(pk=vertical_sel).first()
         if vertical and vertical.ga4_property_id:
             stream_id = None
             if website_sel and website_sel != 'all':
                 site = Website.objects.filter(pk=website_sel, vertical=vertical).first()
                 stream_id = site.ga4_stream_id if site else None
             return [vertical.ga4_property_id], stream_id
-    # All Verticals -> every GA4 property in the company.
-    property_ids = list(
-        BusinessUnit.objects.filter(company_id=company_id)
-        .exclude(ga4_property_id='')
-        .values_list('ga4_property_id', flat=True))
+    # All Business Units -> every allowed GA4 property in the company.
+    property_ids = list(bu_qs.values_list('ga4_property_id', flat=True))
     return (property_ids, None) if property_ids else None
 
 
@@ -89,7 +98,8 @@ def _premium_connection(request):
     """(BigQueryConnection, property_ids) when the scoped company is Premium and
     the user is authorized (member/superuser), else None. Access = membership,
     NOT the user's personal Google/GA4 access."""
-    from business_unit.models import BigQueryConnection, CompanyMembership
+    from business_unit.models import BigQueryConnection, Company
+    from business_unit.access import can_access_company
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
         return None
@@ -99,8 +109,8 @@ def _premium_connection(request):
     bq = BigQueryConnection.objects.filter(company_id=company_id).first()
     if not bq or not bq.service_account_json:
         return None
-    if not user.is_superuser and not CompanyMembership.objects.filter(
-            company_id=company_id, user=user).exists():
+    company = Company.objects.filter(pk=company_id).first()
+    if not company or not can_access_company(user, company):   # superuser / org admin / member
         return None
     scope = _resolve_scope(request)
     if not scope:

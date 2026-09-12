@@ -1535,6 +1535,12 @@ def manage_users(request):
         CompanyMembership.objects.filter(user=member).update(
             role='admin' if role in ELEVATED else 'member')
 
+    def _is_last_admin(company, member):
+        """True if `member` is the only admin of `company` (block removal/demotion)."""
+        admin_ids = set(CompanyMembership.objects.filter(
+            company=company, role='admin').values_list('user_id', flat=True))
+        return admin_ids == {member.id}
+
     if request.method == 'POST':
         action = request.POST.get('action', '')
         company = companies.filter(pk=request.POST.get('company', '')).first()
@@ -1568,21 +1574,42 @@ def manage_users(request):
         elif action == 'set_role' and company:
             member = User.objects.filter(pk=request.POST.get('user_id', '')).first()
             if member and CompanyMembership.objects.filter(company=company, user=member).exists():
-                _set_role(member, role)
-                messages.success(
-                    request, f'{member.email or member.username} is now {ROLE_LABELS[role]}.')
+                demoting = role not in ELEVATED
+                if demoting and _is_last_admin(company, member):
+                    messages.error(request, f'{company.name} must keep at least one admin.')
+                else:
+                    _set_role(member, role)
+                    messages.success(
+                        request, f'{member.email or member.username} is now {ROLE_LABELS[role]}.')
 
         elif action == 'remove_member' and company:
-            CompanyMembership.objects.filter(
-                pk=request.POST.get('membership_id', ''), company=company).delete()
-            messages.success(request, 'Removed access.')
+            m = CompanyMembership.objects.filter(
+                pk=request.POST.get('membership_id', ''), company=company).first()
+            if m and m.role == 'admin' and _is_last_admin(company, m.user):
+                messages.error(request, f'{company.name} must keep at least one admin.')
+            elif m:
+                m.delete()
+                messages.success(request, 'Removed access.')
+
+        elif action == 'set_bus' and company:
+            member = User.objects.filter(pk=request.POST.get('user_id', '')).first()
+            m = CompanyMembership.objects.filter(company=company, user=member).first() if member else None
+            if m:
+                bus = company.verticals.filter(id__in=request.POST.getlist('allowed_bus'))
+                m.allowed_bus.set(bus)
+                n = bus.count()
+                messages.success(request, '{} can now see {} in {}.'.format(
+                    member.email or member.username,
+                    'all business units' if n == 0 else f'{n} business unit(s)', company.name))
 
         return redirect('app:manage_users')
 
     companies_ctx = [{
         'company': c,
+        'business_units': list(c.verticals.all()),
         'members': (CompanyMembership.objects.filter(company=c)
                     .select_related('user', 'user__profile')
+                    .prefetch_related('allowed_bus')
                     .order_by('user__email', 'user__username')),
     } for c in companies]
 

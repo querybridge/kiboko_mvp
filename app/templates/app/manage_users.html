@@ -46,6 +46,7 @@
                   <th>User</th>
                   <th>Email</th>
                   <th style="width:210px;">Role</th>
+                  <th style="width:230px;">Business Units</th>
                   <th style="width:120px;">Actions</th>
                 </tr>
               </thead>
@@ -71,6 +72,23 @@
                     </td>
                   </form>
                   <td>
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="set_bus">
+                      <input type="hidden" name="company" value="{{ entry.company.id }}">
+                      <input type="hidden" name="user_id" value="{{ m.user.id }}">
+                      <div style="display:flex; gap:6px; align-items:flex-start;">
+                        <select name="allowed_bus" multiple class="form-control" style="height:auto; min-height:34px;">
+                          {% for bu in entry.business_units %}
+                          <option value="{{ bu.id }}" {% if bu in m.allowed_bus.all %}selected{% endif %}>{{ bu.name }}</option>
+                          {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-info btn-xs" style="white-space:nowrap;">Save</button>
+                      </div>
+                      <small class="text-muted">None selected = all</small>
+                    </form>
+                  </td>
+                  <td>
                     <form method="post" style="display:inline">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="remove_member">
@@ -81,7 +99,7 @@
                   </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="4" style="text-align:center;">No one has been given access yet.</td></tr>
+                <tr><td colspan="5" style="text-align:center;">No one has been given access yet.</td></tr>
                 {% endfor %}
                 <!-- Add access + assign role -->
                 <tr>
@@ -103,6 +121,7 @@
                         {% endfor %}
                       </select>
                     </td>
+                    <td><small class="text-muted">All (edit after adding)</small></td>
                     <td>
                       <button type="submit" class="btn btn-success btn-xs">Add</button>
                     </td>

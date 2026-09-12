@@ -19,16 +19,23 @@ def tenancy_selector(request):
     BusinessUnit + Website; changing BusinessUnit resets Website). The BusinessUnit scope also
     drives the existing PPM vertical filtering via business_unit.scope.
     """
+    from business_unit.access import visible_companies, allowed_bu_ids
+
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
         return {}
 
-    if user.is_superuser:
-        companies = list(Company.objects.all())
-    else:
-        companies = list(Company.objects.filter(memberships__user=user).distinct())
+    companies = list(visible_companies(user))
     if not companies:
         return {'tenancy_companies': [], 'tenancy_current_company': None}
+
+    # Per-user business-unit visibility: {company_id: set(bu_id) or None(=all)}.
+    bu_scope = {c.id: allowed_bu_ids(user, c) for c in companies}
+
+    def _visible_bus(company):
+        allowed = bu_scope.get(company.id)
+        bus = company.verticals.all()
+        return [b for b in bus if allowed is None or b.id in allowed]
 
     s = request.session
 
@@ -43,7 +50,7 @@ def tenancy_selector(request):
         s['scope_company'] = str(companies[0].id)
     current_company = next(c for c in companies if str(c.id) == str(s['scope_company']))
 
-    verticals = list(current_company.verticals.all())
+    verticals = _visible_bus(current_company)
 
     # --- BusinessUnit ('all' = company roll-up / Summary; resets Website) ---
     if 'vertical' in request.GET:
@@ -72,7 +79,9 @@ def tenancy_selector(request):
     company_ids_list = [c.id for c in companies]
     verts_by_company = {}
     for v in BusinessUnit.objects.filter(company_id__in=company_ids_list):
-        verts_by_company.setdefault(v.company_id, []).append(v)
+        allowed = bu_scope.get(v.company_id)
+        if allowed is None or v.id in allowed:      # honor per-user BU visibility
+            verts_by_company.setdefault(v.company_id, []).append(v)
     sites_by_vertical = {}
     for w in Website.objects.filter(vertical__company_id__in=company_ids_list):
         sites_by_vertical.setdefault(w.vertical_id, []).append(w)

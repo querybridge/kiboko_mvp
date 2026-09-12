@@ -276,6 +276,7 @@ def add_comment_to_project(request, project_id):
     return render(request, 'project/add_comment_to_project.html', {'form': form})
 
 
+@login_required
 def approve_project(request, project_id):
     project = Action.objects.get(pk=project_id)
     next_url = request.GET.get('next', request.POST.get('next', '/project/approvals.html'))
@@ -283,6 +284,7 @@ def approve_project(request, project_id):
     project.save()
     return HttpResponseRedirect(next_url)
 
+@login_required
 def delete(request, project_id):
     object = Action.objects.get(pk=project_id)
     object.delete()

@@ -16,20 +16,11 @@ def logout_view(request):
 	return HttpResponseRedirect(reverse('users:login'))
 
 
-#Registration Page
+#Registration Page — DISABLED. Kiboko is invite-only: accounts are created by an
+# admin (Manage Users) or provisioned when a user signs in with Google. Self-serve
+# password signup bypassed org/company assignment, so it's turned off.
 def register(request):
-    if request.method == 'POST':
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            # Set the role on the auto-created profile
-            user.profile.role = form.cleaned_data['role']
-            user.profile.save()
-            username = form.cleaned_data.get('username')
-            raw_password = form.cleaned_data.get('password1')
-            user = authenticate(username=username, password=raw_password)
-            login(request, user)
-            return redirect('app:analytics_grow_sales')
-    else:
-        form = UserRegistrationForm()
-    return render(request, 'users/register.html', {'form': form})
+    from django.contrib import messages
+    messages.info(request, 'Registration is by invitation. Ask your admin to add you, '
+                           'or sign in with Google.')
+    return redirect('users:login')

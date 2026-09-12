@@ -112,6 +112,9 @@ class CompanyMembership(models.Model):
 	company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='memberships')
 	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='company_memberships')
 	role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
+	# Business units this user may see in the company; empty = all of the company's.
+	# The service account can read every GA4 property, so an admin scopes visibility here.
+	allowed_bus = models.ManyToManyField('BusinessUnit', blank=True, related_name='scoped_memberships')
 	created = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
@@ -119,6 +122,11 @@ class CompanyMembership(models.Model):
 
 	def __str__(self):
 		return f'{self.user} @ {self.company} ({self.role})'
+
+	def allowed_bu_ids(self):
+		"""Set of BusinessUnit ids this membership may see; None = all."""
+		ids = set(self.allowed_bus.values_list('id', flat=True))
+		return ids or None
 
 
 class Website(models.Model):

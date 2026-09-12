@@ -1,7 +1,7 @@
 from django.contrib import admin
 from strategy.models import Project, ProjectComment, AnnualGoals, Objective, Metric, KPI, Measure
 from project.models import Action, ActionComment
-from business_unit.models import Department, BusinessUnit
+from business_unit.models import Department, BusinessUnit, Organization, Company, CompanyMembership
 
 # Register your models here.
 
@@ -16,3 +16,6 @@ admin.site.register(Action)
 admin.site.register(ActionComment)
 admin.site.register(Department)
 admin.site.register(BusinessUnit)
+admin.site.register(Organization)
+admin.site.register(Company)
+admin.site.register(CompanyMembership)
