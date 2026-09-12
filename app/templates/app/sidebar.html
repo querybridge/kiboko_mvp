@@ -20,6 +20,10 @@
     <div class="menu_section">
       <ul class="nav side-menu">
 
+        {% if user.is_superuser or user.administered_orgs.exists %}
+        <li><a href="{% url 'app:getting_started' %}"><i class="fa fa-rocket"></i> Getting Started</a></li>
+        {% endif %}
+
         <!-- Analytics (label only expands/collapses the submenu) -->
         <li><a><i class="fa fa-bar-chart"></i> Analytics <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">

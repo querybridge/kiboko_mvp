@@ -1606,6 +1606,8 @@ def manage_users(request):
 
     companies_ctx = [{
         'company': c,
+        'org': c.organization,
+        'noun': 'Client' if c.organization and c.organization.kind == 'agency' else 'Company',
         'business_units': list(c.verticals.all()),
         'members': (CompanyMembership.objects.filter(company=c)
                     .select_related('user', 'user__profile')
@@ -1627,3 +1629,41 @@ def billing(request):
         return HttpResponseForbidden('Billing is available to organization admins only.')
     org = request.user.administered_orgs.first()
     return render(request, 'app/billing.html', {'title': 'Billing', 'organization': org})
+
+
+@login_required
+def getting_started(request):
+    """Onboarding checklist for an org's setup: add a company/client, invite the
+    team, connect data, set goals. Scoped to the viewer's organization."""
+    from business_unit.models import (CompanyMembership, BigQueryConnection, BusinessUnit)
+    from business_unit.access import real_companies
+    from app.models import MonthlyGoal
+
+    user = request.user
+    org = user.administered_orgs.first()
+    if org is None:
+        rc = real_companies(user).first()
+        org = rc.organization if rc else None
+    if org is None:
+        return render(request, 'app/getting_started.html', {'title': 'Getting Started', 'org': None, 'steps': []})
+
+    company_ids = list(org.companies.values_list('id', flat=True))
+    noun = 'Client' if org.kind == 'agency' else 'Company'
+    member_count = (CompanyMembership.objects.filter(company_id__in=company_ids)
+                    .values('user').distinct().count())
+    has_data = (BigQueryConnection.objects.filter(company_id__in=company_ids).exists()
+                or BusinessUnit.objects.filter(company_id__in=company_ids)
+                .exclude(ga4_property_id='').exists())
+    steps = [
+        {'label': f'Add your first {noun.lower()}', 'done': bool(company_ids),
+         'url': '/app/data-connection/', 'desc': f'Create the {noun.lower()} you’ll track.'},
+        {'label': 'Invite your team', 'done': member_count >= 2,
+         'url': '/app/manage-users/', 'desc': 'Add users and set each one’s role and business units.'},
+        {'label': 'Connect analytics data', 'done': has_data,
+         'url': '/app/data-connection/', 'desc': 'Connect GA4 (Standard) or a BigQuery service account (Premium).'},
+        {'label': 'Set your goals', 'done': MonthlyGoal.objects.filter(vertical__company_id__in=company_ids).exists(),
+         'url': '/app/goals/', 'desc': 'Enter monthly revenue targets per business unit.'},
+    ]
+    return render(request, 'app/getting_started.html', {
+        'title': 'Getting Started', 'org': org, 'noun': noun, 'steps': steps,
+        'done_count': sum(1 for s in steps if s['done']), 'total': len(steps)})

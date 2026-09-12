@@ -1,0 +1,22 @@
+{# Empty state: shown to users who only have the demo (no company of their own). #}
+{% if tenancy_demo_only %}
+<style>
+  .contact-admin-banner { display:flex; align-items:center; gap:14px; margin:14px 0 18px;
+    padding:14px 18px; border-radius:12px; background:linear-gradient(180deg, rgba(169,142,232,0.10), rgba(169,142,232,0.03));
+    border:1px solid rgba(214,197,247,0.22); }
+  .contact-admin-icon { font-size:22px; color:#A98EE8; }
+  .contact-admin-title { font-weight:700; }
+  .contact-admin-sub { font-size:13px; opacity:0.9; }
+</style>
+<div class="contact-admin-banner">
+  <i class="fa fa-info-circle contact-admin-icon"></i>
+  <div class="contact-admin-text">
+    <div class="contact-admin-title">You're exploring demo data</div>
+    <div class="contact-admin-sub">
+      To see your own company's analytics, ask your admin to add you{% if tenancy_contact_admin %}:
+      <strong>{{ tenancy_contact_admin.get_full_name|default:tenancy_contact_admin.username }}</strong>{% if tenancy_contact_admin.email %}
+      &middot; <a href="mailto:{{ tenancy_contact_admin.email }}">{{ tenancy_contact_admin.email }}</a>{% endif %}{% endif %}.
+    </div>
+  </div>
+</div>
+{% endif %}

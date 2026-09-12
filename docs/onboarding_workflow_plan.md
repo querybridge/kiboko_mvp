@@ -103,10 +103,13 @@ Deleting it outright breaks Projects/Strategy. **Recommended safe path:**
 - **Phase 3 — Access & isolation:** org-scoped context processor + providers;
   platform-vs-org superuser split; per-user business-unit scoping
   (`allowed_bus`); ≥1-admin enforcement; disable `register`; login audit.
-- **Phase 4 — Onboarding & trial:** sign-in resolution (link vs new trial org);
-  30-day trial gate → Billing lock; "contact your admin" banner; empty states;
-  agency "Client" vs direct "Company" labels; onboarding checklist.
-- **Phase 5 — Billing:** real billing (Stripe) behind the stub link. Separate.
+- **Phase 4 — Onboarding (done, trial deferred):** "contact your admin" banner +
+  empty states (unprovisioned users see the demo only); agency "Client" vs direct
+  "Company" labels; Getting Started checklist. **Deferred to Phase 5 (needs
+  Stripe):** the 30-day trial gate → Billing lock and the sign-in resolution that
+  auto-creates a trial org. Google sign-in keeps its current behavior until then.
+- **Phase 5 — Billing + trial:** real billing (Stripe) behind the stub link, then
+  the 30-day trial clock/lock and trial-org creation on first sign-in.
 
 ## Open questions
 1. **PPM retirement scope** — keep Projects/Strategy working (recommended:

@@ -17,6 +17,7 @@ urlpatterns = [
     path('data-connection/', views.data_connection, name='data_connection'),
     path('manage-users/', views.manage_users, name='manage_users'),
     path('billing/', views.billing, name='billing'),
+    path('getting-started/', views.getting_started, name='getting_started'),
     # Analytics dashboards (Analytics == Grow Sales landing page)
     path('analytics/', views.analytics_grow_sales, name='analytics'),
     path('analytics/performance-story/', views.analytics_performance_story, name='analytics_performance_story'),

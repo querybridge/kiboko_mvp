@@ -1,0 +1,52 @@
+{% extends "app/base_site.html" %}
+{% block title %} Getting Started {% endblock title %}
+{% block stylesheets %}
+{{ block.super }}
+<style>
+  .gs-step { display:flex; align-items:flex-start; gap:14px; padding:16px 18px; border-radius:12px;
+    border:1px solid rgba(214,197,247,0.18); margin-bottom:12px; }
+  .gs-step.done { opacity:0.7; }
+  .gs-check { font-size:22px; width:26px; text-align:center; }
+  .gs-check.on { color:#2ecc71; } .gs-check.off { color:#c8bcdf; }
+  .gs-title { font-weight:700; }
+  .gs-desc { font-size:13px; opacity:0.85; margin:2px 0 8px; }
+  .gs-progress { height:8px; border-radius:6px; background:rgba(214,197,247,0.16); overflow:hidden; margin:8px 0 22px; }
+  .gs-progress > span { display:block; height:100%; background:#A98EE8; }
+</style>
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="page-title">
+    <div class="title_left">
+      <h3>Getting Started{% if org %} <small>{{ org.name }}</small>{% endif %}</h3>
+    </div>
+    <div class="clearfix"></div>
+  </div>
+
+  {% if not org %}
+  <div class="row"><div class="col-md-12">
+    <div class="alert alert-info">You’re not set up with an organization yet. Ask your admin to add you, or sign in with Google.</div>
+  </div></div>
+  {% else %}
+  <div class="row"><div class="col-md-8">
+    <div class="x_panel"><div class="x_content">
+      <p class="text-muted">{{ done_count }} of {{ total }} steps complete.</p>
+      <div class="gs-progress"><span style="width:{% widthratio done_count total 100 %}%;"></span></div>
+
+      {% for step in steps %}
+      <div class="gs-step {% if step.done %}done{% endif %}">
+        <div class="gs-check {% if step.done %}on{% endif %}{% if not step.done %}off{% endif %}">
+          <i class="fa {% if step.done %}fa-check-circle{% else %}fa-circle-o{% endif %}"></i>
+        </div>
+        <div style="flex:1;">
+          <div class="gs-title">{{ step.label }}</div>
+          <div class="gs-desc">{{ step.desc }}</div>
+          {% if not step.done %}<a href="{{ step.url }}" class="btn btn-primary btn-xs">{{ step.label }}</a>{% else %}<a href="{{ step.url }}" class="btn btn-default btn-xs">Review</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div></div>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock content %}

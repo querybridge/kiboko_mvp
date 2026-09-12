@@ -19,15 +19,18 @@ def tenancy_selector(request):
     BusinessUnit + Website; changing BusinessUnit resets Website). The BusinessUnit scope also
     drives the existing PPM vertical filtering via business_unit.scope.
     """
-    from business_unit.access import visible_companies, allowed_bu_ids
+    from business_unit.access import visible_companies, allowed_bu_ids, has_real_company, contact_admin
 
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
         return {}
 
+    demo_only = not user.is_superuser and not has_real_company(user)
+
     companies = list(visible_companies(user))
     if not companies:
-        return {'tenancy_companies': [], 'tenancy_current_company': None}
+        return {'tenancy_companies': [], 'tenancy_current_company': None,
+                'tenancy_demo_only': demo_only, 'tenancy_contact_admin': contact_admin(user)}
 
     # Per-user business-unit visibility: {company_id: set(bu_id) or None(=all)}.
     bu_scope = {c.id: allowed_bu_ids(user, c) for c in companies}
@@ -90,14 +93,22 @@ def tenancy_selector(request):
          'websites': [{'id': w.id, 'name': w.name} for w in sites_by_vertical.get(v.id, [])]}
         for v in verts_by_company.get(c.id, [])]} for c in companies}
 
+    org = current_company.organization
+    is_agency = bool(org and org.kind == 'agency')
+
     return {
         'tenancy_companies': companies,
         'tenancy_verticals': verticals,
         'tenancy_websites': websites,
         'tenancy_current_company': current_company,
+        'tenancy_current_org': org,
         'tenancy_vertical_sel': vertical_sel,
         'tenancy_website_sel': website_sel,
         'tenancy_current_vertical': current_vertical,
         'tenancy_current_website': current_website,
         'tenancy_tree': tree,
+        'tenancy_demo_only': demo_only,
+        'tenancy_contact_admin': contact_admin(user, current_company),
+        'tenancy_client_word': 'Client' if is_agency else 'Company',
+        'tenancy_client_word_plural': 'Clients' if is_agency else 'Companies',
     }

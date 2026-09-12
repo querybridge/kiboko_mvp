@@ -9,19 +9,48 @@ Tiers:
 from django.db.models import Q
 
 
+def real_companies(user):
+    """Companies the user genuinely belongs to (member or org admin) -- excludes
+    the platform demo."""
+    from business_unit.models import Company
+    admin_org_ids = list(user.administered_orgs.values_list('id', flat=True))
+    return Company.objects.filter(
+        Q(memberships__user=user) | Q(organization_id__in=admin_org_ids)
+    ).distinct().order_by('name')
+
+
+def has_real_company(user):
+    """True if the user has any company of their own (not just the demo)."""
+    if not user or not user.is_authenticated:
+        return False
+    return user.is_superuser or real_companies(user).exists()
+
+
 def visible_companies(user):
-    """Queryset of companies the user may see (ordered by name)."""
+    """Queryset of companies the user may see (ordered by name). Users with no
+    company of their own fall back to the platform demo so there's something to
+    explore; provisioned users see only their own (no demo clutter)."""
     from business_unit.models import Company
     if not user or not user.is_authenticated:
         return Company.objects.none()
     if user.is_superuser:
         return Company.objects.all().order_by('name')
-    admin_org_ids = list(user.administered_orgs.values_list('id', flat=True))
-    return Company.objects.filter(
-        Q(memberships__user=user)
-        | Q(organization_id__in=admin_org_ids)
-        | Q(organization__is_platform_demo=True)
-    ).distinct().order_by('name')
+    real = real_companies(user)
+    if real.exists():
+        return real
+    return Company.objects.filter(organization__is_platform_demo=True).order_by('name')
+
+
+def contact_admin(user, company=None):
+    """The admin a user should contact for access: the scoped company's org admin,
+    else any org admin of an org they touch, else a platform superuser."""
+    from django.contrib.auth.models import User
+    if company and company.organization and company.organization.org_admin:
+        return company.organization.org_admin
+    for c in real_companies(user) if user and user.is_authenticated else []:
+        if c.organization and c.organization.org_admin:
+            return c.organization.org_admin
+    return User.objects.filter(is_superuser=True).exclude(email='').order_by('id').first()
 
 
 def is_org_admin_of(user, company):
