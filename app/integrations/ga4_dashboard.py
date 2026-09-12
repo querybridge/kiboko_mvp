@@ -769,12 +769,29 @@ def ga4_segments(request, primary_code, compare_code, today=None):
         return zeros()
 
 
+def _accumulate_daily(out, by_day):
+    """Fold a {'YYYYMMDD': fundamentals} dict into the pipeline actuals map."""
+    for day, rec in by_day.items():
+        iso = f'{day[:4]}-{day[4:6]}-{day[6:8]}'
+        acc = out.setdefault(iso, {'revenue': 0.0, 'visits': 0, 'orders': 0})
+        acc['revenue'] += float(rec.get('sales', 0) or 0)
+        acc['visits'] += int(rec.get('visits', 0) or 0)
+        acc['orders'] += int(rec.get('orders', 0) or 0)
+    return out
+
+
 def ga4_daily_actuals(request, start, end):
-    """{'YYYY-MM-DD': {'revenue': float, 'visits': int, 'orders': int}} for the
-    scoped **Standard** GA4 property(ies) over [start, end], or None when not
-    Standard-connected. Used by the Project Value Pipeline so actual revenue comes
-    from GA4 instead of uploaded DailyActual rows. (Premium/BigQuery is not used
-    here -- the PPM pipeline is a GA4 Data API path.)"""
+    """{'YYYY-MM-DD': {'revenue': float, 'visits': int, 'orders': int}} of actual
+    daily performance for the scoped company over [start, end], or None when the
+    scope isn't connected. Used by the Project Value Pipeline so actual revenue
+    comes from live analytics instead of uploaded DailyActual rows.
+
+    Source by tier: **Premium -> BigQuery** (faster, no API rate limits; and later
+    the daily rollup cache); **Standard -> GA4 Data API** (subject to GA4 API rate
+    limits/latency -- the upgrade path to Premium)."""
+    bqp = _premium_connection(request)
+    if bqp is not None:
+        return _bq_daily_actuals(bqp, start, end)
     sc = _connected_scope(request)
     if sc is None:
         return None
@@ -783,17 +800,32 @@ def ga4_daily_actuals(request, start, end):
         creds = google_oauth.credentials_from_identity(identity)
         out = {}
         for pid in property_ids:
-            by_day = ga4_data.fetch_daily_fundamentals(
-                creds, pid, start.isoformat(), end.isoformat(), stream_id=stream_id)
-            for day, rec in by_day.items():                # day == 'YYYYMMDD'
-                iso = f'{day[:4]}-{day[4:6]}-{day[6:8]}'
-                acc = out.setdefault(iso, {'revenue': 0.0, 'visits': 0, 'orders': 0})
-                acc['revenue'] += float(rec.get('sales', 0) or 0)
-                acc['visits'] += int(rec.get('visits', 0) or 0)
-                acc['orders'] += int(rec.get('orders', 0) or 0)
+            _accumulate_daily(out, ga4_data.fetch_daily_fundamentals(
+                creds, pid, start.isoformat(), end.isoformat(), stream_id=stream_id))
         return out
     except Exception as e:
         logger.warning('PPM pipeline: GA4 daily actuals unavailable (%s: %s) -- using uploaded actuals',
+                       type(e).__name__, e)
+        return None
+
+
+def _bq_daily_actuals(bqp, start, end):
+    """Premium pipeline actuals from BigQuery (summed across the company's
+    datasets). TODO: read from the daily rollup cache once it lands, to avoid a
+    live events_* scan on every pipeline load."""
+    from app.integrations import bigquery as bqmod
+    bq, property_ids = bqp
+    events = bq.event_map
+    try:
+        client = bqmod.connect(bq.service_account_json)
+        out = {}
+        for pid in property_ids:
+            ds = bqmod.dataset_for(pid)
+            if ds:
+                _accumulate_daily(out, bqmod.fetch_daily_fundamentals(client, ds, start, end, events))
+        return out
+    except Exception as e:
+        logger.warning('PPM pipeline: Premium BigQuery actuals unavailable (%s: %s) -- using uploaded actuals',
                        type(e).__name__, e)
         return None
 
