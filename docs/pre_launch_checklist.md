@@ -73,6 +73,15 @@ Everything that should be built/addressed before going live. Priority tags:
   plus a separate `score` app). Flagged as "missing" — confirm the exact gap
   (scoring entry UI? the two implementations `project/scoring.py` vs the `score`
   app? not reachable/linked? criteria weights?) and finish/consolidate it.
+- **[REC] Wins & Losses view.** A new two-column insights page: **Wins** (metrics /
+  segments that improved vs the comparison period) and **Losses** (those that
+  declined), each row paired with a **recommended action**. Derives from data we
+  already compute — period deltas (Sales/Visits/Close Rate/AOV), the funnel, and
+  the device/channel changeplot segments — so it's largely a ranking +
+  recommendation layer over existing numbers. Honors the current scope + period
+  and works for Standard and Premium (incl. the rollup). Decide recommendation
+  source: rules-based (thresholds on deltas) to start, optionally LLM-generated
+  later.
 - **[REC] Automated test suite.** No tests today (stub `tests.py` only). Add
   coverage for access/isolation, billing/trial gating, scoring, and the GA4/rollup
   data paths before launch.
