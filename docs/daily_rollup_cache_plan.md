@@ -1,7 +1,19 @@
 # Daily-Rollup Cache — Plan
 
-Status: **designed, not yet built** (parked to work through new-account creation
-& company onboarding first). Revisit this doc when ready to implement.
+Status: **BUILT** (read path live, gated by `GA4_USE_ROLLUP`). `GA4DailyRollup`
+model + `sync_ga4_rollups` command + `business_unit/rollup.py` read layer;
+Premium providers and the value-pipeline actuals prefer the cache and fall back
+to a live BigQuery scan when it doesn't cover the requested range. Validated on a
+small Autocado window (Aug 2025).
+
+Operate it:
+- `python manage.py sync_ga4_rollups` — incremental (+3-day re-sync) for all Premium cos
+- `python manage.py sync_ga4_rollups --backfill` — one-time ~400-day backfill
+- `python manage.py sync_ga4_rollups --company <slug> --since YYYY-MM-DD --until YYYY-MM-DD`
+- PythonAnywhere: add a **daily Scheduled Task** running the incremental form.
+
+Not yet done: auto-backfill on Premium provisioning (deferred to control cost --
+run `--backfill` manually per new company for now).
 
 ## Objective
 Stop Premium (GA4 → BigQuery) dashboards from scanning raw `events_*` on every

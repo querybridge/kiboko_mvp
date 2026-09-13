@@ -202,6 +202,19 @@ def fetch_period_totals(client, dataset, start_date, end_date, events=None):
     return out
 
 
+# Per-day variant of the totals query (adds event_date) -- used by the rollup sync.
+_DAILY_TOTALS_SQL = _TOTALS_SQL.replace('SELECT\n', 'SELECT\n  event_date,\n', 1) + '\nGROUP BY event_date'
+
+
+def fetch_daily_totals(client, dataset, start_date, end_date, events=None):
+    """{'YYYYMMDD': {GA4 totals + funnel counts}} per day over [start, end]."""
+    out = {}
+    for row in _run(client, _DAILY_TOTALS_SQL.format(dataset=dataset),
+                    _job_config(start_date, end_date, events)):
+        out[row['event_date']] = {k: float(row[k] or 0) for k in _TOTALS_KEYS}
+    return out
+
+
 # --------------------------------------------------------------------------
 # Device / channel splits (Attract Traffic + changeplot segments)
 # --------------------------------------------------------------------------
@@ -264,6 +277,35 @@ def fetch_order_item_metrics(client, dataset, start_date, end_date, events=None)
     return out
 
 
+_DAILY_ORDER_ITEM_SQL = f"""
+WITH orders AS (
+  SELECT event_date,
+    (SELECT COUNT(DISTINCT i.item_id) FROM UNNEST(items) i) AS skus
+  FROM `{{dataset}}.events_*`
+  WHERE _TABLE_SUFFIX BETWEEN @start AND @end AND event_name = @ev_purchase
+)
+SELECT event_date,
+  COUNT(*) AS orders,
+  IFNULL(AVG(skus), 0) AS unique_skus_per_order,
+  COUNTIF(skus = 1) AS single_sku_orders
+FROM orders
+GROUP BY event_date
+"""
+
+
+def fetch_daily_order_item(client, dataset, start_date, end_date, events=None):
+    """{'YYYYMMDD': {orders, unique_skus_per_order, single_sku_orders}} per day."""
+    out = {}
+    for row in _run(client, _DAILY_ORDER_ITEM_SQL.format(dataset=dataset),
+                    _job_config(start_date, end_date, events)):
+        out[row['event_date']] = {
+            'orders': float(row['orders'] or 0),
+            'unique_skus_per_order': float(row['unique_skus_per_order'] or 0),
+            'single_sku_orders': float(row['single_sku_orders'] or 0),
+        }
+    return out
+
+
 _CATEGORY_SQL = f"""
 SELECT
   IFNULL(NULLIF(i.item_category, ''), '(not set)') AS category,
@@ -282,6 +324,33 @@ def fetch_category_metrics(client, dataset, start_date, end_date, events=None):
     for row in _run(client, _CATEGORY_SQL.format(dataset=dataset),
                     _job_config(start_date, end_date, events)):
         out[row['category']] = {
+            'orders': float(row['orders'] or 0),
+            'units': float(row['units'] or 0),
+            'sales': float(row['sales'] or 0),
+        }
+    return out
+
+
+_DAILY_CATEGORY_SQL = f"""
+SELECT
+  event_date,
+  IFNULL(NULLIF(i.item_category, ''), '(not set)') AS category,
+  COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST(event_timestamp AS STRING))) AS orders,
+  SUM(IFNULL(i.quantity, 0)) AS units,
+  SUM(IFNULL(i.item_revenue_in_usd, i.item_revenue)) AS sales
+FROM `{{dataset}}.events_*`, UNNEST(items) i
+WHERE _TABLE_SUFFIX BETWEEN @start AND @end AND event_name = @ev_purchase
+GROUP BY event_date, category
+"""
+
+
+def fetch_daily_category(client, dataset, start_date, end_date, events=None):
+    """{'YYYYMMDD': {category: {orders, units, sales}}} per day."""
+    out = {}
+    for row in _run(client, _DAILY_CATEGORY_SQL.format(dataset=dataset),
+                    _job_config(start_date, end_date, events)):
+        day = out.setdefault(row['event_date'], {})
+        day[row['category']] = {
             'orders': float(row['orders'] or 0),
             'units': float(row['units'] or 0),
             'sales': float(row['sales'] or 0),

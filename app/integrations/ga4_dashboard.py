@@ -147,29 +147,13 @@ def signin_prompt(request):
 
 
 def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):
-    """Premium daily rows from BigQuery (summed across the company's datasets),
-    aggregated over the full period then bucketed -- mirrors ga4_rows."""
-    from app.integrations import bigquery as bqmod
-    events = bq.event_map
+    """Premium daily rows (rollup cache or live BigQuery, summed across the
+    company's datasets), aggregated over the full period then bucketed."""
     p_start, p_end, s_start, s_end = _date_ranges(primary_code, compare_code, today, custom)
     labels = [d.strftime('%m-%d') for d in _range_dates(p_start, p_end)]
     try:
-        client = bqmod.connect(bq.service_account_json)
-
-        def merged(start, end):
-            acc = {}
-            for pid in property_ids:
-                ds = bqmod.dataset_for(pid)
-                if not ds:
-                    continue
-                for day, rec in bqmod.fetch_daily_fundamentals(client, ds, start, end, events).items():
-                    a = acc.setdefault(day, {k: 0.0 for k in _FUND_KEYS})
-                    for k in _FUND_KEYS:
-                        a[k] += rec.get(k, 0.0)
-            return acc
-
-        daily_p, dates_p = _order_days(merged(p_start, p_end), p_start, p_end)
-        daily_s, _ = _order_days(merged(s_start, s_end), s_start, s_end)
+        daily_p, dates_p = _order_days(_daily_fundamentals(bq, property_ids, p_start, p_end), p_start, p_end)
+        daily_s, _ = _order_days(_daily_fundamentals(bq, property_ids, s_start, s_end), s_start, s_end)
         rows_p, labels = _bucketize(daily_p, dates_p, MAX_POINTS)
         rows_s = _bucketize_to(daily_s, len(rows_p))
         return rows_p, rows_s, labels
@@ -193,46 +177,133 @@ def _bq_ranges(request, bq, primary_code, compare_code, today):
     return _date_ranges(primary_code, compare_code, today, custom)
 
 
-def _bq_split_totals(client, property_ids, start, end, split, events):
-    """{bucket: {fund: total}} summed across datasets for one split/period."""
+# --- Source dispatchers: rollup cache when it covers the range, else live ----
+# Each returns a per-day dict MERGED across the company's properties, in the same
+# shape the live bigquery fetch functions emit, so the providers are source-blind.
+
+def _daily_fundamentals(bq, property_ids, start, end):
+    from business_unit import rollup as R
+    if R.covers(bq.company, property_ids, start, end):
+        return R.fundamentals(bq.company, property_ids, start, end)
     from app.integrations import bigquery as bqmod
-    buckets = {b: {k: 0.0 for k in _FUND_KEYS} for b in SPLIT_BUCKETS[split]}
+    client = bqmod.connect(bq.service_account_json)
+    out = {}
     for pid in property_ids:
         ds = bqmod.dataset_for(pid)
         if not ds:
             continue
-        for _day, bmap in bqmod.fetch_split_daily(client, ds, start, end, split, events).items():
-            for bucket, rec in bmap.items():
-                if bucket in buckets:
-                    for k in _FUND_KEYS:
-                        buckets[bucket][k] += float(rec.get(k, 0) or 0)
-    return buckets
-
-
-def _bq_split_daily_visits(client, property_ids, start, end, split, events):
-    """{bucket: {YYYYMMDD: visits}} summed across datasets (split-card sparklines)."""
-    from app.integrations import bigquery as bqmod
-    out = {b: {} for b in SPLIT_BUCKETS[split]}
-    for pid in property_ids:
-        ds = bqmod.dataset_for(pid)
-        if not ds:
-            continue
-        for day, bmap in bqmod.fetch_split_daily(client, ds, start, end, split, events).items():
-            for bucket, rec in bmap.items():
-                if bucket in out:
-                    out[bucket][day] = out[bucket].get(day, 0.0) + float(rec.get('visits', 0) or 0)
+        for day, rec in bqmod.fetch_daily_fundamentals(client, ds, start, end, bq.event_map).items():
+            acc = out.setdefault(day, {k: 0.0 for k in _FUND_KEYS})
+            for k in _FUND_KEYS:
+                acc[k] += rec.get(k, 0.0)
     return out
 
 
-def _bq_period_totals(client, property_ids, start, end, events, keys):
-    """Summed GA4-style totals across datasets, restricted to `keys`."""
+def _daily_totals(bq, property_ids, start, end):
+    from business_unit import rollup as R
+    if R.covers(bq.company, property_ids, start, end):
+        return R.totals(bq.company, property_ids, start, end)
     from app.integrations import bigquery as bqmod
-    acc = {k: 0.0 for k in keys}
+    client = bqmod.connect(bq.service_account_json)
+    out = {}
     for pid in property_ids:
         ds = bqmod.dataset_for(pid)
         if not ds:
             continue
-        t = bqmod.fetch_period_totals(client, ds, start, end, events)
+        for day, t in bqmod.fetch_daily_totals(client, ds, start, end, bq.event_map).items():
+            acc = out.setdefault(day, {})
+            for k, v in t.items():
+                acc[k] = acc.get(k, 0.0) + float(v or 0)
+    return out
+
+
+def _daily_split(bq, property_ids, start, end, split):
+    from business_unit import rollup as R
+    if R.covers(bq.company, property_ids, start, end):
+        return R.split_daily(bq.company, property_ids, start, end, split)
+    from app.integrations import bigquery as bqmod
+    client = bqmod.connect(bq.service_account_json)
+    out = {}
+    for pid in property_ids:
+        ds = bqmod.dataset_for(pid)
+        if not ds:
+            continue
+        for day, bmap in bqmod.fetch_split_daily(client, ds, start, end, split, bq.event_map).items():
+            dd = out.setdefault(day, {})
+            for bucket, rec in bmap.items():
+                acc = dd.setdefault(bucket, {k: 0.0 for k in _FUND_KEYS})
+                for k in _FUND_KEYS:
+                    acc[k] += float(rec.get(k, 0) or 0)
+    return out
+
+
+def _daily_order_item(bq, property_ids, start, end):
+    from business_unit import rollup as R
+    if R.covers(bq.company, property_ids, start, end):
+        return R.order_item(bq.company, property_ids, start, end)
+    from app.integrations import bigquery as bqmod
+    client = bqmod.connect(bq.service_account_json)
+    out = {}
+    for pid in property_ids:
+        ds = bqmod.dataset_for(pid)
+        if not ds:
+            continue
+        for day, rec in bqmod.fetch_daily_order_item(client, ds, start, end, bq.event_map).items():
+            dd = out.setdefault(day, {'orders': 0.0, '_w': 0.0, 'single_sku_orders': 0.0})
+            dd['orders'] += rec['orders']
+            dd['_w'] += rec['unique_skus_per_order'] * rec['orders']
+            dd['single_sku_orders'] += rec['single_sku_orders']
+    for v in out.values():
+        v['unique_skus_per_order'] = (v['_w'] / v['orders']) if v['orders'] else 0.0
+        del v['_w']
+    return out
+
+
+def _daily_category(bq, property_ids, start, end):
+    from business_unit import rollup as R
+    if R.covers(bq.company, property_ids, start, end):
+        return R.category(bq.company, property_ids, start, end)
+    from app.integrations import bigquery as bqmod
+    client = bqmod.connect(bq.service_account_json)
+    out = {}
+    for pid in property_ids:
+        ds = bqmod.dataset_for(pid)
+        if not ds:
+            continue
+        for day, cmap in bqmod.fetch_daily_category(client, ds, start, end, bq.event_map).items():
+            dd = out.setdefault(day, {})
+            for cat, rec in cmap.items():
+                acc = dd.setdefault(cat, {'orders': 0.0, 'units': 0.0, 'sales': 0.0})
+                for k in ('orders', 'units', 'sales'):
+                    acc[k] += float(rec.get(k, 0) or 0)
+    return out
+
+
+def _bq_split_totals(bq, property_ids, start, end, split):
+    """{bucket: {fund: total}} over the period (rollup or live)."""
+    buckets = {b: {k: 0.0 for k in _FUND_KEYS} for b in SPLIT_BUCKETS[split]}
+    for _day, bmap in _daily_split(bq, property_ids, start, end, split).items():
+        for bucket, rec in bmap.items():
+            if bucket in buckets:
+                for k in _FUND_KEYS:
+                    buckets[bucket][k] += float(rec.get(k, 0) or 0)
+    return buckets
+
+
+def _bq_split_daily_visits(bq, property_ids, start, end, split):
+    """{bucket: {YYYYMMDD: visits}} (split-card sparklines)."""
+    out = {b: {} for b in SPLIT_BUCKETS[split]}
+    for day, bmap in _daily_split(bq, property_ids, start, end, split).items():
+        for bucket, rec in bmap.items():
+            if bucket in out:
+                out[bucket][day] = out[bucket].get(day, 0.0) + float(rec.get('visits', 0) or 0)
+    return out
+
+
+def _bq_period_totals(bq, property_ids, start, end, keys):
+    """Summed GA4-style totals over the period, restricted to `keys`."""
+    acc = {k: 0.0 for k in keys}
+    for _day, t in _daily_totals(bq, property_ids, start, end).items():
         for k in keys:
             acc[k] += float(t.get(k, 0) or 0)
     return acc
@@ -499,9 +570,7 @@ def ga4_splits(request, primary_code, compare_code, today=None):
 
 def _bq_splits(request, bqp, primary_code, compare_code, today):
     """Premium device/channel splits from BigQuery -- mirrors ga4_splits."""
-    from app.integrations import bigquery as bqmod
     bq, property_ids = bqp
-    events = bq.event_map
     p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
     dates_p = _range_dates(p_start, p_end)
 
@@ -509,12 +578,11 @@ def _bq_splits(request, bqp, primary_code, compare_code, today):
         return {split: {b: {'total': 0.0, 'delta': 0.0, 'share': 0.0, 'daily': [0.0] * len(dates_p)}
                         for b in SPLIT_BUCKETS[split]} for split in ('device', 'channel')}
     try:
-        client = bqmod.connect(bq.service_account_json)
         out = {}
         for split in ('device', 'channel'):
-            prim = _bq_split_totals(client, property_ids, p_start, p_end, split, events)
-            sec = _bq_split_totals(client, property_ids, s_start, s_end, split, events)
-            by_day = _bq_split_daily_visits(client, property_ids, p_start, p_end, split, events)
+            prim = _bq_split_totals(bq, property_ids, p_start, p_end, split)
+            sec = _bq_split_totals(bq, property_ids, s_start, s_end, split)
+            by_day = _bq_split_daily_visits(bq, property_ids, p_start, p_end, split)
             out[split] = _split_metrics(prim, sec, by_day, dates_p, split)
         return out
     except Exception as e:
@@ -617,18 +685,15 @@ _ENGAGE_TOTALS_KEYS = ['sessions', 'engagedSessions', 'userEngagementDuration',
 
 
 def _bq_engage_metrics(request, bqp, primary_code, compare_code, today):
-    """Premium Engage card values (+ deltas) from BigQuery -- mirrors ga4_engage_metrics."""
-    from app.integrations import bigquery as bqmod
+    """Premium Engage card values (+ deltas), rollup cache or live -- mirrors ga4_engage_metrics."""
     bq, property_ids = bqp
-    events = bq.event_map
     p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
 
     def zeros():
         return {**{k: 0.0 for k in _ENGAGE_KEYS}, **{k + '_delta': 0.0 for k in _ENGAGE_KEYS}}
     try:
-        client = bqmod.connect(bq.service_account_json)
-        p_c = _engage_compute(_bq_period_totals(client, property_ids, p_start, p_end, events, _ENGAGE_TOTALS_KEYS))
-        s_c = _engage_compute(_bq_period_totals(client, property_ids, s_start, s_end, events, _ENGAGE_TOTALS_KEYS))
+        p_c = _engage_compute(_bq_period_totals(bq, property_ids, p_start, p_end, _ENGAGE_TOTALS_KEYS))
+        s_c = _engage_compute(_bq_period_totals(bq, property_ids, s_start, s_end, _ENGAGE_TOTALS_KEYS))
         return _engage_payload(p_c, s_c)
     except Exception as e:
         logger.warning('Premium (BigQuery) engage metrics unavailable (%s: %s) -- showing zeros',
@@ -670,24 +735,16 @@ STORY_TOTALS_KEYS = STORY_GA4_METRICS + STORY_EVENT_NAMES
 def _bq_story_fundamentals(request, bqp, primary_code, compare_code, today):
     """Premium storyboard fundamentals from BigQuery -- mirrors ga4_story_fundamentals.
     single_sku comes from the real purchase item arrays."""
-    from app.integrations import bigquery as bqmod
     bq, property_ids = bqp
-    events = bq.event_map
     p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
 
     def zeros():
         return _story_fundamentals({}), _story_fundamentals({})
     try:
-        client = bqmod.connect(bq.service_account_json)
-
         def totals(start, end):
-            t = _bq_period_totals(client, property_ids, start, end, events, STORY_TOTALS_KEYS)
-            single = 0.0
-            for pid in property_ids:
-                ds = bqmod.dataset_for(pid)
-                if ds:
-                    single += bqmod.fetch_order_item_metrics(client, ds, start, end, events)['single_sku_orders']
-            t['single_sku_orders'] = single
+            t = _bq_period_totals(bq, property_ids, start, end, STORY_TOTALS_KEYS)
+            t['single_sku_orders'] = sum(
+                v['single_sku_orders'] for v in _daily_order_item(bq, property_ids, start, end).values())
             return t
 
         return _story_fundamentals(totals(p_start, p_end)), _story_fundamentals(totals(s_start, s_end))
@@ -810,22 +867,19 @@ def ga4_daily_actuals(request, start, end):
 
 
 def _bq_daily_actuals(bqp, start, end):
-    """Premium pipeline actuals from BigQuery (summed across the company's
-    datasets). TODO: read from the daily rollup cache once it lands, to avoid a
-    live events_* scan on every pipeline load."""
-    from app.integrations import bigquery as bqmod
+    """Premium pipeline actuals -- rollup cache when it covers the range, else a
+    live BigQuery scan. Summed across the company's datasets, keyed by iso date."""
     bq, property_ids = bqp
-    events = bq.event_map
     try:
-        client = bqmod.connect(bq.service_account_json)
         out = {}
-        for pid in property_ids:
-            ds = bqmod.dataset_for(pid)
-            if ds:
-                _accumulate_daily(out, bqmod.fetch_daily_fundamentals(client, ds, start, end, events))
+        for day, rec in _daily_fundamentals(bq, property_ids, start, end).items():
+            iso = f'{day[:4]}-{day[4:6]}-{day[6:8]}'
+            out[iso] = {'revenue': float(rec.get('sales', 0) or 0),
+                        'visits': int(rec.get('visits', 0) or 0),
+                        'orders': int(rec.get('orders', 0) or 0)}
         return out
     except Exception as e:
-        logger.warning('PPM pipeline: Premium BigQuery actuals unavailable (%s: %s) -- using uploaded actuals',
+        logger.warning('PPM pipeline: Premium actuals unavailable (%s: %s) -- using uploaded actuals',
                        type(e).__name__, e)
         return None
 
@@ -841,33 +895,22 @@ def ga4_item_metrics(request, primary_code, compare_code, today=None):
     bqp = _premium_connection(request)
     if bqp is None:
         return None
-    from app.integrations import bigquery as bqmod
     bq, property_ids = bqp
-    events = bq.event_map
     p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
     try:
-        client = bqmod.connect(bq.service_account_json)
-
         def order_item(start, end):
             orders = skus_weighted = single = 0.0
-            for pid in property_ids:
-                ds = bqmod.dataset_for(pid)
-                if not ds:
-                    continue
-                m = bqmod.fetch_order_item_metrics(client, ds, start, end, events)
-                orders += m['orders']
-                single += m['single_sku_orders']
-                skus_weighted += m['unique_skus_per_order'] * m['orders']  # weighted avg
+            for v in _daily_order_item(bq, property_ids, start, end).values():
+                orders += v['orders']
+                single += v['single_sku_orders']
+                skus_weighted += v['unique_skus_per_order'] * v['orders']   # re-weight to aggregate
             return {'orders': orders, 'single_sku_orders': single,
                     'unique_skus_per_order': (skus_weighted / orders) if orders else 0.0}
 
         def categories(start, end):
             acc = {}
-            for pid in property_ids:
-                ds = bqmod.dataset_for(pid)
-                if not ds:
-                    continue
-                for cat, m in bqmod.fetch_category_metrics(client, ds, start, end, events).items():
+            for cmap in _daily_category(bq, property_ids, start, end).values():
+                for cat, m in cmap.items():
                     a = acc.setdefault(cat, {'orders': 0.0, 'units': 0.0, 'sales': 0.0})
                     for k in ('orders', 'units', 'sales'):
                         a[k] += m[k]
@@ -882,10 +925,8 @@ def ga4_item_metrics(request, primary_code, compare_code, today=None):
 
 
 def _bq_segments(request, bqp, primary_code, compare_code, today):
-    """Premium per-device/per-channel changeplot segments from BigQuery."""
-    from app.integrations import bigquery as bqmod
+    """Premium per-device/per-channel changeplot segments (rollup cache or live)."""
     bq, property_ids = bqp
-    events = bq.event_map
     p_start, p_end, s_start, s_end = _bq_ranges(request, bq, primary_code, compare_code, today)
 
     def zeros():
@@ -895,11 +936,10 @@ def _bq_segments(request, bqp, primary_code, compare_code, today):
                           for b in SPLIT_BUCKETS[split]}
         return out
     try:
-        client = bqmod.connect(bq.service_account_json)
         out = {}
         for split, disp in (('device', DEVICE_DISPLAY), ('channel', CHANNEL_DISPLAY)):
-            prim = _bq_split_totals(client, property_ids, p_start, p_end, split, events)
-            sec = _bq_split_totals(client, property_ids, s_start, s_end, split, events)
+            prim = _bq_split_totals(bq, property_ids, p_start, p_end, split)
+            sec = _bq_split_totals(bq, property_ids, s_start, s_end, split)
             out[split] = {disp[b]: {'p': prim[b], 's': sec[b]} for b in SPLIT_BUCKETS[split]}
         return out
     except Exception as e:

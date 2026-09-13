@@ -206,3 +206,53 @@ class BigQueryConnection(models.Model):
 
 	def __str__(self):
 		return f'BigQuery connection ({self.company})'
+
+
+class GA4DailyRollup(models.Model):
+	"""Pre-aggregated one-day slice of a Premium company's GA4 export, so Premium
+	dashboards + the value pipeline read from here instead of scanning events_* on
+	every request. One row per (company, property, date); populated by the
+	`sync_ga4_rollups` management command. See docs/daily_rollup_cache_plan.md."""
+	FUND_KEYS = ('visits', 'visitors', 'new_visitors', 'carts', 'orders', 'units', 'sales')
+
+	company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='ga4_rollups')
+	property_id = models.CharField(max_length=50)
+	date = models.DateField()
+
+	# Daily fundamentals (hot path: fundamentals + derived cards).
+	visits = models.FloatField(default=0)
+	visitors = models.FloatField(default=0)
+	new_visitors = models.FloatField(default=0)
+	carts = models.FloatField(default=0)
+	orders = models.FloatField(default=0)
+	units = models.FloatField(default=0)
+	sales = models.FloatField(default=0)
+
+	# GA4-style period totals for Engage/Storyboard (sessions, engagedSessions,
+	# funnel event counts, ...), keyed exactly like fetch_period_totals.
+	totals = models.JSONField(default=dict, blank=True)
+	# {bucket: {fundamentals}} for device / channel splits.
+	device = models.JSONField(default=dict, blank=True)
+	channel = models.JSONField(default=dict, blank=True)
+	# {item_category: {orders, units, sales}}.
+	categories = models.JSONField(default=dict, blank=True)
+
+	# Item/order-level (unique_skus_weighted = per-order avg * orders, so summing
+	# across days/properties and dividing by total orders recovers the weighted avg).
+	item_orders = models.FloatField(default=0)
+	unique_skus_weighted = models.FloatField(default=0)
+	single_sku_orders = models.FloatField(default=0)
+
+	synced_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		verbose_name = 'GA4 daily rollup'
+		unique_together = [['company', 'property_id', 'date']]
+		indexes = [models.Index(fields=['company', 'property_id', 'date'])]
+		ordering = ['date']
+
+	def fundamentals(self):
+		return {k: getattr(self, k) for k in self.FUND_KEYS}
+
+	def __str__(self):
+		return f'{self.company} / {self.property_id} / {self.date}'

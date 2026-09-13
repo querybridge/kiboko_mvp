@@ -150,6 +150,11 @@ LOGIN_REDIRECT_URL = '/app/analytics/grow-sales/'
 GOOGLE_OAUTH_CLIENT_ID = ''
 GOOGLE_OAUTH_CLIENT_SECRET = ''
 GOOGLE_OAUTH_REDIRECT_URI = 'http://localhost:8000/auth/google/callback/'
+
+# Premium (BigQuery) reads prefer the GA4DailyRollup cache when it covers the
+# requested range; otherwise they fall back to a live BigQuery scan. Set False to
+# always read live (e.g. while validating the sync).
+GA4_USE_ROLLUP = True
 GOOGLE_OAUTH_SCOPES = [
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
