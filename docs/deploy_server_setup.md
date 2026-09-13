@@ -31,8 +31,9 @@ and isn't reachable).
 cd /home/kiboko/kiboko_mvp
 git pull
 python manage.py migrate
-python manage.py seed_organizations        # idempotent: orgs/companies/memberships
-python manage.py collectstatic --noinput   # if static changed
+python manage.py seed_organizations            # idempotent: orgs/companies/memberships
+python manage.py seed_metric_recommendations   # idempotent: Insights win/loss recommendations
+python manage.py collectstatic --noinput       # if static changed
 # confirm which DB Django reads:
 python manage.py shell -c "from django.conf import settings as s; print(s.DATABASES['default']['NAME'])"
 ```
