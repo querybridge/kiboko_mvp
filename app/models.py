@@ -2,6 +2,27 @@ from django.db import models
 from django.forms import ModelForm
 from django import forms
 from business_unit.models import BusinessUnit
+from app.insights import METRIC_CHOICES, DIRECTION_CHOICES
+
+
+class MetricRecommendation(models.Model):
+    """An admin-editable recommended action for a metric when it's winning or
+    losing. Surfaced on the Insights view with an 'Add Project' button. Seed ~4
+    per (metric, direction) via `manage.py seed_metric_recommendations`."""
+    metric = models.CharField(max_length=40, choices=METRIC_CHOICES)
+    direction = models.CharField(max_length=4, choices=DIRECTION_CHOICES,
+                                 help_text='win = amplify the gain; loss = mitigate the decline')
+    text = models.CharField(max_length=300)
+    order = models.PositiveIntegerField(default=0, help_text='Display order (A, B, C, ...)')
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['metric', 'direction', 'order', 'id']
+        verbose_name = 'Metric recommendation'
+
+    def __str__(self):
+        return f'{self.get_metric_display()} [{self.direction}] {self.text[:48]}'
+
 
 # Create your all your models here
 

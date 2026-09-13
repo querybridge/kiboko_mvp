@@ -18,6 +18,8 @@ urlpatterns = [
     path('manage-users/', views.manage_users, name='manage_users'),
     path('billing/', views.billing, name='billing'),
     path('getting-started/', views.getting_started, name='getting_started'),
+    path('insights/', views.insights, name='insights'),
+    path('insights/add-project/', views.insights_add_project, name='insights_add_project'),
     # Analytics dashboards (Analytics == Grow Sales landing page)
     path('analytics/', views.analytics_grow_sales, name='analytics'),
     path('analytics/performance-story/', views.analytics_performance_story, name='analytics_performance_story'),

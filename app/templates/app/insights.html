@@ -1,0 +1,62 @@
+{% extends "app/base_site.html" %}
+{% block title %} Insights {% endblock title %}
+{% block stylesheets %}
+  {{ block.super }}
+  {% include "app/analytics/_styles.html" %}
+  <style>
+    #analytics-page .ins-intro { color: var(--ac-secondary, #C8BCDF); margin: 6px 0 18px; }
+    .ins-col h4 { font-weight: 800; letter-spacing: .4px; margin: 6px 0 14px; }
+    .ins-wins h4 { color: #2ecc71; } .ins-losses h4 { color: #e74c3c; }
+    .ins-card { border: 1px solid var(--ac-edge, rgba(214,197,247,0.16)); border-radius: 14px;
+      padding: 14px 16px; margin-bottom: 16px; background: var(--ac-panel, rgba(255,255,255,0.02)); }
+    .ins-card.ins-win { border-left: 4px solid #2ecc71; }
+    .ins-card.ins-loss { border-left: 4px solid #e74c3c; }
+    .ins-card-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+    .ins-metric { font-weight: 700; font-size: 15px; flex: 1; }
+    .ins-value { font-variant-numeric: tabular-nums; opacity: .9; }
+    .ins-delta { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .ins-win .ins-delta { color: #2ecc71; } .ins-loss .ins-delta { color: #e74c3c; }
+    .ins-recs { margin: 0; padding-left: 22px; }
+    .ins-recs li { margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; }
+    .ins-rec-text { flex: 1; }
+    .ins-rec-form { margin: 0; white-space: nowrap; }
+  </style>
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main" id="analytics-page">
+  <div class="page-title"><div class="title_left"><h3>Insights <small>Wins &amp; Losses</small></h3></div></div>
+  <div class="clearfix"></div>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% include "app/analytics/_filter.html" %}
+  <p class="ins-intro">Metrics that moved more than {{ win_threshold }}% versus the comparison period.
+     Each comes with ideas to keep a win going or turn a loss around — click <strong>Add Project</strong>
+     to drop any into the backlog and prioritize it.</p>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="ins-col ins-wins">
+        <h4><i class="fa fa-arrow-up"></i> Wins</h4>
+        {% for w in wins %}{% include "app/_insight_card.html" with item=w %}
+        {% empty %}<p class="text-muted">No metric is up more than {{ win_threshold }}% this period.</p>{% endfor %}
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="ins-col ins-losses">
+        <h4><i class="fa fa-arrow-down"></i> Losses</h4>
+        {% for l in losses %}{% include "app/_insight_card.html" with item=l %}
+        {% empty %}<p class="text-muted">No metric is down more than {{ win_threshold }}% this period.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+{% block javascripts %}
+  {{ block.super }}
+  {% include "app/analytics/_scripts.html" %}
+{% endblock javascripts %}

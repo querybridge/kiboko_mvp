@@ -1735,3 +1735,60 @@ def getting_started(request):
     return render(request, 'app/getting_started.html', {
         'title': 'Getting Started', 'org': org, 'noun': noun, 'steps': steps,
         'done_count': sum(1 for s in steps if s['done']), 'total': len(steps)})
+
+
+@login_required
+def insights(request):
+    """Wins & Losses: metrics up/down >=10% vs the comparison period, each with
+    recommended actions (admin-editable) that can be promoted to projects. Bridges
+    Analytics and Project Prioritization; honors the current scope + period."""
+    from app import analytics_data as ad, insights as I
+    primary, compare, ctx = _analytics_filter(request)
+    rows = _ga4_rows(request, primary, compare)
+    metrics = ad.build_metrics(primary, compare, rows=rows)
+    wins, losses = I.classify(metrics)
+    ctx.update({'title': 'Insights', 'wins': wins, 'losses': losses,
+                'win_threshold': int(I.WIN_THRESHOLD)})
+    return render(request, 'app/insights.html', ctx)
+
+
+@login_required
+def insights_add_project(request):
+    """Create a draft backlog project (Action) from a recommendation, scoped to
+    the current business unit and linked to the metric's objective. Unscored, so
+    it lands in the backlog to be scored in Project Prioritization."""
+    if request.method != 'POST':
+        return redirect('app:insights')
+    from app import insights as I
+    from app.models import MetricRecommendation
+    from project.models import Action
+    from strategy.models import Project, Objective
+    from business_unit.models import Department
+
+    rec = MetricRecommendation.objects.filter(pk=request.POST.get('recommendation_id')).first()
+    if not rec:
+        messages.error(request, 'Recommendation not found.')
+        return redirect('app:insights')
+
+    project, _ = Project.objects.get_or_create(
+        name='Insights Recommendations',
+        defaults={'why': 'Projects created from Insights recommendations.'})
+    profile = getattr(request.user, 'profile', None)
+    dept = (profile.department if profile and profile.department_id else None) or Department.objects.first()
+    if dept is None:
+        dept, _ = Department.objects.get_or_create(name='General')
+
+    vid = scoped_vertical_id(request)
+    bu = BusinessUnit.objects.filter(pk=vid).first() if vid else None
+    kw = I.objective_keyword(rec.metric)
+    objective = Objective.objects.filter(name__icontains=kw).first() if kw else None
+    metric_label = dict(I.METRIC_CHOICES).get(rec.metric, rec.metric)
+    moving = 'improving' if rec.direction == 'win' else 'declining'
+
+    Action.objects.create(
+        project=project, owner=request.user, business_unit=dept,
+        name=rec.text[:350],
+        why=f'From Insights: {metric_label} is {moving}. {rec.text}'[:500],
+        vertical=bu, objective=objective, value=0)
+    messages.success(request, f'Added to backlog: "{rec.text}". Score it in Project Prioritization.')
+    return redirect(request.POST.get('next') or 'app:insights')

@@ -2,6 +2,16 @@ from django.contrib import admin
 from strategy.models import Project, ProjectComment, AnnualGoals, Objective, Metric, KPI, Measure
 from project.models import Action, ActionComment
 from business_unit.models import Department, BusinessUnit, Organization, Company, CompanyMembership
+from app.models import MetricRecommendation
+
+
+@admin.register(MetricRecommendation)
+class MetricRecommendationAdmin(admin.ModelAdmin):
+    list_display = ('metric', 'direction', 'order', 'text', 'active')
+    list_filter = ('metric', 'direction', 'active')
+    list_editable = ('order', 'active')
+    search_fields = ('text',)
+    ordering = ('metric', 'direction', 'order')
 
 # Register your models here.
 

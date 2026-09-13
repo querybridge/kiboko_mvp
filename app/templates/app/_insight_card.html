@@ -1,0 +1,23 @@
+{# One win/loss card: metric name, value, delta + lettered recommendations with Add Project. Expects `item`. #}
+<div class="ins-card ins-{{ item.direction }}">
+  <div class="ins-card-head">
+    <span class="ins-metric">{{ item.label }}</span>
+    <span class="ins-value">{{ item.value }}</span>
+    <span class="ins-delta">{% if item.delta > 0 %}+{% endif %}{{ item.delta }}%</span>
+  </div>
+  <ol class="ins-recs" type="A">
+    {% for rec in item.recommendations %}
+    <li>
+      <span class="ins-rec-text">{{ rec.text }}</span>
+      <form method="post" action="{% url 'app:insights_add_project' %}" class="ins-rec-form">
+        {% csrf_token %}
+        <input type="hidden" name="recommendation_id" value="{{ rec.id }}">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="btn btn-xs btn-primary"><i class="fa fa-plus"></i> Add Project</button>
+      </form>
+    </li>
+    {% empty %}
+    <li class="text-muted">No recommendations yet — add some in the admin.</li>
+    {% endfor %}
+  </ol>
+</div>
