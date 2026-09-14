@@ -1825,64 +1825,73 @@ def settings_score_weights(request):
 
 @login_required
 def score_projects(request):
-    """Score the six BVM criteria for approved projects awaiting a score.
+    """Anonymous, all-hands BVM scoring.
 
-    Each user sees only the projects in their scope: executives (and org admins /
-    superusers) score everything they can see; a Business Unit Leader scores only
-    within the units they lead. The queue is ordered by projected value so the
-    highest-stakes decisions get scored first.
+    Every pertinent user -- the members of a project's business unit plus the
+    company's executives -- votes on each project. The project's score is the
+    average of all votes and it only advances to Scored once everyone has voted.
+    A per-project progress bar shows how many eligible voters have submitted.
+    You see and edit only your own vote; individual votes are never shown.
     """
-    from project.services.kanban import scorable_projects, can_score, is_executive, LANE_STATUS
-    from project.scoring import CRITERIA
-    from project.models import ScoringWeights
+    from project.services.kanban import LANE_STATUS
+    from project.services import voting
+    from project.scoring import CRITERIA, CRITERIA_META
+    from project.models import ScoringWeights, ScoreVote
 
     if request.method == 'POST':
         pid = request.POST.get('project_id')
         proj = Action.objects.filter(id=pid, archived=False).first()
-        if not proj or not can_score(request.user, proj):
-            messages.error(request, 'You are not allowed to score that project.')
+        if not proj or not voting.is_eligible(proj, request.user):
+            messages.error(request, 'You are not among the voters for that project.')
             return redirect(request.get_full_path())
+        values = {}
         for c in CRITERIA:
             try:
-                val = int(request.POST.get(c, 0))
+                values[c] = int(request.POST.get(c, 0))
             except (TypeError, ValueError):
-                val = 0
-            setattr(proj, c, max(0, min(10, val)))
-        # Scoring lands the project in the Scored lane; a BU lead promotes it on
-        # to Executive Approval from the Kanban.
-        proj.status = LANE_STATUS['scored']
-        proj.save()
-        messages.success(request, f'Scored “{proj.name or "project"}” — moved to Scored.')
+                values[c] = 0
+        _, finalized = voting.record_vote(proj, request.user, values)
+        if finalized:
+            messages.success(request, f'All scores are in — “{proj.name or "project"}” moved to Scored.')
+        else:
+            prog = voting.vote_progress(proj)
+            messages.success(request, f'Your score was saved ({prog["voted"]} of {prog["total"]} voted).')
         return redirect(request.get_full_path())
 
     vertical_id = scoped_vertical_id(request)
-    qs = Action.objects.filter(
+    company_id = scoped_company_id(request)
+    qs = _scope_to(Action.objects.filter(
         archived=False, approved=True, status=LANE_STATUS['ready_to_score'],
-    ).select_related('owner', 'objective', 'vertical', 'vertical__company', 'business_unit')
-    if vertical_id:
-        qs = qs.filter(vertical_id=vertical_id)
-    qs = scorable_projects(request.user, qs)
+    ).select_related('owner', 'objective', 'vertical', 'vertical__company', 'business_unit'),
+        vertical_id, company_id)
 
-    # Highest projected value first; alignment as the tiebreaker so like work
-    # clusters. Cards with a value get scored before the unvalued ones.
-    projects = sorted(
-        qs, key=lambda p: (-(p.value or p.project_value_total or 0), p.aee_alignment or 'zzz'),
-    )
-    # Each card carries its own company's weights (the live preview reads them
-    # per-card), so a project scores by the model its company configured.
-    for p in projects:
-        company = p.vertical.company if p.vertical else None
-        crit = _scoring_criteria(ScoringWeights.for_company(company))
-        p.score_rows = [dict(c, value=getattr(p, c['field'], 0) or 0) for c in crit]
+    # Only projects the current user is a voter on, ordered: not-yet-voted first,
+    # then by projected value so the highest-stakes decisions surface.
+    my_votes = {v.action_id: v for v in ScoreVote.objects.filter(user=request.user)}
+    projects = []
+    for p in qs:
+        eligible = voting.eligible_scorer_ids(p)
+        if request.user.id not in eligible:
+            continue
+        p.progress = voting.vote_progress(p, eligible=eligible)
+        p.my_vote = my_votes.get(p.id)
+        p.has_voted = p.my_vote is not None
+        crit = _scoring_criteria(ScoringWeights.for_company(p.vertical.company if p.vertical else None))
+        vote_vals = p.my_vote.as_values() if p.my_vote else {}
+        p.score_rows = [dict(c, value=vote_vals.get(c['field'], 0)) for c in crit]
+        projects.append(p)
+
+    projects.sort(key=lambda p: (p.has_voted, -(p.value or p.project_value_total or 0),
+                                 p.aee_alignment or 'zzz'))
     total_value = sum((p.value or p.project_value_total or 0) for p in projects)
+    pending = sum(1 for p in projects if not p.has_voted)
 
-    from project.scoring import CRITERIA_META
     return render(request, 'app/score_projects.html', {
         'title': 'Score Projects',
         'projects': projects,
         'criteria_labels': [CRITERIA_META[f][0] for f in CRITERIA],
         'total_value': total_value,
-        'can_score_any': is_executive(request.user) or bool(projects),
+        'pending_count': pending,
     })
 
 

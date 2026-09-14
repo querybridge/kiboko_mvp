@@ -100,17 +100,26 @@ Leader, BUU=Business Unit User, Ana=Analyst, Dev=Developer, Sup=Super User.)
   GA4 scoping — if a Premium client needs per-user business-unit visibility, that
   still requires Kiboko-side scoping (`CompanyMembership.allowed_bus`).
 
-## Scoring (Score Projects view)
-Approved projects in the **Ready to Score** lane surface in Score Projects, ordered
-by projected value (highest stakes first). Saving a score computes the weighted
-0–10 (`project.scoring.WEIGHTS`) and moves the card to **Scored**; a BU lead then
-promotes it to Executive Approval from the Kanban. Scope:
-- **Executives / org admins / superusers** score every project across the
-  companies they can see (`business_unit.access.visible_companies`).
-- **Business Unit Leaders** score only within the units they lead — any
-  `BusinessUnit.general_manager` unit, plus (with the BUL role) the units their
-  company membership scopes them to (`kanban.leadable_bu_ids`).
-- **Everyone else** sees an empty queue.
+## Scoring (Score Projects view) — anonymous, all-hands voting
+Scoring is a **vote**, not a single edit. Every *pertinent* user scores each
+approved project in the **Ready to Score** lane, and the project's consensus
+score is the **average** of all votes. This deliberately dilutes the
+highest-paid person's opinion so vanity/squirrel projects can't run wild.
+
+- **Who votes (eligible voters):** the members of the project's business unit
+  (company members scoped to that unit) **plus** the company's executives, plus
+  the unit's general manager (`voting.eligible_scorer_ids`). A user only sees the
+  projects they're a voter on; individual votes are never shown (anonymous).
+- **Each user submits their own vote** on the six criteria (0–10). They can
+  update it until the project finalizes. A per-project progress bar shows how
+  many eligible voters have submitted (`voting.vote_progress`).
+- **Finalize:** once *every* eligible voter has voted, each criterion is set to
+  the average across votes and the project moves to **Scored**
+  (`voting.finalize_if_complete`). Until then it stays in Ready to Score with no
+  score. A BU lead then promotes it to Executive Approval from the Kanban.
+- Votes live in `project.ScoreVote` (one row per action+user); the averaged
+  criteria on the `Action` are weighted by the company's model to produce the
+  0–10 `normalized_score`.
 
 **Score weights (Settings › Score Weights).** The six criteria weights are set
 **per company** (`project.ScoringWeights`, one row per Company; unset companies

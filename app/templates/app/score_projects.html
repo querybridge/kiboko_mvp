@@ -38,6 +38,13 @@
   .sc-foot { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); padding:12px 18px; }
   .sc-foot .wscore { color:var(--text-secondary); }
   .sc-foot .wscore .n { font-size:22px; font-weight:700; color:var(--text-primary); }
+  /* Voting progress */
+  .sc-progress { min-width:150px; text-align:right; }
+  .sc-progress .pgt { font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+  .sc-progress .pgbar { height:6px; border-radius:3px; background:var(--bg-elevated); overflow:hidden; }
+  .sc-progress .pgfill { height:100%; background:var(--accent-primary); border-radius:3px; transition:width .3s; }
+  .voted-badge { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px;
+                 background:rgba(107,194,140,0.16); color:var(--status-success); border:1px solid rgba(107,194,140,0.4); }
 </style>
 {% endblock stylesheets %}
 {% block content %}
@@ -60,12 +67,15 @@
       <div class="x_panel">
         <div class="x_content">
           <div class="score-summary">
-            <div><span class="big">{{ projects|length }}</span> project{{ projects|length|pluralize }} awaiting a score</div>
+            <div><span class="big">{{ pending_count }}</span> awaiting your score</div>
+            <div><span class="big">{{ projects|length }}</span> total you vote on</div>
             <div><span class="big">${{ total_value|floatformat:0|intcomma }}</span> <span style="color:var(--text-muted);">projected value at stake</span></div>
           </div>
           <p class="crit-legend">
             Weighted 0&ndash;10 &middot; {% for label in criteria_labels %}<span>{{ label }}</span>{% endfor %}
-            <br>Weights are set per company in Settings &rsaquo; Score Weights; each card shows its company's weights.
+            <br>Scores are anonymous. Everyone in the business unit plus executives votes; a project moves to
+            Scored only once all votes are in, and its score is the average. Weights are set per company in
+            Settings &rsaquo; Score Weights.
           </p>
         </div>
       </div>
@@ -89,6 +99,7 @@
             {% if p.why %}<p class="sc-why">{{ p.why|truncatechars:220 }}</p>{% endif %}
           </div>
           <div class="sc-value">
+            {% if p.has_voted %}<div style="margin-bottom:6px;"><span class="voted-badge"><i class="fa fa-check"></i> You voted</span></div>{% endif %}
             <div class="amt">${{ p.value|default:p.project_value_total|floatformat:0|intcomma }}</div>
             <div class="lbl">Projected value</div>
           </div>
@@ -106,8 +117,12 @@
           {% endfor %}
         </div>
         <div class="sc-foot">
-          <div class="wscore">Weighted score: <span class="n">0.0</span> <span style="color:var(--text-muted);">/ 10</span></div>
-          <button type="submit" class="btn btn-success">Save score &amp; move to Scored</button>
+          <div class="wscore">Your weighted score: <span class="n">0.0</span> <span style="color:var(--text-muted);">/ 10</span></div>
+          <div class="sc-progress">
+            <div class="pgt">{{ p.progress.voted }} of {{ p.progress.total }} voted &middot; {{ p.progress.pct }}%</div>
+            <div class="pgbar"><div class="pgfill" style="width:{{ p.progress.pct }}%;"></div></div>
+          </div>
+          <button type="submit" class="btn btn-success">{% if p.has_voted %}Update Score{% else %}Save Score{% endif %}</button>
         </div>
       </form>
       {% endfor %}
@@ -116,11 +131,7 @@
     <div class="row"><div class="col-md-12">
       <div class="x_panel"><div class="x_content" style="padding:40px; text-align:center; color:var(--text-secondary);">
         <i class="fa fa-check-circle" style="font-size:36px; margin-bottom:12px; color:var(--status-success);"></i>
-        {% if can_score_any %}
-        <p>Nothing to score right now. Projects appear here once a business-unit lead approves them.</p>
-        {% else %}
-        <p>You don't have any projects to score. Scoring is done by executives and business-unit leads.</p>
-        {% endif %}
+        <p>No projects need your score right now. Approved projects in your business unit appear here for voting.</p>
       </div></div>
     </div></div>
     {% endif %}

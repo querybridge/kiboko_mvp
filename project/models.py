@@ -171,3 +171,32 @@ class ScoringWeights(models.Model):
 
 	def __str__(self):
 		return f'Score weights for {self.company}'
+
+
+class ScoreVote(models.Model):
+	"""One user's anonymous BVM vote on a project.
+
+	Every pertinent user -- the members of the project's business unit plus the
+	company's executives -- scores each project. The project's consensus score is
+	the average of all eligible voters' ratings, and it only advances to Scored
+	once everyone has voted. Individual votes are never shown (anonymous), which
+	keeps the highest-paid person's opinion from dominating."""
+	action = models.ForeignKey('project.Action', on_delete=models.CASCADE, related_name='score_votes')
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='score_votes')
+	customer_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+	business_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+	cost_savings = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+	operational_cost = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+	business_risk = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+	level_of_effort = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+	created = models.DateTimeField(auto_now_add=True)
+	updated = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		unique_together = [['action', 'user']]
+
+	def as_values(self):
+		return {c: getattr(self, c) for c in CRITERIA}
+
+	def __str__(self):
+		return f'{self.user} scored {self.action}'

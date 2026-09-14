@@ -92,44 +92,9 @@ def is_bul_or_higher(user, project):
     return is_executive(user) or can_approve(user, project)
 
 
-def can_score(user, project):
-    """Score the six criteria -- Account Owner / Executive / BU Lead / Super User."""
-    return is_bul_or_higher(user, project)
-
-
-def leadable_bu_ids(user):
-    """BusinessUnit ids a (non-executive) user leads -- the scoring scope for a
-    Business Unit Leader. Includes any unit they're the general_manager of, plus,
-    if they hold the BUL role, the units their company memberships scope them to
-    (an empty allowed_bus means the whole company's units)."""
-    from business_unit.models import BusinessUnit
-    ids = set(BusinessUnit.objects.filter(general_manager=user).values_list('id', flat=True))
-    prof = getattr(user, 'profile', None)
-    if prof and prof.has_role('business_unit_leader'):
-        for m in user.company_memberships.select_related('company').all():
-            company_bu_ids = set(m.company.verticals.values_list('id', flat=True))
-            scoped = m.allowed_bu_ids()  # None = all of the company's units
-            ids |= company_bu_ids if scoped is None else (scoped & company_bu_ids)
-    return ids
-
-
-def scorable_projects(user, qs):
-    """Narrow a project queryset to the ones `user` may score.
-
-    Executives (and org admins / superusers) score everything across the
-    companies they can see; a Business Unit Leader scores only within the units
-    they lead. Everyone else gets nothing.
-    """
-    if not user or not getattr(user, 'is_authenticated', False):
-        return qs.none()
-    if is_executive(user):
-        from business_unit.access import visible_companies
-        company_ids = list(visible_companies(user).values_list('id', flat=True))
-        return qs.filter(vertical__company_id__in=company_ids)
-    bu_ids = leadable_bu_ids(user)
-    if not bu_ids:
-        return qs.none()
-    return qs.filter(vertical_id__in=bu_ids)
+# Scoring itself is anonymous, all-hands voting -- see project.services.voting.
+# A project's eligible voters are its business-unit members plus company execs,
+# and it advances to Scored only once everyone has voted.
 
 
 # Forward order of the flow lanes (Blocked is out-of-band).
