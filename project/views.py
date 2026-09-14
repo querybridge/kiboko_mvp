@@ -364,14 +364,14 @@ def kanban_move(request):
     if not ok:
         return JsonResponse({'ok': False, 'error': err}, status=422)
 
-    # Recompute all lane totals after the move
-    vertical_id = data.get('vertical_id')
+    # Recompute lane totals/counts after the move -- scope to the SAME vertical
+    # the board was loaded with (from the session), matching kanban_view. The
+    # client's ?vertical= URL param may be absent (e.g. navigated via sidebar),
+    # which previously made the recompute global and returned wrong counts.
+    vertical_id = _get_vertical_id(request)
     qs = Action.objects.filter(archived=False).exclude(status__in=NON_KANBAN_STATUSES)
     if vertical_id:
-        try:
-            qs = qs.filter(vertical_id=int(vertical_id))
-        except (ValueError, TypeError):
-            pass
+        qs = qs.filter(vertical_id=vertical_id)
 
     grouped = group_projects(qs)
     lane_totals = compute_all_lane_totals(grouped)
