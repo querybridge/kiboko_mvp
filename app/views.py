@@ -25,7 +25,7 @@ from app.forms import StrategyForm
 from users.models import ROLE_CHOICES, UserProfile
 from app.models import MonthlyGoal, DailyActual
 from business_unit.models import Department, BusinessUnit
-from business_unit.scope import scoped_vertical_id
+from business_unit.scope import scoped_vertical_id, scoped_company_id
 from project.models import Action
 from strategy.models import Project, Objective, Metric, KPI
 from project.views import project_detail
@@ -838,16 +838,19 @@ def edit_goals(request):
     prev_year = year - 2
 
     vertical_id = scoped_vertical_id(request)
+    company_id = scoped_company_id(request)
 
-    def _filter_goals(qs):
+    # Scope to the selected business unit, or (on the Summary roll-up) to the
+    # selected company/client so goals never mix across clients.
+    def _scope(qs):
         if vertical_id:
             return qs.filter(vertical_id=vertical_id)
+        if company_id:
+            return qs.filter(vertical__company_id=company_id)
         return qs
 
-    def _filter_actuals(qs):
-        if vertical_id:
-            return qs.filter(vertical_id=vertical_id)
-        return qs
+    _filter_goals = _scope
+    _filter_actuals = _scope
 
     is_summary = vertical_id is None
 
