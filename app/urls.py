@@ -16,6 +16,7 @@ urlpatterns = [
     path('work-in-progress/', views.work_in_progress, name='work_in_progress'),
     path('data-connection/', views.data_connection, name='data_connection'),
     path('manage-users/', views.manage_users, name='manage_users'),
+    path('score-weights/', views.settings_score_weights, name='settings_score_weights'),
     path('billing/', views.billing, name='billing'),
     path('getting-started/', views.getting_started, name='getting_started'),
     path('score-projects/', views.score_projects, name='score_projects'),

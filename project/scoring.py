@@ -1,5 +1,7 @@
-# Scoring weights for the 6 BVM criteria (must sum to 100)
-WEIGHTS = {
+# Default weights for the 6 BVM criteria (must sum to 100). An organization can
+# override these via ScoringWeights (Settings -> Score Weights); this dict is the
+# fallback when an org hasn't customized its model.
+DEFAULT_WEIGHTS = {
     'customer_value': 25,
     'business_value': 40,
     'cost_savings': 10,
@@ -7,8 +9,21 @@ WEIGHTS = {
     'business_risk': 5,
     'level_of_effort': 10,
 }
+# Back-compat alias (older imports referenced WEIGHTS).
+WEIGHTS = DEFAULT_WEIGHTS
 
-CRITERIA = list(WEIGHTS.keys())
+CRITERIA = list(DEFAULT_WEIGHTS.keys())
+
+# Human labels + a one-line hint for each criterion (used by the scoring UI and
+# the Score Weights settings page, so both stay in sync).
+CRITERIA_META = {
+    'customer_value':  ('Customer Value',   'Impact on the customer experience'),
+    'business_value':  ('Business Value',   'Revenue / strategic value to the business'),
+    'cost_savings':    ('Cost Savings',     'Direct cost the project removes'),
+    'operational_cost':('Operational Cost', 'Efficiency it adds to operations'),
+    'business_risk':   ('Business Risk',    'How risky it is to take on — unproven tech, no in-house expertise (higher lowers the score)'),
+    'level_of_effort': ('Level of Effort',  'Feasibility (10 = quick win)'),
+}
 
 # Criteria the user rates as a *magnitude* where a higher rating is WORSE, so it
 # should pull the weighted score DOWN. business_risk = how risky the project is
@@ -18,18 +33,20 @@ CRITERIA = list(WEIGHTS.keys())
 INVERTED = {'business_risk'}
 
 
-def weighted_score(values):
+def weighted_score(values, weights=None):
     """Return the weighted BVM score on a 0-10 scale.
 
-    *values* is a dict mapping criterion name -> int (0-10). Positive criteria
-    contribute their value; INVERTED criteria (business_risk) contribute
-    (10 - value), so higher risk lowers the score. An unscored project (all
-    zeros) scores 0 -- the inversion only applies once something is rated.
+    *values* maps criterion name -> int (0-10). *weights* maps criterion name ->
+    weight (defaults to DEFAULT_WEIGHTS). Positive criteria contribute their
+    value; INVERTED criteria (business_risk) contribute (10 - value), so higher
+    risk lowers the score. An unscored project (all zeros) scores 0 -- the
+    inversion only applies once something is rated.
     """
-    if not any(values.get(k, 0) for k in WEIGHTS):
+    weights = weights or DEFAULT_WEIGHTS
+    if not any(values.get(k, 0) for k in weights):
         return 0.0
     total = 0
-    for k, w in WEIGHTS.items():
+    for k, w in weights.items():
         v = values.get(k, 0)
         if k in INVERTED:
             v = 10 - v

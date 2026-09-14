@@ -108,6 +108,14 @@ promotes it to Executive Approval from the Kanban. Scope:
   company membership scopes them to (`kanban.leadable_bu_ids`).
 - **Everyone else** sees an empty queue.
 
+**Score weights (Settings › Score Weights).** The six criteria weights are set
+**per company** (`project.ScoringWeights`, one row per Company; unset companies
+use `scoring.DEFAULT_WEIGHTS`). Weights are percentages that must sum to 100 and
+are applied by `Action.save()` via the action's company. **Only executives and
+org admins** may edit them: a superuser (all companies), an org admin (their
+orgs' companies), or an Executive-role holder (companies they belong to). A
+project re-scores under its company's current weights the next time it is saved.
+
 ## Open items
 - **Per-criterion scoring** — the current view scores all six criteria together
   (single weighted save). The per-criterion table above (who may set which

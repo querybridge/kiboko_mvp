@@ -7,7 +7,7 @@ from multiselectfield import MultiSelectField
 from strategy.models import Project, Objective, Measure
 from business_unit.models import Department, BusinessUnit, Team
 from .project_field_options import locations, status_options, STRATEGY_TAG_CHOICES, AEE_ALIGNMENT_CHOICES
-from .scoring import CRITERIA, weighted_score
+from .scoring import CRITERIA, DEFAULT_WEIGHTS, weighted_score
 
 # Create your all your models here
 
@@ -77,10 +77,16 @@ class Action(models.Model):
 		instance._db_status = instance.status
 		return instance
 
+	def _company(self):
+		"""The Company this action rolls up to (via its BusinessUnit), or None."""
+		bu = self.vertical
+		return getattr(bu, 'company', None) if bu else None
+
 	def save(self, *args, **kwargs):
-		# Compute weighted score from 6 criteria -> 0-10 scale
+		# Compute weighted score from 6 criteria -> 0-10 scale, using this
+		# company's configured weights (falls back to the platform defaults).
 		values = {c: getattr(self, c, 0) or 0 for c in CRITERIA}
-		score = weighted_score(values)
+		score = weighted_score(values, weights=ScoringWeights.for_company(self._company()))
 		self.normalized_score = Decimal(str(score)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
 
 		# Status is the source of truth for the Kanban column; is_blocked mirrors
@@ -128,3 +134,40 @@ class ActionComment(models.Model):
 
 	def __str__(self):
 		return self.text
+
+
+class ScoringWeights(models.Model):
+	"""Per-company weights for the six BVM scoring criteria.
+
+	Executives and org admins tune a company's model in Settings -> Score
+	Weights. A company without a row uses scoring.DEFAULT_WEIGHTS. Weights are
+	percentages and must sum to 100 (the weighted score divides by 100 to land
+	on a 0-10 scale)."""
+	company = models.OneToOneField('business_unit.Company', on_delete=models.CASCADE,
+	                               related_name='scoring_weights')
+	customer_value = models.PositiveSmallIntegerField(default=DEFAULT_WEIGHTS['customer_value'])
+	business_value = models.PositiveSmallIntegerField(default=DEFAULT_WEIGHTS['business_value'])
+	cost_savings = models.PositiveSmallIntegerField(default=DEFAULT_WEIGHTS['cost_savings'])
+	operational_cost = models.PositiveSmallIntegerField(default=DEFAULT_WEIGHTS['operational_cost'])
+	business_risk = models.PositiveSmallIntegerField(default=DEFAULT_WEIGHTS['business_risk'])
+	level_of_effort = models.PositiveSmallIntegerField(default=DEFAULT_WEIGHTS['level_of_effort'])
+	updated = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		verbose_name = 'Scoring Weights'
+		verbose_name_plural = 'Scoring Weights'
+
+	def as_dict(self):
+		return {c: getattr(self, c) for c in CRITERIA}
+
+	@classmethod
+	def for_company(cls, company):
+		"""The weight dict for a company -- its saved row, or the defaults."""
+		if company is not None:
+			row = cls.objects.filter(company=company).first()
+			if row:
+				return row.as_dict()
+		return dict(DEFAULT_WEIGHTS)
+
+	def __str__(self):
+		return f'Score weights for {self.company}'

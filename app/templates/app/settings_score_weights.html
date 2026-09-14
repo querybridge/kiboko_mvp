@@ -1,0 +1,112 @@
+{% extends "app/base_site.html" %}
+{% block title %} Score Weights {% endblock title %}
+{% block stylesheets %}
+{{ block.super }}
+<style>
+  .sw-intro { color:var(--text-secondary); margin-bottom:18px; }
+  .sw-table { width:100%; }
+  .sw-table td, .sw-table th { padding:8px 10px; border-bottom:1px solid var(--border-subtle); vertical-align:middle; }
+  .sw-table th { color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; text-align:left; }
+  .sw-crit b { color:var(--text-primary); }
+  .sw-crit small { display:block; color:var(--text-muted); font-size:11px; }
+  .sw-weight { width:90px; text-align:right; }
+  .sw-weight input { width:72px; text-align:right; display:inline-block; }
+  .sw-total-row td { border-bottom:none; padding-top:12px; }
+  .sw-total { font-size:18px; font-weight:700; }
+  .sw-total.ok { color:var(--status-success); }
+  .sw-total.bad { color:var(--status-danger); }
+  .sw-badge { font-size:11px; padding:2px 8px; border-radius:10px; background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--border-subtle); }
+  .sw-badge.custom { color:var(--accent-secondary); }
+</style>
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left"><h3>Score Weights <small>Business Value Model</small></h3></div>
+      <div class="clearfix"></div>
+    </div>
+
+    {% if messages %}
+    <div class="row"><div class="col-md-12">
+      {% for message in messages %}
+      <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}" role="alert">{{ message }}</div>
+      {% endfor %}
+    </div></div>
+    {% endif %}
+
+    <div class="row"><div class="col-md-12">
+      <p class="sw-intro">
+        Set how much each criterion counts toward a project's weighted score, per company.
+        Weights are percentages and must total <strong>100</strong>. Higher-risk projects
+        score lower (Business Risk is inverted). Changes apply to projects the next time they're scored.
+      </p>
+    </div></div>
+
+    {% for entry in companies_ctx %}
+    <div class="row"><div class="col-md-8 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title">
+          <h2>{{ entry.company.name }}
+            <small><span class="sw-badge {% if entry.customized %}custom{% endif %}">{% if entry.customized %}Customized{% else %}Default model{% endif %}</span></small>
+          </h2>
+          <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+          <form method="post" class="sw-form">
+            {% csrf_token %}
+            <input type="hidden" name="company" value="{{ entry.company.id }}">
+            <table class="sw-table">
+              <thead><tr><th>Criterion</th><th style="text-align:right;">Weight</th></tr></thead>
+              <tbody>
+                {% for r in entry.rows %}
+                <tr>
+                  <td class="sw-crit"><b>{{ r.label }}</b><small>{{ r.hint }}</small></td>
+                  <td class="sw-weight">
+                    <input type="number" min="0" max="100" step="1" class="form-control sw-input"
+                           name="{{ r.field }}" value="{{ r.weight }}" oninput="swTotal(this.closest('form'));"> %
+                  </td>
+                </tr>
+                {% endfor %}
+                <tr class="sw-total-row">
+                  <td style="text-align:right; color:var(--text-secondary);">Total</td>
+                  <td class="sw-weight"><span class="sw-total">0</span> %</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+              <span class="sw-warn" style="color:var(--status-danger); font-size:12px;"></span>
+              <button type="submit" class="btn btn-success">Save weights</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div></div>
+    {% empty %}
+    <div class="row"><div class="col-md-12">
+      <div class="alert alert-info">You don't administer any companies yet.</div>
+    </div></div>
+    {% endfor %}
+
+  </div>
+</div>
+{% endblock content %}
+{% block javascripts %}
+{{ block.super }}
+<script>
+  function swTotal(form) {
+    var total = 0;
+    form.querySelectorAll('.sw-input').forEach(function (i) {
+      total += parseInt(i.value, 10) || 0;
+    });
+    var el = form.querySelector('.sw-total');
+    el.textContent = total;
+    var ok = total === 100;
+    el.classList.toggle('ok', ok);
+    el.classList.toggle('bad', !ok);
+    form.querySelector('.sw-warn').textContent = ok ? '' : 'Must total 100';
+    form.querySelector('button[type=submit]').disabled = !ok;
+  }
+  document.querySelectorAll('form.sw-form').forEach(swTotal);
+</script>
+{% endblock javascripts %}

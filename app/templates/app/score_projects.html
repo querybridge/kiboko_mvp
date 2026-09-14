@@ -64,8 +64,8 @@
             <div><span class="big">${{ total_value|floatformat:0|intcomma }}</span> <span style="color:var(--text-muted);">projected value at stake</span></div>
           </div>
           <p class="crit-legend">
-            Weighted 0&ndash;10 &middot;
-            {% for c in criteria %}<span>{{ c.label }} <b>{{ c.weight }}%</b></span>{% endfor %}
+            Weighted 0&ndash;10 &middot; {% for label in criteria_labels %}<span>{{ label }}</span>{% endfor %}
+            <br>Weights are set per company in Settings &rsaquo; Score Weights; each card shows its company's weights.
           </p>
         </div>
       </div>

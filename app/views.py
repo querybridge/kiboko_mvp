@@ -1734,20 +1734,82 @@ def getting_started(request):
         'done_count': sum(1 for s in steps if s['done']), 'total': len(steps)})
 
 
-# The six BVM criteria, in scoring order, with weight and a one-line hint. The
-# weights come from project.scoring.WEIGHTS (the single source of truth).
-def _scoring_criteria():
-    from project.scoring import WEIGHTS, INVERTED
-    meta = [
-        ('customer_value',  'Customer Value',   'Impact on the customer experience'),
-        ('business_value',  'Business Value',   'Revenue / strategic value to the business'),
-        ('cost_savings',    'Cost Savings',     'Direct cost the project removes'),
-        ('operational_cost','Operational Cost', 'Efficiency it adds to operations'),
-        ('business_risk',   'Business Risk',    'How risky it is to take on — unproven tech, no in-house expertise (higher lowers the score)'),
-        ('level_of_effort', 'Level of Effort',  'Feasibility (10 = quick win)'),
-    ]
-    return [{'field': f, 'label': lbl, 'hint': h, 'weight': WEIGHTS[f],
-             'invert': f in INVERTED} for f, lbl, h in meta]
+# The six BVM criteria, in scoring order, carrying the given per-company weights
+# plus the shared labels/hints/invert flags from project.scoring.
+def _scoring_criteria(weights):
+    from project.scoring import CRITERIA, CRITERIA_META, INVERTED
+    rows = []
+    for f in CRITERIA:
+        label, hint = CRITERIA_META[f]
+        rows.append({'field': f, 'label': label, 'hint': hint,
+                     'weight': weights[f], 'invert': f in INVERTED})
+    return rows
+
+
+def _weight_companies(user):
+    """Companies a user may set score weights for -- only executives and org
+    admins: all for a superuser, an org admin's companies, and (for the Executive
+    role) the companies they belong to."""
+    from business_unit.models import Company
+    if user.is_superuser:
+        return Company.objects.all().order_by('name')
+    ids = set()
+    admin_org_ids = list(user.administered_orgs.values_list('id', flat=True))
+    if admin_org_ids:
+        ids |= set(Company.objects.filter(
+            organization_id__in=admin_org_ids).values_list('id', flat=True))
+    prof = getattr(user, 'profile', None)
+    if prof and prof.has_role('executive'):
+        ids |= set(user.company_memberships.values_list('company_id', flat=True))
+    return Company.objects.filter(id__in=ids).order_by('name')
+
+
+@login_required
+def settings_score_weights(request):
+    """Adjust the six BVM criteria weights per company. Executives and org admins
+    only; weights are percentages and must sum to 100."""
+    from project.models import ScoringWeights
+    from project.scoring import CRITERIA, CRITERIA_META
+    from project.services.kanban import is_executive
+
+    if not is_executive(request.user):
+        return HttpResponseForbidden('Only executives and org admins can adjust score weights.')
+    companies = _weight_companies(request.user)
+    if not companies.exists():
+        return HttpResponseForbidden('You do not administer any companies.')
+
+    if request.method == 'POST':
+        company = companies.filter(pk=request.POST.get('company', '')).first()
+        if not company:
+            messages.error(request, 'Unknown company.')
+            return redirect('app:settings_score_weights')
+        vals = {}
+        for c in CRITERIA:
+            try:
+                vals[c] = max(0, min(100, int(request.POST.get(c, 0))))
+            except (TypeError, ValueError):
+                vals[c] = 0
+        if sum(vals.values()) != 100:
+            messages.error(request, f'Weights must sum to 100 (they add up to {sum(vals.values())}).')
+        else:
+            row, _ = ScoringWeights.objects.get_or_create(company=company)
+            for c in CRITERIA:
+                setattr(row, c, vals[c])
+            row.save()
+            messages.success(request, f'Saved score weights for {company.name}.')
+        return redirect('app:settings_score_weights')
+
+    companies_ctx = []
+    for company in companies:
+        w = ScoringWeights.for_company(company)
+        rows = [{'field': f, 'label': CRITERIA_META[f][0], 'hint': CRITERIA_META[f][1],
+                 'weight': w[f]} for f in CRITERIA]
+        companies_ctx.append({
+            'company': company, 'rows': rows, 'total': sum(w.values()),
+            'customized': ScoringWeights.objects.filter(company=company).exists(),
+        })
+    return render(request, 'app/settings_score_weights.html', {
+        'title': 'Score Weights', 'companies_ctx': companies_ctx})
 
 
 @login_required
@@ -1761,6 +1823,7 @@ def score_projects(request):
     """
     from project.services.kanban import scorable_projects, can_score, is_executive, LANE_STATUS
     from project.scoring import CRITERIA
+    from project.models import ScoringWeights
 
     if request.method == 'POST':
         pid = request.POST.get('project_id')
@@ -1794,15 +1857,19 @@ def score_projects(request):
     projects = sorted(
         qs, key=lambda p: (-(p.value or p.project_value_total or 0), p.aee_alignment or 'zzz'),
     )
-    criteria = _scoring_criteria()
+    # Each card carries its own company's weights (the live preview reads them
+    # per-card), so a project scores by the model its company configured.
     for p in projects:
-        p.score_rows = [dict(c, value=getattr(p, c['field'], 0) or 0) for c in criteria]
+        company = p.vertical.company if p.vertical else None
+        crit = _scoring_criteria(ScoringWeights.for_company(company))
+        p.score_rows = [dict(c, value=getattr(p, c['field'], 0) or 0) for c in crit]
     total_value = sum((p.value or p.project_value_total or 0) for p in projects)
 
+    from project.scoring import CRITERIA_META
     return render(request, 'app/score_projects.html', {
         'title': 'Score Projects',
         'projects': projects,
-        'criteria': criteria,
+        'criteria_labels': [CRITERIA_META[f][0] for f in CRITERIA],
         'total_value': total_value,
         'can_score_any': is_executive(request.user) or bool(projects),
     })
