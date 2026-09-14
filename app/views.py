@@ -1734,10 +1734,77 @@ def getting_started(request):
         'done_count': sum(1 for s in steps if s['done']), 'total': len(steps)})
 
 
+# The six BVM criteria, in scoring order, with weight and a one-line hint. The
+# weights come from project.scoring.WEIGHTS (the single source of truth).
+def _scoring_criteria():
+    from project.scoring import WEIGHTS
+    meta = [
+        ('customer_value',  'Customer Value',   'Impact on the customer experience'),
+        ('business_value',  'Business Value',   'Revenue / strategic value to the business'),
+        ('cost_savings',    'Cost Savings',     'Direct cost the project removes'),
+        ('operational_cost','Operational Cost', 'Efficiency it adds to operations'),
+        ('business_risk',   'Business Risk',    'Risk it mitigates'),
+        ('level_of_effort', 'Level of Effort',  'Feasibility (10 = quick win)'),
+    ]
+    return [{'field': f, 'label': lbl, 'hint': h, 'weight': WEIGHTS[f]} for f, lbl, h in meta]
+
+
 @login_required
 def score_projects(request):
-    """Score Projects — placeholder for now (scoring UI to come)."""
-    return render(request, 'app/score_projects.html', {'title': 'Score Projects'})
+    """Score the six BVM criteria for approved projects awaiting a score.
+
+    Each user sees only the projects in their scope: executives (and org admins /
+    superusers) score everything they can see; a Business Unit Leader scores only
+    within the units they lead. The queue is ordered by projected value so the
+    highest-stakes decisions get scored first.
+    """
+    from project.services.kanban import scorable_projects, can_score, is_executive, LANE_STATUS
+    from project.scoring import CRITERIA
+
+    if request.method == 'POST':
+        pid = request.POST.get('project_id')
+        proj = Action.objects.filter(id=pid, archived=False).first()
+        if not proj or not can_score(request.user, proj):
+            messages.error(request, 'You are not allowed to score that project.')
+            return redirect(request.get_full_path())
+        for c in CRITERIA:
+            try:
+                val = int(request.POST.get(c, 0))
+            except (TypeError, ValueError):
+                val = 0
+            setattr(proj, c, max(0, min(10, val)))
+        # Scoring lands the project in the Scored lane; a BU lead promotes it on
+        # to Executive Approval from the Kanban.
+        proj.status = LANE_STATUS['scored']
+        proj.save()
+        messages.success(request, f'Scored “{proj.name or "project"}” — moved to Scored.')
+        return redirect(request.get_full_path())
+
+    vertical_id = scoped_vertical_id(request)
+    qs = Action.objects.filter(
+        archived=False, approved=True, status=LANE_STATUS['ready_to_score'],
+    ).select_related('owner', 'objective', 'vertical', 'vertical__company', 'business_unit')
+    if vertical_id:
+        qs = qs.filter(vertical_id=vertical_id)
+    qs = scorable_projects(request.user, qs)
+
+    # Highest projected value first; alignment as the tiebreaker so like work
+    # clusters. Cards with a value get scored before the unvalued ones.
+    projects = sorted(
+        qs, key=lambda p: (-(p.value or p.project_value_total or 0), p.aee_alignment or 'zzz'),
+    )
+    criteria = _scoring_criteria()
+    for p in projects:
+        p.score_rows = [dict(c, value=getattr(p, c['field'], 0) or 0) for c in criteria]
+    total_value = sum((p.value or p.project_value_total or 0) for p in projects)
+
+    return render(request, 'app/score_projects.html', {
+        'title': 'Score Projects',
+        'projects': projects,
+        'criteria': criteria,
+        'total_value': total_value,
+        'can_score_any': is_executive(request.user) or bool(projects),
+    })
 
 
 @login_required

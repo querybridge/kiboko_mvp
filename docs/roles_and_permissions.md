@@ -96,10 +96,21 @@ Leader, BUU=Business Unit User, Ana=Analyst, Dev=Developer, Sup=Super User.)
   GA4 scoping — if a Premium client needs per-user business-unit visibility, that
   still requires Kiboko-side scoping (`CompanyMembership.allowed_bus`).
 
+## Scoring (Score Projects view)
+Approved projects in the **Ready to Score** lane surface in Score Projects, ordered
+by projected value (highest stakes first). Saving a score computes the weighted
+0–10 (`project.scoring.WEIGHTS`) and moves the card to **Scored**; a BU lead then
+promotes it to Executive Approval from the Kanban. Scope:
+- **Executives / org admins / superusers** score every project across the
+  companies they can see (`business_unit.access.visible_companies`).
+- **Business Unit Leaders** score only within the units they lead — any
+  `BusinessUnit.general_manager` unit, plus (with the BUL role) the units their
+  company membership scopes them to (`kanban.leadable_bu_ids`).
+- **Everyone else** sees an empty queue.
+
 ## Open items
-- **Scoring permissions** — per-criterion table above is a first pass (you're
-  revisiting); confirm whether BULs score anything and how "estimate value/LOE"
-  relate to the criteria.
-- **Analyst block restriction + full role gating** land with the multi-role model
-  (Track B) — until then, interim checks approximate roles (BUL = the BU lead /
-  org admin / superuser; executive = superuser / admin / senior_leadership).
+- **Per-criterion scoring** — the current view scores all six criteria together
+  (single weighted save). The per-criterion table above (who may set which
+  criterion) is not yet individually gated.
+- **Analyst block restriction + full role gating** land incrementally on the
+  multi-role model (Track B). Interim checks still approximate a few cells.
