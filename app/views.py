@@ -1737,16 +1737,17 @@ def getting_started(request):
 # The six BVM criteria, in scoring order, with weight and a one-line hint. The
 # weights come from project.scoring.WEIGHTS (the single source of truth).
 def _scoring_criteria():
-    from project.scoring import WEIGHTS
+    from project.scoring import WEIGHTS, INVERTED
     meta = [
         ('customer_value',  'Customer Value',   'Impact on the customer experience'),
         ('business_value',  'Business Value',   'Revenue / strategic value to the business'),
         ('cost_savings',    'Cost Savings',     'Direct cost the project removes'),
         ('operational_cost','Operational Cost', 'Efficiency it adds to operations'),
-        ('business_risk',   'Business Risk',    'Risk it mitigates'),
+        ('business_risk',   'Business Risk',    'How risky it is to take on — unproven tech, no in-house expertise (higher lowers the score)'),
         ('level_of_effort', 'Level of Effort',  'Feasibility (10 = quick win)'),
     ]
-    return [{'field': f, 'label': lbl, 'hint': h, 'weight': WEIGHTS[f]} for f, lbl, h in meta]
+    return [{'field': f, 'label': lbl, 'hint': h, 'weight': WEIGHTS[f],
+             'invert': f in INVERTED} for f, lbl, h in meta]
 
 
 @login_required

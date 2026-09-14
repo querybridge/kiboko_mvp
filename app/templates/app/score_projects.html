@@ -32,6 +32,8 @@
   .crit-row .crit-label small { display:block; color:var(--text-muted); font-size:11px; }
   .crit-row .crit-w { font-size:11px; color:var(--text-muted); width:40px; flex:none; }
   .crit-row input[type=range] { flex:1; accent-color:var(--accent-primary); }
+  .crit-invert input[type=range] { accent-color:var(--status-warning); }
+  .crit-invert .crit-out { color:var(--status-warning); }
   .crit-row .crit-out { width:26px; text-align:center; font-weight:700; flex:none; color:var(--text-primary); }
   .sc-foot { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); padding:12px 18px; }
   .sc-foot .wscore { color:var(--text-secondary); }
@@ -93,11 +95,11 @@
         </div>
         <div class="sc-body">
           {% for c in p.score_rows %}
-          <div class="crit-row">
+          <div class="crit-row{% if c.invert %} crit-invert{% endif %}">
             <div class="crit-label"><b>{{ c.label }}</b><small>{{ c.hint }}</small></div>
             <div class="crit-w">{{ c.weight }}%</div>
             <input type="range" min="0" max="10" step="1"
-                   name="{{ c.field }}" value="{{ c.value }}" data-weight="{{ c.weight }}"
+                   name="{{ c.field }}" value="{{ c.value }}" data-weight="{{ c.weight }}"{% if c.invert %} data-invert="1"{% endif %}
                    oninput="this.closest('.crit-row').querySelector('.crit-out').textContent=this.value; scWeighted(this.closest('form'));">
             <div class="crit-out">{{ c.value }}</div>
           </div>
@@ -129,14 +131,20 @@
 {% block javascripts %}
 {{ block.super }}
 <script>
-  // Live weighted score = sum(value * weight) / 100, mirroring project.scoring.
+  // Live weighted score, mirroring project.scoring.weighted_score: positive
+  // criteria contribute their value, inverted ones (risk) contribute (10-value),
+  // and an all-zero (unscored) card stays at 0.
   function scWeighted(form) {
-    var total = 0;
+    var total = 0, anyRated = false;
     form.querySelectorAll('input[type=range]').forEach(function (r) {
-      total += parseInt(r.value, 10) * parseFloat(r.dataset.weight);
+      var raw = parseInt(r.value, 10);
+      if (raw > 0) anyRated = true;
+      var v = r.dataset.invert ? (10 - raw) : raw;
+      total += v * parseFloat(r.dataset.weight);
     });
     // Match the server's ROUND_HALF_UP to one decimal (Math.round rounds .5 up).
-    form.querySelector('.wscore .n').textContent = (Math.round(total / 10) / 10).toFixed(1);
+    var score = anyRated ? Math.round(total / 10) / 10 : 0;
+    form.querySelector('.wscore .n').textContent = score.toFixed(1);
   }
   document.querySelectorAll('form.score-card').forEach(scWeighted);
 </script>
