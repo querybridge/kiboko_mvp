@@ -1738,6 +1738,36 @@ def getting_started(request):
 
 
 @login_required
+def feedback(request):
+    """Send user feedback to the configured address via SendGrid. If SendGrid
+    isn't configured yet, the feedback is logged (not lost) and the user still
+    gets a friendly confirmation."""
+    if request.method != 'POST':
+        return redirect('app:analytics_grow_sales')
+    from app.integrations import sendgrid_mail
+    back = request.POST.get('next') or 'app:analytics_grow_sales'
+    msg = (request.POST.get('message') or '').strip()
+    if not msg:
+        messages.error(request, 'Please enter your feedback before sending.')
+        return redirect(back)
+
+    u = request.user
+    who = u.get_full_name() or u.username
+    cfg = sendgrid_mail.get_settings()
+    to = cfg.feedback_to if cfg else 'feedback@kibokomethod.com'
+    subject = f'Kiboko feedback from {who}'
+    body = (f'From: {who} <{u.email}>\nUser id: {u.id}\n'
+            f'Page: {request.POST.get("next") or ""}\n\n{msg}')
+    ok, detail = sendgrid_mail.send(to, subject, body, reply_to=(u.email or None))
+    if not ok:
+        # Capture it server-side until SendGrid is live so nothing is lost.
+        logging.getLogger('app.feedback').warning(
+            'FEEDBACK (unsent: %s) from %s <%s>: %s', detail, u.username, u.email, msg)
+    messages.success(request, 'Thanks for your feedback — the Kiboko team will see it.')
+    return redirect(back)
+
+
+@login_required
 def insights(request):
     """Wins & Losses: metrics up/down >=10% vs the comparison period, each with
     recommended actions (admin-editable) that can be promoted to projects. Bridges

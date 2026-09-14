@@ -24,6 +24,39 @@ class MetricRecommendation(models.Model):
         return f'{self.get_metric_display()} [{self.direction}] {self.text[:48]}'
 
 
+class SendGridSettings(models.Model):
+    """SendGrid email configuration, editable in Django admin. Powers the
+    feedback button (and future transactional email). Add the API key here once
+    provisioned.
+
+    NOTE: api_key is a secret stored plaintext for scaffolding -- encrypt at rest
+    (like BigQueryConnection.service_account_json) before production."""
+    api_key = models.CharField(max_length=255, blank=True,
+                               help_text='SendGrid API key (leave blank until provisioned)')
+    from_email = models.EmailField(default='no-reply@kibokomethod.com',
+                                   help_text='Verified SendGrid sender address')
+    from_name = models.CharField(max_length=120, default='Kiboko', blank=True)
+    feedback_to = models.EmailField(default='feedback@kibokomethod.com',
+                                    help_text='Where user feedback is delivered')
+    active = models.BooleanField(default=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'SendGrid settings'
+        verbose_name_plural = 'SendGrid settings'
+
+    def __str__(self):
+        return f'SendGrid ({self.from_email})'
+
+    @classmethod
+    def current(cls):
+        return cls.objects.filter(active=True).order_by('-updated').first()
+
+    @property
+    def is_configured(self):
+        return bool(self.active and self.api_key)
+
+
 # Create your all your models here
 
 ##############################################################################################################################################################

@@ -20,66 +20,13 @@
         </ul>
       </li>
 
-      <li role="presentation" class="dropdown">
-        <ul id="menu1" class="dropdown-menu list-unstyled msg_list" role="menu">
-          <li>
-            <a>
-              <span class="image"><img src="/static/images/img.jpg" alt="Profile Image" /></span>
-              <span>
-                <span>John Doe</span>
-                <span class="time">3 mins ago</span>
-              </span>
-              <span class="message">
-                Film festivals used to be do-or-die moments for movie makers. They were where...
-              </span>
-            </a>
-          </li>
-          <li>
-            <a>
-              <span class="image"><img src="/static/images/img.jpg" alt="Profile Image" /></span>
-              <span>
-                <span>John Doe</span>
-                <span class="time">3 mins ago</span>
-              </span>
-              <span class="message">
-                Film festivals used to be do-or-die moments for movie makers. They were where...
-              </span>
-            </a>
-          </li>
-          <li>
-            <a>
-              <span class="image"><img src="/static/images/img.jpg" alt="Profile Image" /></span>
-              <span>
-                <span>John Doe</span>
-                <span class="time">3 mins ago</span>
-              </span>
-              <span class="message">
-                Film festivals used to be do-or-die moments for movie makers. They were where...
-              </span>
-            </a>
-          </li>
-          <li>
-            <a>
-              <span class="image"><img src="/static/images/img.jpg" alt="Profile Image" /></span>
-              <span>
-                <span>John Doe</span>
-                <span class="time">3 mins ago</span>
-              </span>
-              <span class="message">
-                Film festivals used to be do-or-die moments for movie makers. They were where...
-              </span>
-            </a>
-          </li>
-          <li>
-            <div class="text-center">
-              <a>
-                <strong>See All Alerts</strong>
-                <i class="fa fa-angle-right"></i>
-              </a>
-            </div>
-          </li>
-        </ul>
+      {% if user.is_authenticated %}
+      <li>
+        <a href="#" data-toggle="modal" data-target="#feedbackModal" title="Send feedback" style="padding:15px 13px 0;">
+          <i class="fa fa-comment-o" style="font-size:18px;"></i>
+        </a>
       </li>
+      {% endif %}
       {% if tenancy_current_company %}
       {# reversed source order (float) -> reads Company -> Business Unit -> Website -> Apply; cascade is client-side, only Apply queries #}
       <li style="padding: 13px 10px 0 0;">
@@ -162,3 +109,29 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
+{% if user.is_authenticated %}
+<!-- Feedback modal (replaces the old activity feed) -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" role="dialog" aria-labelledby="feedbackTitle">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <form method="post" action="{% url 'app:feedback' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="feedbackTitle"><i class="fa fa-comment-o"></i> Send Feedback</h4>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">Tell us what&rsquo;s working, what&rsquo;s broken, or what you&rsquo;d like to see. Your note goes straight to the Kiboko team.</p>
+          <textarea name="message" class="form-control" rows="5" placeholder="Your feedback&hellip;" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="fa fa-paper-plane"></i> Send Feedback</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
