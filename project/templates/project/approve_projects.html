@@ -1,0 +1,91 @@
+{% extends "app/base_site.html" %}
+{% load humanize %}
+{% block title %} Approve Projects {% endblock title %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="page-title">
+    <div class="title_left"><h3>Approve Projects <small>Business unit review</small></h3></div>
+    <div class="clearfix"></div>
+  </div>
+
+  {% if messages %}
+  <div class="row"><div class="col-md-12">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  <!-- Pending Approval: complete, awaiting a business-unit lead -->
+  <div class="row"><div class="col-md-12">
+    <div class="x_panel">
+      <div class="x_title">
+        <h2>Pending Approval <span class="badge bg-green">{{ pending_projects|length }}</span></h2>
+        <div class="clearfix"></div>
+      </div>
+      <div class="x_content">
+        <p class="text-muted">Complete projects awaiting approval. Approving one moves it onto the executive board (Ready to Score).</p>
+        <table class="table table-striped table-bordered">
+          <thead>
+            <tr><th>Project</th><th>Alignment</th><th>Definition of Done</th><th style="width:140px;">Projected Value</th><th style="width:120px;">Action</th></tr>
+          </thead>
+          <tbody>
+            {% for p in pending_projects %}
+            <tr>
+              <td><a href="{% url 'project:project_detail' p.id %}">{{ p.name }}</a></td>
+              <td>{{ p.get_aee_alignment_display|default:"&mdash;" }}</td>
+              <td>{{ p.impact|default:"&mdash;" }}</td>
+              <td>${{ p.value|intcomma }}</td>
+              <td>
+                {% if p.user_can_approve %}
+                <form method="post" action="{% url 'project:approve_action' p.id %}" style="display:inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-success btn-xs"><i class="fa fa-check"></i> Approve</button>
+                </form>
+                {% else %}
+                <span class="text-muted" title="Only the business-unit lead can approve">Lead only</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No projects are awaiting approval.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- Incomplete Entries: finish required fields first -->
+  <div class="row"><div class="col-md-12">
+    <div class="x_panel">
+      <div class="x_title">
+        <h2>Incomplete Entries <span class="badge">{{ incomplete_projects|length }}</span></h2>
+        <div class="clearfix"></div>
+      </div>
+      <div class="x_content">
+        <p class="text-muted">Missing required fields (name, owner, objective, alignment, definition of done, or projected value). Complete these before they can be approved.</p>
+        <table class="table table-striped table-bordered">
+          <thead>
+            <tr><th>Project</th><th>Owner</th><th>Alignment</th><th style="width:140px;">Projected Value</th><th style="width:100px;">Edit</th></tr>
+          </thead>
+          <tbody>
+            {% for p in incomplete_projects %}
+            <tr>
+              <td><a href="{% url 'project:project_detail' p.id %}">{{ p.name|default:"(unnamed)" }}</a></td>
+              <td>{{ p.owner|default:"&mdash;" }}</td>
+              <td>{{ p.get_aee_alignment_display|default:"&mdash;" }}</td>
+              <td>{% if p.value %}${{ p.value|intcomma }}{% else %}&mdash;{% endif %}</td>
+              <td><a href="{% url 'project:project_edit' p.id %}" class="btn btn-default btn-xs"><i class="fa fa-pencil"></i> Edit</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No incomplete entries.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></div>
+
+</div>
+{% endblock content %}

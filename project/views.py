@@ -12,9 +12,11 @@ from .models import Action
 from .forms import ProjectAdd, ProjectEdit, CommentForm, ProjectValue, ProjectLoe, ProjectEditManager
 from business_unit.models import Department
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.db.models import F, Q
 from .services.kanban import (
-    LANES, get_lane, group_projects, compute_all_lane_totals, validate_move, apply_move,
+    LANES, LANE_STATUS, get_lane, group_projects, compute_all_lane_totals, validate_move, apply_move,
+    is_ready_for_review, can_approve,
 )
 
 # Statuses that are terminal / not represented as a Kanban lane. These never
@@ -46,10 +48,9 @@ def view(request):
         aee = ''
     # Optional measure filter (from clicking a card on a detail dashboard)
     measure = request.GET.get('measure', '').strip()
-    # Backlog candidates: everything not archived and not a terminal status
-    # (Complete / Launched live in the Archive only). Each row is bucketed by its
-    # Kanban lane, so the Backlog tables mirror the Kanban headings exactly.
-    base = Action.objects.filter(archived=False).exclude(
+    # Backlog candidates: approved (on the executive Kanban), not archived, not
+    # terminal. Incomplete/pending-review entries live in Approve Projects.
+    base = Action.objects.filter(archived=False, approved=True).exclude(
         status__in=NON_KANBAN_STATUSES
     ).select_related('owner', 'measure', 'business_unit', 'vertical', 'project')
     if vertical_id:
@@ -65,18 +66,19 @@ def view(request):
         p.kanban_lane_label = LANES.get(p.kanban_lane_key, '')
         buckets[p.kanban_lane_key].append(p)
 
-    # Business-unit owners only see their own units' not-yet-in-flight work
-    # (blocked / incomplete / awaiting review); WIP & On Deck stay visible to all.
+    # Business-unit owners only see their own units' not-yet-in-flight work;
+    # WIP & On Deck stay visible to all.
     owned_bus = Department.objects.filter(owner=request.user)
     if owned_bus.exists():
         owned_ids = set(owned_bus.values_list('id', flat=True))
-        for key in ('blocked', 'incomplete_entry', 'ready_to_score', 'scored'):
+        for key in ('blocked', 'ready_to_score', 'scored', 'executive_approval'):
             buckets[key] = [p for p in buckets[key] if p.business_unit_id in owned_ids]
 
-    # Approved Actions -> WIP + On Deck; Pending Review -> Ready to Score + Scored.
+    # In flight -> WIP + On Deck; awaiting the executive meeting -> Ready to Score
+    # + Scored + Executive Approval. (Incomplete/pending live in Approve Projects.)
     approved_projects = buckets['active'] + buckets['on_deck']
-    pending_review_projects = buckets['ready_to_score'] + buckets['scored']
-    incomplete_projects = buckets['incomplete_entry']
+    pending_review_projects = buckets['ready_to_score'] + buckets['scored'] + buckets['executive_approval']
+    incomplete_projects = []
     blocked_projects = buckets['blocked']
     # Optional single-lane filter (from clicking a Kanban column header).
     lane = request.GET.get('lane', '').strip()
@@ -312,10 +314,50 @@ def archive(request):
 
 
 @login_required
+@login_required
+def approve_projects(request):
+    """Business-unit leaders' queue. Complete projects can be approved onto the
+    executive Kanban (-> Ready to Score); incomplete ones are finished first.
+    Two tables (incomplete vs pending), scoped to the top-bar selection."""
+    vertical_id = _get_vertical_id(request)
+    qs = Action.objects.filter(archived=False, approved=False).exclude(
+        status__in=NON_KANBAN_STATUSES
+    ).select_related('owner', 'objective', 'vertical', 'business_unit')
+    if vertical_id:
+        qs = qs.filter(vertical_id=vertical_id)
+
+    pending, incomplete = [], []
+    for p in qs:
+        p.user_can_approve = can_approve(request.user, p)
+        (pending if is_ready_for_review(p) else incomplete).append(p)
+    return render(request, 'project/approve_projects.html', {
+        'title': 'Approve Projects',
+        'pending_projects': pending,
+        'incomplete_projects': incomplete,
+    })
+
+
+@login_required
+@require_POST
+def approve_action(request, project_id):
+    """A business-unit lead approves a project onto the executive Kanban."""
+    project = get_object_or_404(Action, pk=project_id)
+    if not can_approve(request.user, project):
+        messages.error(request, 'Only a business-unit lead can approve this project.')
+    elif not is_ready_for_review(project):
+        messages.error(request, 'This project is missing required fields for approval.')
+    else:
+        project.approved = True
+        project.status = LANE_STATUS['ready_to_score']   # onto the executive board
+        project.save()
+        messages.success(request, f'Approved "{project.name}" — now on the executive board (Ready to Score).')
+    return redirect('project:approve_projects')
+
+
 def kanban_view(request):
     """Render the Kanban board."""
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(archived=False).exclude(
+    projects = Action.objects.filter(archived=False, approved=True).exclude(
         status__in=NON_KANBAN_STATUSES
     ).select_related(
         'project', 'business_unit', 'vertical', 'owner',
@@ -359,7 +401,7 @@ def kanban_move(request):
         return JsonResponse({'ok': False, 'error': 'Missing project_id or target_lane'}, status=400)
 
     project = get_object_or_404(Action, pk=project_id)
-    ok, err = apply_move(project, target_lane)
+    ok, err = apply_move(project, target_lane, user=request.user)
 
     if not ok:
         return JsonResponse({'ok': False, 'error': err}, status=422)
@@ -369,7 +411,7 @@ def kanban_move(request):
     # client's ?vertical= URL param may be absent (e.g. navigated via sidebar),
     # which previously made the recompute global and returned wrong counts.
     vertical_id = _get_vertical_id(request)
-    qs = Action.objects.filter(archived=False).exclude(status__in=NON_KANBAN_STATUSES)
+    qs = Action.objects.filter(archived=False, approved=True).exclude(status__in=NON_KANBAN_STATUSES)
     if vertical_id:
         qs = qs.filter(vertical_id=vertical_id)
 

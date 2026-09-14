@@ -6,25 +6,27 @@ All lane logic lives here so it is testable and consistent.
 """
 from collections import OrderedDict
 
-# Ordered lane definitions
+# Ordered lane definitions. The Kanban is the weekly EXECUTIVE meeting board; it
+# only shows projects a business-unit lead has approved. Incomplete/pending-review
+# entries live in the Approve Projects view, not here. Executive Approval sits
+# after Scored -- execs move cards from there to On Deck in the weekly meeting.
 LANES = OrderedDict([
-    ('blocked',          'BLOCKED'),
-    ('incomplete_entry', 'INCOMPLETE ENTRY'),
-    ('ready_to_score',   'READY TO SCORE'),
-    ('scored',           'SCORED'),
-    ('on_deck',          'ON DECK'),
-    ('active',           'WIP'),
+    ('blocked',             'BLOCKED'),
+    ('ready_to_score',      'READY TO SCORE'),
+    ('scored',              'SCORED'),
+    ('executive_approval',  'EXECUTIVE APPROVAL'),
+    ('on_deck',             'ON DECK'),
+    ('active',              'WIP'),
 ])
 
-# The status value stored on an Action for each lane. Status == the Kanban
-# column, so moving a card (or saving one) writes the matching status here.
+# The status value stored on an Action for each lane.
 LANE_STATUS = {
-    'blocked':          'Blocked',
-    'incomplete_entry': 'Incomplete Entry',
-    'ready_to_score':   'Ready to Score',
-    'scored':           'Scored',
-    'on_deck':          'On Deck',
-    'active':           'WIP',
+    'blocked':             'Blocked',
+    'ready_to_score':      'Ready to Score',
+    'scored':              'Scored',
+    'executive_approval':  'Executive Approval',
+    'on_deck':             'On Deck',
+    'active':              'WIP',
 }
 STATUS_LANE = {status: lane for lane, status in LANE_STATUS.items()}
 
@@ -36,9 +38,49 @@ REQUIRED_FOR_SCORING = [
     'name', 'project_id', 'business_unit_id', 'owner_id', 'why',
 ]
 
+# Fields a business-unit lead reviews before approving a project onto the Kanban.
+REQUIRED_FOR_REVIEW = ['name', 'owner_id', 'objective_id', 'aee_alignment', 'impact']
+
 
 def _has_score(project):
     return project.normalized_score is not None and project.normalized_score > 0
+
+
+def is_ready_for_review(project):
+    """Complete enough for a business-unit lead to approve: name, owner, objective,
+    AEE alignment, Definition of Done, and a projected value."""
+    for field in REQUIRED_FOR_REVIEW:
+        val = getattr(project, field, None)
+        if val is None or (isinstance(val, str) and not val.strip()):
+            return False
+    return (project.value or 0) > 0
+
+
+def is_executive(user):
+    """Interim executive check (superuser or admin/senior_leadership) -- will be
+    superseded by the forthcoming user-permission list."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    return getattr(getattr(user, 'profile', None), 'role', '') in ('admin', 'senior_leadership')
+
+
+def can_approve(user, project):
+    """Whether the user may approve this project (business-unit lead). Interim:
+    the business unit's general_manager, or a superuser / the org's admin."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    bu = getattr(project, 'vertical', None)
+    if bu and bu.general_manager_id == user.id:
+        return True
+    company = getattr(bu, 'company', None) if bu else None
+    if company and company.organization_id:
+        from business_unit.access import is_org_admin_of
+        return is_org_admin_of(user, company)
+    return False
 
 
 # The six Kanban columns a card can be placed into. Any of these set on an
@@ -61,10 +103,12 @@ def derive_status(project):
     if status in TERMINAL_STATUSES or status in COLUMN_STATUSES:
         return status
 
-    # Blank / legacy -> infer the starting column from the entry itself.
+    # Blank / legacy -> infer. Incomplete OR not-yet-approved entries carry
+    # 'Incomplete Entry' (a status, no longer a Kanban lane); they live in the
+    # Approve Projects view until a business-unit lead approves them.
     if status == 'Pending Assignment':
         return 'On Deck'
-    if _is_incomplete(project):
+    if _is_incomplete(project) or not project.approved:
         return 'Incomplete Entry'
     if _has_score(project):
         return 'Scored'
@@ -73,41 +117,27 @@ def derive_status(project):
 # Transitions: which lanes can a card be dragged INTO
 # None means "any lane can reach it"; a list means those source lanes only.
 ALLOWED_TRANSITIONS = {
-    'blocked':          None,  # can always block
-    'incomplete_entry': None,
-    'ready_to_score':   None,  # validated server-side for required fields
-    'scored':           None,  # validated server-side for score > 0
-    'on_deck':          None,  # validated server-side for score > 0
-    'active':           None,
+    'blocked':             None,  # can always block
+    'ready_to_score':      None,
+    'scored':              None,  # validated server-side for score > 0
+    'executive_approval':  None,  # validated server-side for score > 0
+    'on_deck':             None,  # only executives, out of Executive Approval
+    'active':              None,
 }
 
 
 def get_lane(project):
-    """Determine which Kanban lane a project belongs to.
-
-    Status mirrors the column (kept in sync by Action.save), so we map the
-    stored status straight to its lane. Legacy statuses fall through to a
-    completeness/score derivation for safety.
-    """
+    """The Kanban lane a project belongs to. The Kanban only shows approved cards
+    (callers pre-filter approved=True), so status maps straight to a lane; an
+    unmapped status defaults safely to the entry lane."""
     status = (project.status or '').strip()
 
     if status == 'Blocked' or project.is_blocked:
         return 'blocked'
-
     if status in STATUS_LANE:
         return STATUS_LANE[status]
-
-    # Legacy / unsynced statuses (Pending Approval, Pending Assignment, blank).
-    if status == 'Pending Assignment':
-        return 'on_deck'
-    has_score = _has_score(project)
-    if has_score and status == 'Pending Approval':
-        return 'scored'
-    if _is_incomplete(project):
-        return 'incomplete_entry'
-    if not has_score:
-        return 'ready_to_score'
-    return 'scored'
+    # Off-Kanban / legacy status on an approved card -> default by score.
+    return 'scored' if _has_score(project) else 'ready_to_score'
 
 
 def _is_incomplete(project):
@@ -162,47 +192,32 @@ def compute_all_lane_totals(grouped):
     }
 
 
-def validate_move(project, target_lane):
-    """Check whether a project can be moved to target_lane.
+def validate_move(project, target_lane, user=None):
+    """Check whether `user` can move `project` to target_lane.
 
     Returns (ok: bool, error_message: str|None).
     """
     if target_lane not in LANES:
         return False, f'Unknown lane: {target_lane}'
 
-    # A card with no projected value can't leave Incomplete Entry.
-    if get_lane(project) == 'incomplete_entry' and target_lane != 'incomplete_entry':
-        if not (project.value or 0):
-            return False, 'Add a projected value before moving this card out of Incomplete Entry.'
+    # Scoring gate: everything past Ready to Score needs a score.
+    if target_lane in ('scored', 'executive_approval', 'on_deck', 'active') and not _has_score(project):
+        return False, 'Project must be scored first.'
 
-    if target_lane == 'ready_to_score':
-        if _is_incomplete(project):
-            return False, 'Project is missing required fields. Complete the entry first.'
-
-    if target_lane == 'scored':
-        has_score = project.normalized_score is not None and project.normalized_score > 0
-        if not has_score:
-            return False, 'Project must be scored before moving to SCORED.'
-
-    if target_lane == 'on_deck':
-        has_score = project.normalized_score is not None and project.normalized_score > 0
-        if not has_score:
-            return False, 'Project must be scored before moving to ON DECK.'
-
-    if target_lane == 'active':
-        has_score = project.normalized_score is not None and project.normalized_score > 0
-        if not has_score:
-            return False, 'Project must be scored before moving to ACTIVE.'
+    # Only executives move a project out of Executive Approval into On Deck
+    # (the weekly executive-meeting decision).
+    if target_lane == 'on_deck' and get_lane(project) == 'executive_approval' and not is_executive(user):
+        return False, 'Only executives can move a project from Executive Approval to On Deck.'
 
     return True, None
 
 
-def apply_move(project, target_lane):
+def apply_move(project, target_lane, user=None):
     """Apply lane change to project fields and save.
 
     Returns (ok: bool, error_message: str|None).
     """
-    ok, err = validate_move(project, target_lane)
+    ok, err = validate_move(project, target_lane, user=user)
     if not ok:
         return False, err
 

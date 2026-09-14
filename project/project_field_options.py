@@ -16,6 +16,7 @@ status_options = (
 		('Incomplete Entry', 'Incomplete Entry'),
 		('Ready to Score', 'Ready to Score'),
 		('Scored', 'Scored'),
+		('Executive Approval', 'Executive Approval'),
 		('On Deck', 'On Deck'),
 		('WIP', 'WIP'),
 		('Blocked', 'Blocked'),

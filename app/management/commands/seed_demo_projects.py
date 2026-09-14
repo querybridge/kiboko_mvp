@@ -1,7 +1,12 @@
 """Seed demo Actions for the Demo Account's "GA4 - Google Merch Shop" business
-unit so every Project Control view (Kanban, WIP, Backlog, Active Projects gantt,
-Value Pipeline objective tiles) shows activity. Idempotent: skips an Action that
-already exists with the same name on that business unit.
+unit so every Project Control view shows activity:
+
+  * Executive Kanban (approved=True): Ready to Score, Scored, Executive Approval,
+    On Deck, WIP, Blocked -- with scores/values/launch dates.
+  * Approve Projects (approved=False): a few complete projects Pending Approval,
+    and a couple of Incomplete Entries missing required fields.
+
+Clean reseed: wipes existing Actions on that business unit, then recreates.
 """
 import random
 from datetime import date, timedelta
@@ -9,28 +14,33 @@ from datetime import date, timedelta
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
 
-from business_unit.models import Company, BusinessUnit, Department, Team
+from business_unit.models import Company, Department, Team
 from strategy.models import Project, Objective, Measure
 from project.models import Action
 
-# (name, status, scored, value, progress, why, objective_key)
-# objective_key: volume=Shopper Volume, close=Close Rate, aov=Average Order Value
+# (name, status, approved, scored, value, progress, why, dod, okey)
+# okey: volume=Shopper Volume, close=Close Rate, aov=Average Order Value, ''=none
 ACTIONS = [
-    ('Streamline guest checkout',        'WIP',            True, 320000, 65, 'One-page guest checkout to cut drop-off', 'close'),
-    ('Free shipping threshold at $50',   'WIP',            True, 210000, 40, 'Encourage larger baskets with a free-shipping tier', 'aov'),
-    ('Homepage bestsellers carousel',    'WIP',            True, 150000, 80, 'Surface top products to lift engagement', 'volume'),
-    ('Express pay (Google/Apple Pay)',   'On Deck',        True, 260000,  0, 'Add one-tap wallet payments at checkout', 'close'),
-    ('Post-purchase upsell offers',      'On Deck',        True, 180000,  0, 'Order-confirmation cross-sells to grow AOV', 'aov'),
-    ('Product page video & 360 views',   'Scored',         True, 140000,  0, 'Richer PDP media to boost add-to-cart', 'volume'),
-    ('Cart abandonment email flow',      'Scored',         True, 200000,  0, 'Automated reminders to recover carts', 'close'),
-    ('Apparel + accessories bundles',    'Ready to Score', False,     0,  0, 'Discounted bundles to raise units per order', 'aov'),
-    ('Search autocomplete & synonyms',   'Ready to Score', False,     0,  0, 'Faster product discovery in site search', 'volume'),
-    ('Size guide & fit finder',          'Ready to Score', False,     0,  0, 'Reduce sizing uncertainty on the product page', 'close'),
-    ('Loyalty points program',           'Incomplete Entry', False,   0,  0, '', 'aov'),
-    ('Mobile navigation redesign',       'Incomplete Entry', False,   0,  0, '', 'volume'),
-    ('Restock notifications',            'Blocked',        True,  90000, 20, 'Email/SMS when out-of-stock items return', 'volume'),
-    ('Q2 promo pricing engine',          'Launched',       True, 500000, 100, 'Dynamic promo pricing shipped last quarter', 'aov'),
-    ('PDP reviews & ratings',            'Complete',       True, 160000, 100, 'Customer reviews on product pages', 'close'),
+    # -- Executive Kanban (approved) --
+    ('Search autocomplete & synonyms',  'Ready to Score',     True,  False, 120000,  0, 'Faster product discovery', 'Search returns relevant results with synonyms', 'volume'),
+    ('Size guide & fit finder',         'Ready to Score',     True,  False,  90000,  0, 'Reduce sizing uncertainty', 'Fit finder live on all apparel PDPs', 'close'),
+    ('Product page video & 360 views',  'Scored',             True,  True,  140000,  0, 'Richer PDP media', 'Video + 360 on the top 100 PDPs', 'volume'),
+    ('Cart abandonment email flow',     'Scored',             True,  True,  200000,  0, 'Recover abandoned carts', '3-email abandonment series live', 'close'),
+    ('Express pay (Google/Apple Pay)',  'Executive Approval', True,  True,  260000,  0, 'One-tap wallet payment', 'Wallet pay available at checkout', 'close'),
+    ('Apparel + accessories bundles',   'Executive Approval', True,  True,  160000,  0, 'Raise units per order', 'Bundles configured on 20 SKUs', 'aov'),
+    ('Post-purchase upsell offers',     'On Deck',            True,  True,  180000,  0, 'Grow order value', 'Upsell shown on order confirmation', 'aov'),
+    ('Homepage bestsellers carousel',   'On Deck',            True,  True,  150000,  0, 'Lift engagement', 'Bestsellers carousel on the homepage', 'volume'),
+    ('Streamline guest checkout',       'WIP',                True,  True,  320000, 65, 'Cut checkout drop-off', 'One-page guest checkout', 'close'),
+    ('Free shipping threshold at $50',  'WIP',                True,  True,  210000, 40, 'Encourage bigger baskets', 'Free shipping at $50 live', 'aov'),
+    ('Mobile navigation redesign',      'WIP',                True,  True,  130000, 80, 'Improve mobile UX', 'New mobile navigation shipped', 'volume'),
+    ('Restock notifications',           'Blocked',            True,  True,   90000, 20, 'Return-to-stock alerts', 'Email/SMS when items restock', 'volume'),
+    # -- Approve Projects: Pending Approval (complete, unapproved) --
+    ('Loyalty points program',          'Incomplete Entry',   False, False, 220000,  0, 'Reward repeat buyers', 'Points earned and redeemable at checkout', 'aov'),
+    ('PDP reviews & ratings',           'Incomplete Entry',   False, False, 160000,  0, 'Add social proof', 'Reviews and star ratings on all PDPs', 'close'),
+    ('SEO content hub',                 'Incomplete Entry',   False, False, 140000,  0, 'Grow organic traffic', 'Content hub with 30 buying-guide pages', 'volume'),
+    # -- Approve Projects: Incomplete Entries (missing fields) --
+    ('Wishlist & save-for-later',       'Incomplete Entry',   False, False,      0,  0, 'Let shoppers save items', '', 'close'),
+    ('International shipping options',   'Incomplete Entry',   False, False,      0,  0, '', '', ''),
 ]
 
 OBJ_KEYWORD = {'volume': 'shopper', 'close': 'close', 'aov': 'order value'}
@@ -52,6 +62,8 @@ class Command(BaseCommand):
         if not bu:
             raise CommandError('Demo Account has no business unit to attach projects to.')
 
+        Action.objects.filter(vertical=bu).delete()   # clean reseed
+
         project, _ = Project.objects.get_or_create(
             name='Demo — Google Merch Shop',
             defaults={'why': 'Demo initiatives for the Google Merch Shop.', 'year': year})
@@ -64,47 +76,35 @@ class Command(BaseCommand):
                       for k, kw in OBJ_KEYWORD.items()}
 
         created = 0
-        for i, (name, status, scored, value, progress, why, okey) in enumerate(ACTIONS):
-            if Action.objects.filter(name=name, vertical=bu).exists():
-                continue
+        for name, status, approved, scored, value, progress, why, dod, okey in ACTIONS:
             cv, bv, cs, oc, br, loe = (
                 (rng.randint(4, 10), rng.randint(4, 10), rng.randint(1, 8),
                  rng.randint(1, 8), rng.randint(1, 7), rng.randint(2, 9)) if scored
                 else (0, 0, 0, 0, 0, 0))
-
-            launch = None
-            if status in ('WIP', 'Launched', 'Complete'):
-                launch = date(year, rng.randint(1, min(today.month, 9)), rng.randint(1, 28))
+            launch = date(year, rng.randint(1, min(today.month, 9)), rng.randint(1, 28)) if status == 'WIP' else None
 
             a = Action(
                 project=project, owner=rng.choice(owners), business_unit=dept, vertical=bu,
-                name=name, why=why, impact=(why[:75] if why else ''),
+                name=name, why=why, impact=dod,
                 value=value, progress=progress, launch=launch, status=status,
-                approved=status in ('WIP', 'On Deck', 'Complete', 'Launched'),
-                archived=(status == 'Launched'),
-                team=(rng.choice(teams) if teams else None),
+                approved=approved, team=(rng.choice(teams) if teams else None),
                 measure=(rng.choice(measures) if measures else None),
                 objective=objectives.get(okey), aee_alignment=OBJ_AEE.get(okey, ''),
-                # Attribute the card's value to its lever so the Kanban summary
-                # tiles show the per-lever impact breakdown, not just the total.
                 impact_visits_value=(value if okey == 'volume' else 0),
                 impact_close_rate_value=(value if okey == 'close' else 0),
                 impact_aov_value=(value if okey == 'aov' else 0),
                 customer_value=cv, business_value=bv, cost_savings=cs,
                 operational_cost=oc, business_risk=br, level_of_effort=loe,
             )
-            a.save()  # derive_status honors the explicit column status
+            a.save()   # derive_status honors explicit Kanban columns; unapproved -> Incomplete Entry
 
-            # Backdate created; give WIP an active_date so the gantt draws a bar.
             created_dt = date(year, 1, 1) + timedelta(days=rng.randint(0, 90))
             fields = {'date_created': created_dt}
             if status == 'WIP':
                 span_end = min(launch or today, today)
-                fields['active_date'] = created_dt + timedelta(
-                    days=rng.randint(0, max(0, (span_end - created_dt).days)))
+                fields['active_date'] = created_dt + timedelta(days=rng.randint(0, max(0, (span_end - created_dt).days)))
             Action.objects.filter(pk=a.pk).update(**fields)
             created += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f'seed_demo_projects: {created} created on {demo.name} / {bu.name} '
-            f'({Action.objects.filter(vertical=bu).count()} total).'))
+            f'seed_demo_projects: {created} created on {demo.name} / {bu.name}.'))
