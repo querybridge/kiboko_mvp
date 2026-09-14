@@ -848,6 +848,11 @@ def edit_goals(request):
     is_summary = vertical_id is None
 
     if request.method == 'POST' and not is_summary:
+        from business_unit.access import can_manage_goals
+        bu = BusinessUnit.objects.filter(pk=vertical_id).first()
+        if not bu or not can_manage_goals(request.user, bu):
+            return HttpResponseForbidden(
+                'Only owners, executives, and business-unit leads can edit goals.')
         for m in range(1, 13):
             month_date = date(year, m, 1)
             budget_val = request.POST.get(f'budget_{m}', '0')
@@ -1423,6 +1428,10 @@ def data_connection(request):
 
     # --- Premium: connect a Company via a BigQuery service account ------------
     if request.method == 'POST' and request.POST.get('action') == 'bigquery_connect':
+        from business_unit.access import can_manage_bigquery
+        if not can_manage_bigquery(request.user):
+            return HttpResponseForbidden(
+                'Only owners, executives, developers, and superusers can manage a BigQuery connection.')
         name = request.POST.get('company_name', '').strip()
         prop = request.POST.get('property_id', '').strip()
         try:
@@ -1458,7 +1467,8 @@ def data_connection(request):
         Company.objects.filter(bigquery__isnull=False, memberships__user=request.user).distinct()
         if not request.user.is_superuser else Company.objects.filter(bigquery__isnull=False))
     ctx['standard_events'] = BigQueryConnection.STANDARD_EVENTS
-    ctx['can_provision_premium'] = request.user.is_superuser
+    from business_unit.access import can_manage_bigquery
+    ctx['can_provision_premium'] = can_manage_bigquery(request.user)
 
     if not identity or not google_oauth.is_enabled():
         return render(request, 'app/data_connection.html', ctx)

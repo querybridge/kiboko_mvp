@@ -63,10 +63,14 @@ Leader, BUU=Business Unit User, Ana=Analyst, Dev=Developer, Sup=Super User.)
 | Score: operational cost | ✓ | ✓ | | | | | ✓ | Company / BU |
 | Score: business risk | ✓ | ✓ | | | | | ✓ | Company / BU |
 | Score: level of effort | ✓ | ✓ | | | | ✓ | ✓ | Company / BU |
-| Enter goals | ✓ | ✓ | ✓ | | | | ✓ | Company / BU |
+| Enter goals | ✓ | ✓ | ✓ | | | | ✓ | Company / BU |<!-- enforced: access.can_manage_goals -->
 | Upload revenue actuals | | | ✓ | ✓ | ✓ | | | Business Unit |
 | Connect / manage a Standard GA4 connection | ✓ | ✓ | ✓ | | | | ✓ | Company |
-| Update BigQuery service-account credentials | ✓ | ✓ | | | | ✓ | ✓ | Company |
+| Update BigQuery service-account credentials | ✓ | ✓ | | | | ✓ | ✓ | Company |<!-- enforced: access.can_manage_bigquery -->
+<!-- Settings edit-permission enforcement: Goals -> access.can_manage_goals (Owner/Exec/BUL/Super);
+     BigQuery connect -> access.can_manage_bigquery (Owner/Exec/Dev/Super); Billing -> org admin/super;
+     Score Weights -> is_executive + administered company. Standard GA4 import is self-limited by the
+     user's own Google access. -->
 | Create a Company / Client | ✓ | ✓ | ✓ | | | | ✓ | Org |
 | Create / edit Business Units | ✓ | ✓ | ✓ | | | | ✓ | Company |
 | Assign the Business Unit Leader | ✓ | ✓ | ✓ | | | | ✓ | Company |

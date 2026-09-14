@@ -72,6 +72,41 @@ def can_access_company(user, company):
     return bool(company.organization and company.organization.is_platform_demo)
 
 
+def can_manage_goals(user, vertical):
+    """Enter/edit goals for a business unit: Owner / Executive / BU Lead / Super,
+    within a company the user can access. (Matrix: 'Enter goals'.)"""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    company = getattr(vertical, 'company', None)
+    if company is None or not can_access_company(user, company):
+        return False
+    if is_org_admin_of(user, company):                       # Owner / Org Admin
+        return True
+    prof = getattr(user, 'profile', None)
+    member = company.memberships.filter(user=user).exists()
+    if prof and member and prof.has_role('executive'):       # Executive of the company
+        return True
+    if getattr(vertical, 'general_manager_id', None) == user.id:  # BU Lead of this unit
+        return True
+    if prof and member and prof.has_role('business_unit_leader'):  # BU Lead role in company
+        return True
+    return False
+
+
+def can_manage_bigquery(user):
+    """CRUD a company's BigQuery (Premium) connection: Owner / Executive /
+    Developer / Super. Connecting provisions a new company, so this is a
+    role check rather than a per-company one."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.administered_orgs.exists():  # Super / Owner
+        return True
+    prof = getattr(user, 'profile', None)
+    return bool(prof and (prof.has_role('executive') or prof.has_role('developer')))
+
+
 def allowed_bu_ids(user, company):
     """Set of BusinessUnit ids the user may see in the company, or None = all.
 
