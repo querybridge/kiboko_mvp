@@ -19,8 +19,12 @@
   .sc-value { text-align:right; white-space:nowrap; }
   .sc-value .amt { font-size:20px; font-weight:700; color:var(--status-success); }
   .sc-value .lbl { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
-  .aee-badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px;
+  /* AEE pill — colors mirror the value pipeline's Attract/Engage/Expand palette. */
+  .aee-badge { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px;
                background:var(--bg-elevated); color:var(--accent-secondary); border:1px solid var(--border-subtle); }
+  .aee-attract_traffic  { color:#3FC9E0; background:rgba(63,201,224,0.14);  border-color:rgba(63,201,224,0.45); }
+  .aee-engage_customers { color:#ECB752; background:rgba(236,183,82,0.14);  border-color:rgba(236,183,82,0.45); }
+  .aee-expand_purchase  { color:#55C892; background:rgba(85,200,146,0.14);  border-color:rgba(85,200,146,0.45); }
   .sc-body { padding:12px 18px; }
   .crit-row { display:flex; align-items:center; gap:12px; padding:6px 0; }
   .crit-row .crit-label { width:200px; flex:none; color:var(--text-secondary); }
@@ -78,7 +82,7 @@
               {% if p.vertical %}{{ p.vertical.name }}{% if p.vertical.company %} &middot; {{ p.vertical.company.name }}{% endif %} &middot; {% endif %}
               Owner: {{ p.owner.get_full_name|default:p.owner.username }}
               {% if p.objective %} &middot; {{ p.objective.name }}{% endif %}
-              {% if p.aee_alignment %} &middot; <span class="aee-badge">{{ p.get_aee_alignment_display }}</span>{% endif %}
+              {% if p.aee_alignment %} &middot; <span class="aee-badge aee-{{ p.aee_alignment }}">{{ p.get_aee_alignment_display }}</span>{% endif %}
             </div>
             {% if p.why %}<p class="sc-why">{{ p.why|truncatechars:220 }}</p>{% endif %}
           </div>
