@@ -132,23 +132,22 @@ def group_projects(projects):
 
 
 def compute_lane_totals(projects_in_lane):
-    """Compute summary KPI totals for a list of projects in one lane.
-
-    Returns dict with visits, close_rate, aov, sales values.
+    """Summary totals for the cards in one lane -- the impact of completing them
+    all. `sales` is the headline: total projected value at stake in the column
+    (e.g. how much value is blocked), robust to cards that set `value` but not
+    the per-lever breakdown. visits/close_rate/aov are that breakdown.
     """
-    visits = 0
-    close_rate = 0
-    aov = 0
+    visits = close_rate = aov = value = 0
     for p in projects_in_lane:
         visits += p.impact_visits_value or 0
         close_rate += p.impact_close_rate_value or 0
         aov += p.impact_aov_value or 0
-    sales = visits + close_rate + aov
+        value += (p.value or p.project_value_total or 0)
     return {
         'visits': visits,
         'close_rate': close_rate,
         'aov': aov,
-        'sales': sales,
+        'sales': value,   # total projected value of the column's cards
     }
 
 

@@ -85,6 +85,11 @@ class Command(BaseCommand):
                 team=(rng.choice(teams) if teams else None),
                 measure=(rng.choice(measures) if measures else None),
                 objective=objectives.get(okey), aee_alignment=OBJ_AEE.get(okey, ''),
+                # Attribute the card's value to its lever so the Kanban summary
+                # tiles show the per-lever impact breakdown, not just the total.
+                impact_visits_value=(value if okey == 'volume' else 0),
+                impact_close_rate_value=(value if okey == 'close' else 0),
+                impact_aov_value=(value if okey == 'aov' else 0),
                 customer_value=cv, business_value=bv, cost_savings=cs,
                 operational_cost=oc, business_risk=br, level_of_effort=loe,
             )
