@@ -1726,9 +1726,13 @@ def getting_started(request):
     has_data = (BigQueryConnection.objects.filter(company_id__in=company_ids).exists()
                 or BusinessUnit.objects.filter(company_id__in=company_ids)
                 .exclude(ga4_property_id='').exists())
+    is_agency = org.kind == 'agency'
+    first_co_label = 'Add your first client' if is_agency else 'Add your company details'
+    first_co_desc = ('Create the first client you’ll track.' if is_agency
+                     else 'Add the details of the company you’ll track.')
     steps = [
-        {'label': f'Add your first {noun.lower()}', 'done': bool(company_ids),
-         'url': '/app/data-connection/', 'desc': f'Create the {noun.lower()} you’ll track.'},
+        {'label': first_co_label, 'done': bool(company_ids),
+         'url': '/app/data-connection/', 'desc': first_co_desc},
         {'label': 'Invite your team', 'done': member_count >= 2,
          'url': '/app/manage-users/', 'desc': 'Add users and set each one’s role and business units.'},
         {'label': 'Connect analytics data', 'done': has_data,
