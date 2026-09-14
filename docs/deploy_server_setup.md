@@ -19,25 +19,40 @@ and isn't reachable).
    The redirect URI must also be registered in the Google Cloud Console OAuth
    client (add test users if the consent screen is in Testing).
 
-2. **`db.sqlite3`** (gitignored) — copy up with an **absolute source path** to the
-   exact `NAME` path, then Reload:
+2. **`db.sqlite3`** (gitignored) — ⚠️ **only for first-time provisioning or an
+   intentional data refresh.** Copying the local DB up **overwrites all server
+   data** (users, votes, goals entered on the server). For a routine code+schema
+   deploy, **do NOT copy the DB** — `migrate` updates the server DB in place.
+   When you do need it, copy with an **absolute source path** to the exact `NAME`
+   path, then Reload:
    ```bash
    scp /Users/querybridge/envs/belamibvm/ecombvm/db.sqlite3 \
        kiboko@ssh.pythonanywhere.com:/home/kiboko/kiboko_mvp/db.sqlite3
    ```
 
-## Deploy steps (on the server)
+## Routine deploy (code + schema, keeps server data)
 ```bash
 cd /home/kiboko/kiboko_mvp
 git pull
-python manage.py migrate
+python manage.py migrate                        # applies new schema in place (see below)
 python manage.py seed_organizations            # idempotent: orgs/companies/memberships
 python manage.py seed_metric_recommendations   # idempotent: Insights win/loss recommendations
 python manage.py collectstatic --noinput       # if static changed
+python manage.py showmigrations project users  # confirm the new ones are [X] applied
 # confirm which DB Django reads:
 python manage.py shell -c "from django.conf import settings as s; print(s.DATABASES['default']['NAME'])"
 ```
 Then **Web tab → Reload**.
+
+### Migrations in this release (applied by `migrate`, no data reset needed)
+- `users.0005_userprofile_roles`, `users.0006_backfill_roles` — multi-role model
+  (backfills each user's roles from their old single role).
+- `project.0013_scoringweights` — per-company Score Weights (companies with no
+  row use the default weights; nothing to seed).
+- `project.0014_scorevote` — per-user anonymous score votes.
+
+No new seed commands are required. Score Weights and voting work immediately on
+the existing data.
 
 ## Scheduled Task: daily GA4 rollup sync
 Keeps the `GA4DailyRollup` cache current so Premium dashboards + the value
