@@ -1738,6 +1738,12 @@ def getting_started(request):
 
 
 @login_required
+def score_projects(request):
+    """Score Projects — placeholder for now (scoring UI to come)."""
+    return render(request, 'app/score_projects.html', {'title': 'Score Projects'})
+
+
+@login_required
 def feedback(request):
     """Send user feedback to the configured address via SendGrid. If SendGrid
     isn't configured yet, the feedback is logged (not lost) and the user still

@@ -43,6 +43,7 @@
         <li><a><i class="fa fa-sort-amount-desc"></i> Project Prioritization <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
             <li><a href="/app/">Project Value Pipeline</a></li>
+            <li><a href="{% url 'app:score_projects' %}">Score Projects</a></li>
             {% if user.profile.role == 'admin' or user.profile.role == 'senior_leadership' %}
             <li><a href="/project/approvals.html">Business Value Scoring</a></li>
             {% endif %}
