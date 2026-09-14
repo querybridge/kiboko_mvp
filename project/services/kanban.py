@@ -83,6 +83,16 @@ def can_approve(user, project):
     return False
 
 
+def is_bul_or_higher(user, project):
+    """Business-unit lead or above (interim): the BU's lead, an executive, an org
+    admin, or a superuser."""
+    return is_executive(user) or can_approve(user, project)
+
+
+# Forward order of the flow lanes (Blocked is out-of-band).
+LANE_ORDER = ('ready_to_score', 'scored', 'executive_approval', 'on_deck', 'active')
+
+
 # The six Kanban columns a card can be placed into. Any of these set on an
 # action is authoritative -- a move or an edit-form change sticks as-is.
 COLUMN_STATUSES = set(LANE_STATUS.values())
@@ -204,10 +214,19 @@ def validate_move(project, target_lane, user=None):
     if target_lane in ('scored', 'executive_approval', 'on_deck', 'active') and not _has_score(project):
         return False, 'Project must be scored first.'
 
-    # Only executives move a project out of Executive Approval into On Deck
-    # (the weekly executive-meeting decision).
-    if target_lane == 'on_deck' and get_lane(project) == 'executive_approval' and not is_executive(user):
-        return False, 'Only executives can move a project from Executive Approval to On Deck.'
+    # Blocking/unblocking is open; backward moves (send-backs) are open to anyone.
+    # Forward promotions are role-gated.
+    if target_lane != 'blocked':
+        current = get_lane(project)
+        ci = LANE_ORDER.index(current) if current in LANE_ORDER else -1
+        ti = LANE_ORDER.index(target_lane) if target_lane in LANE_ORDER else -1
+        if ti > ci:  # forward promotion
+            if target_lane == 'executive_approval' and not is_bul_or_higher(user, project):
+                return False, 'Only a business-unit lead (or higher) can promote to Executive Approval.'
+            if target_lane == 'on_deck' and not is_executive(user):
+                return False, 'Only an executive can move a project to On Deck.'
+            if target_lane == 'active' and not is_bul_or_higher(user, project):
+                return False, 'Only a business-unit lead (or higher) can move a project to WIP.'
 
     return True, None
 

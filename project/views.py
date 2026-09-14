@@ -288,9 +288,9 @@ def approve_project(request, project_id):
 
 @login_required
 def delete(request, project_id):
-    object = Action.objects.get(pk=project_id)
-    object.delete()
-    return redirect("view.html")
+    """Disabled: projects are archived, never deleted."""
+    messages.info(request, 'Projects are archived, not deleted.')
+    return redirect('project:all')
 
 
 @login_required
@@ -401,10 +401,19 @@ def kanban_move(request):
         return JsonResponse({'ok': False, 'error': 'Missing project_id or target_lane'}, status=400)
 
     project = get_object_or_404(Action, pk=project_id)
+    from_lane = get_lane(project)
     ok, err = apply_move(project, target_lane, user=request.user)
 
     if not ok:
         return JsonResponse({'ok': False, 'error': err}, status=422)
+
+    # Audit trail: record who moved the card and the transition.
+    if from_lane != target_lane:
+        from .models import ActionComment
+        who = request.user.get_full_name() or request.user.username
+        ActionComment.objects.create(
+            action=project, author=request.user, approved_comment=True,
+            text=f'{who} moved this from {LANES.get(from_lane, from_lane)} to {LANES.get(target_lane, target_lane)}.')
 
     # Recompute lane totals/counts after the move -- scope to the SAME vertical
     # the board was loaded with (from the session), matching kanban_view. The

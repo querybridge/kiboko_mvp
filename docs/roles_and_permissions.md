@@ -50,6 +50,7 @@ Leader, BUU=Business Unit User, Ana=Analyst, Dev=Developer, Sup=Super User.)
 | Update owned business-unit projects | | | ✓ | | | | ✓ | Business Unit |
 | Change project owner | ✓ | ✓ | ✓ | | | | ✓ | Org / BU |
 | Archive projects | ✓ | ✓ | ✓ | | | | ✓ | Org / BU |
+| Promote Scored → Executive Approval | ✓ | ✓ | ✓ | | | | ✓ | Business Unit |
 | Promote Executive Approval → On Deck | ✓ | ✓ | | | | | ✓ | Org |
 | Move On Deck → WIP | ✓ | ✓ | ✓ | | | | ✓ | Business Unit |
 | Move WIP → Complete / Launched | ✓ | ✓ | ✓ | | | | ✓ | Business Unit |
@@ -80,22 +81,25 @@ Leader, BUU=Business Unit User, Ana=Analyst, Dev=Developer, Sup=Super User.)
 | Django admin access | | | | | | | ✓ | Global |
 
 ## Workflow rules (behaviors, not role cells)
-- **Scoring auto-advances.** When a project is fully scored, it moves automatically
-  from Ready to Score to **Executive Approval** (no manual step).
+- **Lanes:** Blocked · Ready to Score · Scored · Executive Approval · On Deck · WIP.
+- **BUL promotes Scored → Executive Approval.** Scoring lands a project in Scored;
+  a business-unit lead (or higher) then promotes the ones worth executive review,
+  keeping the Executive Approval lane clean.
+- **Forward promotions are gated; send-backs (any backward move) are open to anyone.**
+  Blocking/unblocking is open (Analysts excepted — see below).
 - **Kanban move audit.** Every Kanban move auto-creates a project comment recording
   the transition and the logged-in user.
-- **Comments** always record the logged-in author.
-- **Projects are archived, never deleted.** (Remove the delete-project path.)
+- **Comments** always record the logged-in author; anyone can comment.
+- **Projects are archived, never deleted** (the delete path is disabled).
 - **Business-unit data access is governed by GA4** (a user's own Google access for
   Standard). ⚠️ Caveat: Premium uses a *shared* service account with no per-user
   GA4 scoping — if a Premium client needs per-user business-unit visibility, that
   still requires Kiboko-side scoping (`CompanyMembership.allowed_bus`).
 
 ## Open items
-- **Scored lane is now redundant** — since scoring auto-advances to Executive
-  Approval, the "Scored" Kanban column would always be empty. Recommend removing
-  it → lanes: Blocked · Ready to Score · Executive Approval · On Deck · WIP.
-- **Scoring permissions** — per-criterion table above is a first pass (you noted
-  you'd revisit); confirm whether BULs score anything and how "estimate value/LOE"
+- **Scoring permissions** — per-criterion table above is a first pass (you're
+  revisiting); confirm whether BULs score anything and how "estimate value/LOE"
   relate to the criteria.
-- **Move to/from Blocked** currently excludes Analyst — confirm (vs. "anyone").
+- **Analyst block restriction + full role gating** land with the multi-role model
+  (Track B) — until then, interim checks approximate roles (BUL = the BU lead /
+  org admin / superuser; executive = superuser / admin / senior_leadership).
