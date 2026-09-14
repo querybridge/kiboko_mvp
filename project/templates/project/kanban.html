@@ -128,8 +128,6 @@
       margin-bottom: 14px;
       overflow-x: auto;
     }
-    .kpi-summary-row.collapsed .kpi-tile-body { display: none; }
-    .kpi-summary-row.collapsed .kpi-tile { min-height: auto; }
     .kpi-tile {
       flex: 1 1 0;
       min-width: 200px;
@@ -151,14 +149,6 @@
       align-items: center;
       border-bottom: 1px solid #eee;
     }
-    .kpi-tile-header .collapse-btn {
-      font-size: 10px;
-      cursor: pointer;
-      color: #999;
-      text-transform: uppercase;
-      letter-spacing: .3px;
-    }
-    .kpi-tile-header .collapse-btn:hover { color: #333; }
     .kpi-tile-body {
       padding: 10px 12px;
     }
@@ -238,27 +228,8 @@
       <div class="kpi-tile" data-lane="{{ lane.key }}">
         <div class="kpi-tile-header">
           <span>{{ lane.label }}</span>
-          <span class="collapse-btn" id="collapseBtn">COLLAPSE</span>
         </div>
         <div class="kpi-tile-body">
-          <div class="kpi-row">
-            <span class="kpi-label">Visits Impact</span>
-            <span class="kpi-value" data-kpi="visits">
-              {% if lane.totals.visits %}${{ lane.totals.visits|floatformat:0|intcomma }}{% else %}&mdash;{% endif %}
-            </span>
-          </div>
-          <div class="kpi-row">
-            <span class="kpi-label">Close Rate Impact</span>
-            <span class="kpi-value" data-kpi="close_rate">
-              {% if lane.totals.close_rate %}${{ lane.totals.close_rate|floatformat:0|intcomma }}{% else %}&mdash;{% endif %}
-            </span>
-          </div>
-          <div class="kpi-row">
-            <span class="kpi-label">AOV Impact</span>
-            <span class="kpi-value" data-kpi="aov">
-              {% if lane.totals.aov %}${{ lane.totals.aov|floatformat:0|intcomma }}{% else %}&mdash;{% endif %}
-            </span>
-          </div>
           <div class="kpi-row">
             <span class="kpi-label">Projected Value</span>
             <span class="kpi-value" data-kpi="sales">
@@ -331,30 +302,6 @@
     var moveUrl = '{% url "project:kanban_move" %}';
     var verticalId = new URLSearchParams(window.location.search).get('vertical') || '';
 
-    // ── Collapse behaviour ──
-    var summaryRow = document.getElementById('kpiSummaryRow');
-    var COLLAPSE_KEY = 'kanban_kpi_collapsed';
-
-    function applyCollapse() {
-      if (localStorage.getItem(COLLAPSE_KEY) === '1') {
-        summaryRow.classList.add('collapsed');
-        document.querySelectorAll('.collapse-btn').forEach(function(btn) {
-          btn.textContent = 'EXPAND';
-        });
-      }
-    }
-    applyCollapse();
-
-    document.querySelectorAll('.collapse-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var isCollapsed = summaryRow.classList.toggle('collapsed');
-        localStorage.setItem(COLLAPSE_KEY, isCollapsed ? '1' : '0');
-        document.querySelectorAll('.collapse-btn').forEach(function(b) {
-          b.textContent = isCollapsed ? 'EXPAND' : 'COLLAPSE';
-        });
-      });
-    });
-
     // ── Toast helper ──
     var toastEl = document.getElementById('kanbanToast');
     var toastTimer = null;
@@ -379,10 +326,8 @@
         var lane = tile.getAttribute('data-lane');
         var totals = laneTotals[lane];
         if (!totals) return;
-        tile.querySelector('[data-kpi="visits"]').textContent = fmtCurrency(totals.visits);
-        tile.querySelector('[data-kpi="close_rate"]').textContent = fmtCurrency(totals.close_rate);
-        tile.querySelector('[data-kpi="aov"]').textContent = fmtCurrency(totals.aov);
-        tile.querySelector('[data-kpi="sales"]').textContent = fmtCurrency(totals.sales);
+        var salesEl = tile.querySelector('[data-kpi="sales"]');
+        if (salesEl) salesEl.textContent = fmtCurrency(totals.sales);
       });
       if (laneCounts) {
         document.querySelectorAll('.lane-count').forEach(function(badge) {

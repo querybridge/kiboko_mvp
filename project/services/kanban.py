@@ -170,6 +170,11 @@ def validate_move(project, target_lane):
     if target_lane not in LANES:
         return False, f'Unknown lane: {target_lane}'
 
+    # A card with no projected value can't leave Incomplete Entry.
+    if get_lane(project) == 'incomplete_entry' and target_lane != 'incomplete_entry':
+        if not (project.value or 0):
+            return False, 'Add a projected value before moving this card out of Incomplete Entry.'
+
     if target_lane == 'ready_to_score':
         if _is_incomplete(project):
             return False, 'Project is missing required fields. Complete the entry first.'
