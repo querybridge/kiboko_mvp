@@ -57,21 +57,25 @@ def is_ready_for_review(project):
 
 
 def is_executive(user):
-    """Interim executive check (superuser or admin/senior_leadership) -- will be
-    superseded by the forthcoming user-permission list."""
+    """Executive or above: superuser, an Account Owner (org admin), or a user
+    holding the Executive role."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser or user.administered_orgs.exists():
+        return True
+    prof = getattr(user, 'profile', None)
+    return bool(prof and prof.has_role('executive'))
+
+
+def can_approve(user, project):
+    """Business-unit lead (or higher) for this project: a user with the Business
+    Unit Leader role, the BU's general_manager, a superuser, or the org admin."""
     if not user or not getattr(user, 'is_authenticated', False):
         return False
     if user.is_superuser:
         return True
-    return getattr(getattr(user, 'profile', None), 'role', '') in ('admin', 'senior_leadership')
-
-
-def can_approve(user, project):
-    """Whether the user may approve this project (business-unit lead). Interim:
-    the business unit's general_manager, or a superuser / the org's admin."""
-    if not user or not getattr(user, 'is_authenticated', False):
-        return False
-    if user.is_superuser:
+    prof = getattr(user, 'profile', None)
+    if prof and prof.has_role('business_unit_leader'):
         return True
     bu = getattr(project, 'vertical', None)
     if bu and bu.general_manager_id == user.id:
@@ -84,9 +88,13 @@ def can_approve(user, project):
 
 
 def is_bul_or_higher(user, project):
-    """Business-unit lead or above (interim): the BU's lead, an executive, an org
-    admin, or a superuser."""
+    """Business-unit lead or above: BU lead, executive, org admin, or superuser."""
     return is_executive(user) or can_approve(user, project)
+
+
+def can_score(user, project):
+    """Score the six criteria -- Account Owner / Executive / BU Lead / Super User."""
+    return is_bul_or_higher(user, project)
 
 
 # Forward order of the flow lanes (Blocked is out-of-band).

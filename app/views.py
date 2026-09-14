@@ -1578,14 +1578,15 @@ def manage_users(request):
     can manage their own company.
     """
     from business_unit.models import Company, CompanyMembership
-    from users.models import ROLE_CHOICES
+    from users.models import KIBOKO_ROLES
 
-    ROLE_LABELS = dict(ROLE_CHOICES)
-    ELEVATED = ('admin', 'senior_leadership')  # roles that also administer a company
+    ROLE_KEYS = dict(KIBOKO_ROLES)
+    ADMIN_ROLES = ('executive', 'business_unit_leader')  # roles that administer a company
 
     user = request.user
     profile = getattr(user, 'profile', None)
-    is_global_admin = user.is_superuser or (profile and profile.role in ELEVATED)
+    is_global_admin = (user.is_superuser or user.administered_orgs.exists()
+                       or (profile and profile.has_role('executive')))
     if is_global_admin:
         companies = Company.objects.all().order_by('name')
     else:
@@ -1595,13 +1596,12 @@ def manage_users(request):
     if not is_global_admin and not companies.exists():
         return HttpResponseForbidden('You do not have permission to manage users.')
 
-    def _set_role(member, role):
-        """Set the user's role and mirror it onto every one of their memberships."""
-        if member.profile.role != role:
-            member.profile.role = role
-            member.profile.save(update_fields=['role'])
-        CompanyMembership.objects.filter(user=member).update(
-            role='admin' if role in ELEVATED else 'member')
+    def _set_roles(member, roles_list):
+        """Set the user's Kiboko roles; mirror company-admin membership from them."""
+        member.profile.roles = roles_list
+        member.profile.save(update_fields=['roles'])
+        elevated = any(r in ADMIN_ROLES for r in roles_list)
+        CompanyMembership.objects.filter(user=member).update(role='admin' if elevated else 'member')
 
     def _is_last_admin(company, member):
         """True if `member` is the only admin of `company` (block removal/demotion)."""
@@ -1612,9 +1612,6 @@ def manage_users(request):
     if request.method == 'POST':
         action = request.POST.get('action', '')
         company = companies.filter(pk=request.POST.get('company', '')).first()
-        role = request.POST.get('role', 'staff')
-        if role not in ROLE_LABELS:
-            role = 'staff'
 
         if action == 'add_member' and company:
             email = request.POST.get('email', '').strip()
@@ -1633,22 +1630,22 @@ def manage_users(request):
                     member.last_name = last or member.last_name
                     member.save(update_fields=['first_name', 'last_name'])
                 CompanyMembership.objects.get_or_create(
-                    company=company, user=member,
-                    defaults={'role': 'admin' if role in ELEVATED else 'member'})
-                _set_role(member, role)
-                messages.success(
-                    request, f'Added {email} to {company.name} as {ROLE_LABELS[role]}.')
+                    company=company, user=member, defaults={'role': 'member'})
+                if not member.profile.roles:
+                    _set_roles(member, ['business_unit_user'])
+                messages.success(request, f'Added {email} to {company.name}.')
 
-        elif action == 'set_role' and company:
+        elif action == 'set_roles' and company:
             member = User.objects.filter(pk=request.POST.get('user_id', '')).first()
             if member and CompanyMembership.objects.filter(company=company, user=member).exists():
-                demoting = role not in ELEVATED
-                if demoting and _is_last_admin(company, member):
-                    messages.error(request, f'{company.name} must keep at least one admin.')
+                roles_list = [r for r in request.POST.getlist('roles') if r in ROLE_KEYS]
+                elevated = any(r in ADMIN_ROLES for r in roles_list)
+                if not elevated and _is_last_admin(company, member):
+                    messages.error(request, f'{company.name} must keep at least one admin '
+                                            '(Executive or Business Unit Leader).')
                 else:
-                    _set_role(member, role)
-                    messages.success(
-                        request, f'{member.email or member.username} is now {ROLE_LABELS[role]}.')
+                    _set_roles(member, roles_list)
+                    messages.success(request, f'Updated roles for {member.email or member.username}.')
 
         elif action == 'remove_member' and company:
             m = CompanyMembership.objects.filter(
@@ -1685,7 +1682,7 @@ def manage_users(request):
 
     return render(request, 'app/manage_users.html', {
         'companies_ctx': companies_ctx,
-        'role_choices': ROLE_CHOICES,
+        'kiboko_roles': KIBOKO_ROLES,
     })
 
 
