@@ -30,6 +30,22 @@ def _get_vertical_id(request):
     return scoped_vertical_id(request)
 
 
+def _get_company_id(request):
+    """The selected Company id (from the top-bar scope), or None."""
+    from business_unit.scope import scoped_company_id
+    return scoped_company_id(request)
+
+
+def _scope(qs, vertical_id, company_id):
+    """Scope to a BusinessUnit, or (on the Summary roll-up) to the selected
+    company so project lists never span companies/clients."""
+    if vertical_id:
+        return qs.filter(vertical_id=vertical_id)
+    if company_id:
+        return qs.filter(vertical__company_id=company_id)
+    return qs
+
+
 #from .models import Project
 @login_required
 # Create your views here.
@@ -50,11 +66,10 @@ def view(request):
     measure = request.GET.get('measure', '').strip()
     # Backlog candidates: approved (on the executive Kanban), not archived, not
     # terminal. Incomplete/pending-review entries live in Approve Projects.
-    base = Action.objects.filter(archived=False, approved=True).exclude(
+    base = _scope(Action.objects.filter(archived=False, approved=True).exclude(
         status__in=NON_KANBAN_STATUSES
-    ).select_related('owner', 'measure', 'business_unit', 'vertical', 'project')
-    if vertical_id:
-        base = base.filter(vertical_id=vertical_id)
+    ).select_related('owner', 'measure', 'business_unit', 'vertical', 'project'),
+        vertical_id, _get_company_id(request))
     if aee:
         base = base.filter(aee_alignment=aee)
     if measure:
@@ -230,9 +245,7 @@ def project_loe(request, project_id):
 @login_required
 def value(request):
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(value=0)
-    if vertical_id:
-        projects = projects.filter(vertical_id=vertical_id)
+    projects = _scope(Action.objects.filter(value=0), vertical_id, _get_company_id(request))
     title = "Assign Value"
     return render(request, 'project/value.html', {'projects': projects, 'title': title})
 
@@ -240,9 +253,7 @@ def value(request):
 @login_required
 def loe(request):
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(level_of_effort=0)
-    if vertical_id:
-        projects = projects.filter(vertical_id=vertical_id)
+    projects = _scope(Action.objects.filter(level_of_effort=0), vertical_id, _get_company_id(request))
     title = "Assign Level of Effort"
     return render(request, 'project/loe.html', {'projects': projects, 'title': title})
 
@@ -250,9 +261,9 @@ def loe(request):
 @login_required
 def approve(request):
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['WIP', 'On Deck'])
-    if vertical_id:
-        projects = projects.filter(vertical_id=vertical_id)
+    projects = _scope(
+        Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['WIP', 'On Deck']),
+        vertical_id, _get_company_id(request))
     title = "Approve and Prioritize"
     return render(request, 'project/approvals.html', {'projects': projects, 'title': title})
     
@@ -299,11 +310,9 @@ def archive(request):
     vertical_id = _get_vertical_id(request)
     # Archived actions plus Complete ones (Complete isn't a Kanban lane, so it
     # only lives here, not in the Backlog).
-    archived_projects = Action.objects.filter(
+    archived_projects = _scope(Action.objects.filter(
         Q(archived=True) | Q(status='Complete')
-    ).order_by('-launch', '-date_modified')
-    if vertical_id:
-        archived_projects = archived_projects.filter(vertical_id=vertical_id)
+    ).order_by('-launch', '-date_modified'), vertical_id, _get_company_id(request))
     paginator = Paginator(archived_projects, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -320,11 +329,10 @@ def approve_projects(request):
     executive Kanban (-> Ready to Score); incomplete ones are finished first.
     Two tables (incomplete vs pending), scoped to the top-bar selection."""
     vertical_id = _get_vertical_id(request)
-    qs = Action.objects.filter(archived=False, approved=False).exclude(
+    qs = _scope(Action.objects.filter(archived=False, approved=False).exclude(
         status__in=NON_KANBAN_STATUSES
-    ).select_related('owner', 'objective', 'vertical', 'business_unit')
-    if vertical_id:
-        qs = qs.filter(vertical_id=vertical_id)
+    ).select_related('owner', 'objective', 'vertical', 'business_unit'),
+        vertical_id, _get_company_id(request))
 
     pending, incomplete = [], []
     for p in qs:
@@ -357,13 +365,11 @@ def approve_action(request, project_id):
 def kanban_view(request):
     """Render the Kanban board."""
     vertical_id = _get_vertical_id(request)
-    projects = Action.objects.filter(archived=False, approved=True).exclude(
+    projects = _scope(Action.objects.filter(archived=False, approved=True).exclude(
         status__in=NON_KANBAN_STATUSES
     ).select_related(
         'project', 'business_unit', 'vertical', 'owner',
-    )
-    if vertical_id:
-        projects = projects.filter(vertical_id=vertical_id)
+    ), vertical_id, _get_company_id(request))
 
     grouped = group_projects(projects)
     lane_totals = compute_all_lane_totals(grouped)
@@ -420,9 +426,9 @@ def kanban_move(request):
     # client's ?vertical= URL param may be absent (e.g. navigated via sidebar),
     # which previously made the recompute global and returned wrong counts.
     vertical_id = _get_vertical_id(request)
-    qs = Action.objects.filter(archived=False, approved=True).exclude(status__in=NON_KANBAN_STATUSES)
-    if vertical_id:
-        qs = qs.filter(vertical_id=vertical_id)
+    qs = _scope(
+        Action.objects.filter(archived=False, approved=True).exclude(status__in=NON_KANBAN_STATUSES),
+        vertical_id, _get_company_id(request))
 
     grouped = group_projects(qs)
     lane_totals = compute_all_lane_totals(grouped)

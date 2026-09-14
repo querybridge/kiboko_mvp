@@ -31,6 +31,17 @@ from strategy.models import Project, Objective, Metric, KPI
 from project.views import project_detail
 
 
+def _scope_to(qs, vertical_id, company_id, path='vertical'):
+    """Scope a queryset to a BusinessUnit, or (on the 'All' Summary roll-up) to
+    the selected company so aggregates never span companies/clients. `path` is
+    the FK path to the BusinessUnit (e.g. 'vertical' or 'actions__vertical')."""
+    if vertical_id:
+        return qs.filter(**{f'{path}_id': vertical_id})
+    if company_id:
+        return qs.filter(**{f'{path}__company_id': company_id})
+    return qs
+
+
 def _actuals_map_agg(actuals, start, end):
     """Sum a GA4 daily-actuals map {iso_date: {revenue,visits,orders}} over
     [start, end] -> {'revenue': float, 'visits': int, 'orders': int}."""
@@ -47,7 +58,7 @@ def _actuals_map_agg(actuals, start, end):
     return {'revenue': rev, 'visits': int(visits), 'orders': int(orders)}
 
 
-def calculate_forecast(year, month, return_components=False, vertical_id=None, actuals=None):
+def calculate_forecast(year, month, return_components=False, vertical_id=None, actuals=None, company_id=None):
     """Calculate forecast for a given month using weekday-weighted projection.
 
     For the current month: uses actuals-to-date + day-of-week projected remainder.
@@ -72,10 +83,8 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
             daily.append((d, Decimal(str((rec or {}).get('revenue', 0) or 0))))
             d += timedelta(days=1)
     else:
-        actuals_qs = DailyActual.objects.filter(
-            date__year=year, date__month=month, date__lte=today)
-        if vertical_id:
-            actuals_qs = actuals_qs.filter(vertical_id=vertical_id)
+        actuals_qs = _scope_to(DailyActual.objects.filter(
+            date__year=year, date__month=month, date__lte=today), vertical_id, company_id)
         daily = [(a.date, a.revenue) for a in actuals_qs]
 
     actuals_total = sum((r for _, r in daily), Decimal('0'))
@@ -124,9 +133,8 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
             py_month_total = Decimal(str(_actuals_map_agg(
                 actuals, date(prior_year, month, 1), date(prior_year, month, py_days))['revenue']))
         else:
-            py_qs = DailyActual.objects.filter(date__year=prior_year, date__month=month)
-            if vertical_id:
-                py_qs = py_qs.filter(vertical_id=vertical_id)
+            py_qs = _scope_to(DailyActual.objects.filter(
+                date__year=prior_year, date__month=month), vertical_id, company_id)
             py_month_total = py_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
         if py_month_total > 0:
@@ -134,14 +142,12 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
                 py_year_total = Decimal(str(_actuals_map_agg(
                     actuals, date(prior_year, 1, 1), date(prior_year, 12, 31))['revenue']))
             else:
-                py_year_qs = DailyActual.objects.filter(date__year=prior_year)
-                if vertical_id:
-                    py_year_qs = py_year_qs.filter(vertical_id=vertical_id)
+                py_year_qs = _scope_to(DailyActual.objects.filter(
+                    date__year=prior_year), vertical_id, company_id)
                 py_year_total = py_year_qs.aggregate(s=Sum('revenue'))['s'] or Decimal('0')
 
-            budget_qs = MonthlyGoal.objects.filter(month__year=year)
-            if vertical_id:
-                budget_qs = budget_qs.filter(vertical_id=vertical_id)
+            budget_qs = _scope_to(MonthlyGoal.objects.filter(
+                month__year=year), vertical_id, company_id)
             this_year_budget = budget_qs.aggregate(s=Sum('budget'))['s'] or Decimal('0')
 
             if py_year_total > 0 and this_year_budget > 0:
@@ -150,13 +156,11 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
 
     # Add active action uplift — each action contributes its daily value
     # only for days in this month on or after its launch date
-    projects = Action.objects.filter(
+    projects = _scope_to(Action.objects.filter(
         status='WIP',
     ).filter(
         Q(launch__isnull=True) | Q(launch__lte=last_of_month)
-    )
-    if vertical_id:
-        projects = projects.filter(vertical_id=vertical_id)
+    ), vertical_id, company_id)
     project_uplift = Decimal('0')
     for p in projects:
         daily_value = Decimal(str(p.value or 0)) / Decimal('365')
@@ -172,7 +176,7 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
     return base_forecast + project_uplift
 
 
-def _build_chart_data(year, vertical_id=None, actuals=None):
+def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
     """Build MTD, QTD, and YTD chart data series for the dashboard.
 
     ``actuals`` (optional) is a GA4 daily-actuals map {iso_date: {revenue,...}}
@@ -183,14 +187,10 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
     current_year = today.year
 
     def _filter_actuals(qs):
-        if vertical_id:
-            return qs.filter(vertical_id=vertical_id)
-        return qs
+        return _scope_to(qs, vertical_id, company_id)
 
     def _filter_goals(qs):
-        if vertical_id:
-            return qs.filter(vertical_id=vertical_id)
-        return qs
+        return _scope_to(qs, vertical_id, company_id)
 
     def _goal_budget(year, month):
         qs = MonthlyGoal.objects.filter(month=date(year, month, 1))
@@ -231,7 +231,7 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
             ytd_project_value_add.append(0)
         else:
             # Current/future month: show forecast, hide actual (or show partial actual)
-            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
+            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals, company_id=company_id)
             ytd_forecast_base.append(float(base))
             ytd_project_value_add.append(float(proj_uplift))
             # For current month, show actual so far; for future, null
@@ -276,7 +276,7 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
             qtd_project_value_add.append(0)
         else:
             # Current/future month: show forecast, hide actual (or show partial actual)
-            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
+            base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals, company_id=company_id)
             qtd_forecast_base.append(float(base))
             qtd_project_value_add.append(float(proj_uplift))
             # For current month, show actual so far; for future, null
@@ -321,13 +321,11 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
 
     # Pre-compute per-project daily rates for MTD forecast
     last_of_current_month = date(year, current_month, days_in_current_month)
-    project_qs = Action.objects.filter(
+    project_qs = _scope_to(Action.objects.filter(
         status='WIP',
     ).filter(
         Q(launch__isnull=True) | Q(launch__lte=last_of_current_month)
-    )
-    if vertical_id:
-        project_qs = project_qs.filter(vertical_id=vertical_id)
+    ), vertical_id, company_id)
     active_projects = list(project_qs.values_list('value', 'launch'))
 
     def _project_uplift_for_day(d):
@@ -384,13 +382,11 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
     # --- Summary totals for each period ---
 
     def _project_value_through(end_date):
-        qs = Action.objects.filter(
+        qs = _scope_to(Action.objects.filter(
             status='WIP',
         ).filter(
             Q(launch__isnull=True) | Q(launch__lte=end_date)
-        )
-        if vertical_id:
-            qs = qs.filter(vertical_id=vertical_id)
+        ), vertical_id, company_id)
         return float(qs.aggregate(s=Sum('value'))['s'] or 0)
 
     # MTD: use the final cumulative values (full month projection)
@@ -405,7 +401,7 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
     qtd_forecast_base_total = 0
     qtd_project_value_total = 0
     for m in range(quarter_start_month, min(quarter_start_month + 3, 13)):
-        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
+        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals, company_id=company_id)
         qtd_forecast_base_total += float(base)
         qtd_project_value_total += float(proj_uplift)
     qtd_forecast_base_total = round(qtd_forecast_base_total, 2)
@@ -420,7 +416,7 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
     ytd_forecast_base_total = 0
     ytd_project_value_total = 0
     for m in range(1, 13):
-        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals)
+        base, proj_uplift = calculate_forecast(year, m, return_components=True, vertical_id=vertical_id, actuals=actuals, company_id=company_id)
         ytd_forecast_base_total += float(base)
         ytd_project_value_total += float(proj_uplift)
     ytd_forecast_base_total = round(ytd_forecast_base_total, 2)
@@ -481,18 +477,17 @@ def _build_chart_data(year, vertical_id=None, actuals=None):
 @login_required
 def index(request):
     vertical_id = scoped_vertical_id(request)
+    company_id = scoped_company_id(request)
 
     # Show active actions on dashboard
-    projects = Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score')
-    if vertical_id:
-        projects = projects.filter(vertical_id=vertical_id)
+    projects = _scope_to(
+        Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score'),
+        vertical_id, company_id)
 
     # Dynamic Objective tiles
     annual_rocks_data = []
     for rock in Objective.objects.filter(year=date.today().year):
-        base_qs = Action.objects.filter(objective=rock, archived=False)
-        if vertical_id:
-            base_qs = base_qs.filter(vertical_id=vertical_id)
+        base_qs = _scope_to(Action.objects.filter(objective=rock, archived=False), vertical_id, company_id)
         count = base_qs.filter(status='WIP').count()
         value = base_qs.filter(status='WIP').aggregate(Sum('value'))
         count_p = base_qs.exclude(status='WIP').count()
@@ -527,13 +522,13 @@ def index(request):
     ga4_actuals = ga4_dashboard.ga4_daily_actuals(request, date(_t.year - 1, 1, 1), _t)
 
     # Build revenue chart data
-    chart_data = _build_chart_data(_t.year, vertical_id=vertical_id, actuals=ga4_actuals)
+    chart_data = _build_chart_data(_t.year, vertical_id=vertical_id, actuals=ga4_actuals, company_id=company_id)
 
     # Build performance scorecard data
-    performance_data = _build_performance_data(_t, vertical_id=vertical_id, actuals=ga4_actuals)
+    performance_data = _build_performance_data(_t, vertical_id=vertical_id, actuals=ga4_actuals, company_id=company_id)
 
     # Build initiatives summary
-    initiatives = _build_initiatives_summary(vertical_id=vertical_id)
+    initiatives = _build_initiatives_summary(vertical_id=vertical_id, company_id=company_id)
 
     return render(request, 'app/index2.html', {
         'annual_rocks_data': annual_rocks_data,
@@ -556,7 +551,7 @@ PURPOSE_COLORS = {
 PIPELINE_EXCLUDED_STATUSES = ['Launched', 'Complete']
 
 
-def _build_initiatives_summary(vertical_id=None):
+def _build_initiatives_summary(vertical_id=None, company_id=None):
     """Annotate Projects with action rollups for the Projects summary table.
     Excludes actions in final states (Launched, Complete) since the panel
     surfaces work that will produce future value.
@@ -567,6 +562,8 @@ def _build_initiatives_summary(vertical_id=None):
     pipeline_filter = ~Q(actions__status__in=PIPELINE_EXCLUDED_STATUSES)
     if vertical_id:
         pipeline_filter &= Q(actions__vertical_id=vertical_id)
+    elif company_id:
+        pipeline_filter &= Q(actions__vertical__company_id=company_id)
 
     qs = (
         Project.objects
@@ -590,9 +587,8 @@ def _build_initiatives_summary(vertical_id=None):
         .order_by('purpose', 'name')
     )
 
-    project_qs = Action.objects.exclude(status__in=PIPELINE_EXCLUDED_STATUSES)
-    if vertical_id:
-        project_qs = project_qs.filter(vertical_id=vertical_id)
+    project_qs = _scope_to(
+        Action.objects.exclude(status__in=PIPELINE_EXCLUDED_STATUSES), vertical_id, company_id)
     qs = qs.prefetch_related(models.Prefetch('actions', queryset=project_qs.order_by('-normalized_score')))
 
     rows = []
@@ -632,7 +628,7 @@ PERFORMANCE_AOV_GOAL = 475.0           # target average order value ($)
 PERFORMANCE_CLOSE_RATE_GOAL = 0.0150   # target close rate (1.5%)
 
 
-def _build_performance_data(today, vertical_id=None, actuals=None):
+def _build_performance_data(today, vertical_id=None, actuals=None, company_id=None):
     """Aggregate Sales / Visits / Close Rate / AOV per period (MTD/QTD/YTD)
     with deltas vs same period last year and vs prorated goal.
 
@@ -661,9 +657,8 @@ def _build_performance_data(today, vertical_id=None, actuals=None):
             a = _actuals_map_agg(actuals, start, end)
             revenue, visits, orders = a['revenue'], a['visits'], a['orders']
         else:
-            qs = DailyActual.objects.filter(date__gte=start, date__lte=end)
-            if vertical_id:
-                qs = qs.filter(vertical_id=vertical_id)
+            qs = _scope_to(DailyActual.objects.filter(
+                date__gte=start, date__lte=end), vertical_id, company_id)
             agg = qs.aggregate(rev=Sum('revenue'), v=Sum('visits'), o=Sum('orders'))
             revenue = float(agg['rev'] or 0)
             visits = int(agg['v'] or 0)
@@ -682,9 +677,7 @@ def _build_performance_data(today, vertical_id=None, actuals=None):
         while cur <= end:
             days_in_month = calendar.monthrange(cur.year, cur.month)[1]
             month_end = date(cur.year, cur.month, days_in_month)
-            qs = MonthlyGoal.objects.filter(month=cur)
-            if vertical_id:
-                qs = qs.filter(vertical_id=vertical_id)
+            qs = _scope_to(MonthlyGoal.objects.filter(month=cur), vertical_id, company_id)
             month_budget = qs.aggregate(s=Sum('budget'))['s'] or Decimal('0')
             daily = month_budget / Decimal(days_in_month) if days_in_month else Decimal('0')
 
@@ -1374,10 +1367,11 @@ def analytics_expand_purchases(request):
 def work_in_progress(request):
     """Work In Progress — the active-actions gantt (moved off the dashboard)."""
     vertical_id = scoped_vertical_id(request)
+    company_id = scoped_company_id(request)
 
-    projects = Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score')
-    if vertical_id:
-        projects = projects.filter(vertical_id=vertical_id)
+    projects = _scope_to(
+        Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score'),
+        vertical_id, company_id)
 
     gantt = _build_gantt_data(projects)
 
