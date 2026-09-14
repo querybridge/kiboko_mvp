@@ -5,28 +5,33 @@
 {{ block.super }}
 <style>
   .score-summary { display:flex; gap:28px; align-items:baseline; flex-wrap:wrap; }
-  .score-summary .big { font-size:22px; font-weight:600; }
-  .crit-legend { font-size:12px; color:#777; margin:8px 0 0; }
+  .score-summary .big { font-size:22px; font-weight:600; color:var(--text-primary); }
+  .crit-legend { font-size:12px; color:var(--text-muted); margin:8px 0 0; }
+  .crit-legend b { color:var(--text-secondary); }
   .crit-legend span { display:inline-block; margin-right:14px; white-space:nowrap; }
-  .score-card { border:1px solid #e6e9ed; border-radius:4px; margin-bottom:16px; background:#fff; }
-  .score-card .sc-head { padding:12px 16px; border-bottom:1px solid #f0f2f5; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
-  .score-card .sc-title { font-size:16px; font-weight:600; margin:0 0 4px; }
-  .score-card .sc-meta { font-size:12px; color:#888; }
-  .score-card .sc-why { font-size:13px; color:#555; margin:6px 0 0; }
+  .score-card { border:1px solid var(--border-subtle); border-radius:var(--radius-card, 12px);
+                margin-bottom:16px; background:var(--card-fill, var(--bg-surface)); box-shadow:var(--card-shadow);
+                color:var(--text-primary); }
+  .score-card .sc-head { padding:14px 18px; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .score-card .sc-title { font-size:16px; font-weight:600; margin:0 0 4px; color:var(--text-primary); }
+  .score-card .sc-meta { font-size:12px; color:var(--text-muted); }
+  .score-card .sc-why { font-size:13px; color:var(--text-secondary); margin:6px 0 0; }
   .sc-value { text-align:right; white-space:nowrap; }
-  .sc-value .amt { font-size:20px; font-weight:700; color:#26b99a; }
-  .sc-value .lbl { font-size:11px; color:#999; text-transform:uppercase; letter-spacing:.04em; }
-  .aee-badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; background:#eef4fb; color:#3a6ea5; }
-  .sc-body { padding:12px 16px; }
+  .sc-value .amt { font-size:20px; font-weight:700; color:var(--status-success); }
+  .sc-value .lbl { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
+  .aee-badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px;
+               background:var(--bg-elevated); color:var(--accent-secondary); border:1px solid var(--border-subtle); }
+  .sc-body { padding:12px 18px; }
   .crit-row { display:flex; align-items:center; gap:12px; padding:6px 0; }
-  .crit-row .crit-label { width:200px; flex:none; }
-  .crit-row .crit-label b { font-weight:600; }
-  .crit-row .crit-label small { display:block; color:#999; font-size:11px; }
-  .crit-row .crit-w { font-size:11px; color:#aaa; width:40px; flex:none; }
-  .crit-row input[type=range] { flex:1; }
-  .crit-row .crit-out { width:26px; text-align:center; font-weight:700; flex:none; }
-  .sc-foot { display:flex; justify-content:space-between; align-items:center; border-top:1px solid #f0f2f5; padding:10px 16px; }
-  .sc-foot .wscore .n { font-size:22px; font-weight:700; }
+  .crit-row .crit-label { width:200px; flex:none; color:var(--text-secondary); }
+  .crit-row .crit-label b { font-weight:600; color:var(--text-primary); }
+  .crit-row .crit-label small { display:block; color:var(--text-muted); font-size:11px; }
+  .crit-row .crit-w { font-size:11px; color:var(--text-muted); width:40px; flex:none; }
+  .crit-row input[type=range] { flex:1; accent-color:var(--accent-primary); }
+  .crit-row .crit-out { width:26px; text-align:center; font-weight:700; flex:none; color:var(--text-primary); }
+  .sc-foot { display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); padding:12px 18px; }
+  .sc-foot .wscore { color:var(--text-secondary); }
+  .sc-foot .wscore .n { font-size:22px; font-weight:700; color:var(--text-primary); }
 </style>
 {% endblock stylesheets %}
 {% block content %}
@@ -50,7 +55,7 @@
         <div class="x_content">
           <div class="score-summary">
             <div><span class="big">{{ projects|length }}</span> project{{ projects|length|pluralize }} awaiting a score</div>
-            <div><span class="big">${{ total_value|floatformat:0|intcomma }}</span> <span class="text-muted">projected value at stake</span></div>
+            <div><span class="big">${{ total_value|floatformat:0|intcomma }}</span> <span style="color:var(--text-muted);">projected value at stake</span></div>
           </div>
           <p class="crit-legend">
             Weighted 0&ndash;10 &middot;
@@ -95,7 +100,7 @@
           {% endfor %}
         </div>
         <div class="sc-foot">
-          <div class="wscore">Weighted score: <span class="n">0.0</span> <span class="text-muted">/ 10</span></div>
+          <div class="wscore">Weighted score: <span class="n">0.0</span> <span style="color:var(--text-muted);">/ 10</span></div>
           <button type="submit" class="btn btn-success">Save score &amp; move to Scored</button>
         </div>
       </form>
@@ -103,8 +108,8 @@
     </div></div>
     {% else %}
     <div class="row"><div class="col-md-12">
-      <div class="x_panel"><div class="x_content" style="padding:40px; text-align:center; color:#888;">
-        <i class="fa fa-check-circle" style="font-size:36px; margin-bottom:12px; color:#26b99a;"></i>
+      <div class="x_panel"><div class="x_content" style="padding:40px; text-align:center; color:var(--text-secondary);">
+        <i class="fa fa-check-circle" style="font-size:36px; margin-bottom:12px; color:var(--status-success);"></i>
         {% if can_score_any %}
         <p>Nothing to score right now. Projects appear here once a business-unit lead approves them.</p>
         {% else %}
