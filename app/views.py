@@ -14,6 +14,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.db import models
 from django.db.models import Q, Sum, Count, F, Avg
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 
 from django.contrib.auth.models import User
@@ -154,18 +155,19 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
                 growth_scale = this_year_budget / py_year_total
                 base_forecast = py_month_total * growth_scale
 
-    # Add active action uplift — each action contributes its daily value
-    # only for days in this month on or after its launch date
-    projects = _scope_to(Action.objects.filter(
+    # Add active project uplift — each WIP project contributes its daily revenue
+    # only for days in this month on or after its go-live (target completion).
+    from strategy.models import Project
+    projects = _scope_to(Project.objects.filter(
         status='WIP',
     ).filter(
-        Q(launch__isnull=True) | Q(launch__lte=last_of_month)
+        Q(target_completion__isnull=True) | Q(target_completion__lte=last_of_month)
     ), vertical_id, company_id)
     project_uplift = Decimal('0')
     for p in projects:
         daily_value = Decimal(str(p.value or 0)) / Decimal('365')
-        if p.launch and p.launch > first_of_month:
-            active_start = p.launch
+        if p.target_completion and p.target_completion > first_of_month:
+            active_start = p.target_completion
         else:
             active_start = first_of_month
         active_days = (last_of_month - active_start).days + 1
@@ -320,13 +322,14 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
             dow_avg[dow] = 0
 
     # Pre-compute per-project daily rates for MTD forecast
+    from strategy.models import Project
     last_of_current_month = date(year, current_month, days_in_current_month)
-    project_qs = _scope_to(Action.objects.filter(
+    project_qs = _scope_to(Project.objects.filter(
         status='WIP',
     ).filter(
-        Q(launch__isnull=True) | Q(launch__lte=last_of_current_month)
+        Q(target_completion__isnull=True) | Q(target_completion__lte=last_of_current_month)
     ), vertical_id, company_id)
-    active_projects = list(project_qs.values_list('value', 'launch'))
+    active_projects = list(project_qs.values_list('value', 'target_completion'))
 
     def _project_uplift_for_day(d):
         """Sum daily value of all projects whose launch date is on or before d."""
@@ -382,10 +385,11 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
     # --- Summary totals for each period ---
 
     def _project_value_through(end_date):
-        qs = _scope_to(Action.objects.filter(
+        from strategy.models import Project
+        qs = _scope_to(Project.objects.filter(
             status='WIP',
         ).filter(
-            Q(launch__isnull=True) | Q(launch__lte=end_date)
+            Q(target_completion__isnull=True) | Q(target_completion__lte=end_date)
         ), vertical_id, company_id)
         return float(qs.aggregate(s=Sum('value'))['s'] or 0)
 
@@ -484,10 +488,12 @@ def index(request):
         Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score'),
         vertical_id, company_id)
 
-    # Dynamic Objective tiles
+    # Dynamic Objective tiles -- counts/values are of PROJECTS (the prioritized
+    # unit) under each objective, not their execution tasks.
+    from strategy.models import Project
     annual_rocks_data = []
     for rock in Objective.objects.filter(year=date.today().year):
-        base_qs = _scope_to(Action.objects.filter(objective=rock, archived=False), vertical_id, company_id)
+        base_qs = _scope_to(Project.objects.filter(objective=rock, archived=False), vertical_id, company_id)
         count = base_qs.filter(status='WIP').count()
         value = base_qs.filter(status='WIP').aggregate(Sum('value'))
         count_p = base_qs.exclude(status='WIP').count()
@@ -783,14 +789,21 @@ def _build_gantt_data(active_projects):
         start = p.active_date or p.date_created
         objective_name = str(p.objective) if p.objective_id and p.objective else ''
         colors = _objective_bar_colors(objective_name)
+        proj = p.project if p.project_id else None   # parent Project (scored unit)
         items.append({
             'id': p.id,
             'name': p.name or f'Action {p.id}',
             'value': float(p.value or 0),
             'progress': max(0, min(100, int(p.progress or 0))),
             'team': p.team.name if p.team_id and p.team else 'Unassigned',
-            'quarterly_rock': p.project.name if p.project_id and p.project else '',
+            'quarterly_rock': proj.name if proj else '',
             'annual_rock': objective_name,
+            # Parent project context (shown on hover of the action).
+            'project_id': proj.id if proj else None,
+            'project_name': proj.name if proj else '',
+            'project_value': float(proj.value or 0) if proj else 0,
+            'project_score': float(proj.normalized_score or 0) if proj else 0,
+            'project_status': proj.status if proj else '',
             'objective_track': colors['track'],
             'objective_stripe': colors['stripe'],
             'objective_fill': colors['fill'],
@@ -923,6 +936,9 @@ def edit_goals(request):
         'py_pct': total_py_pct,
     }
 
+    from project.services.kanban import is_executive
+    from strategy.models import Objective
+    from project.project_field_options import AEE_ALIGNMENT_CHOICES
     return render(request, 'app/edit_goals.html', {
         'goals_data': goals_data,
         'totals': totals,
@@ -930,7 +946,40 @@ def edit_goals(request):
         'last_year': last_year,
         'prev_year': prev_year,
         'is_summary': is_summary,
+        'can_manage_objectives': is_executive(request.user),
+        'objectives': Objective.objects.order_by('-year', 'name'),
+        'aee_choices': [c for c in AEE_ALIGNMENT_CHOICES if c[0]],
     })
+
+
+@login_required
+@require_POST
+def add_objective(request):
+    """Create an annual Objective (executives only). Every objective must align
+    to an AEE element -- the Projects/Actions beneath it inherit it."""
+    from project.services.kanban import is_executive
+    from strategy.models import Objective
+    if not is_executive(request.user):
+        return HttpResponseForbidden('Only executives can add objectives.')
+    name = (request.POST.get('name') or '').strip()
+    aee = (request.POST.get('aee_alignment') or '').strip()
+    valid_aee = {c[0] for c in _aee_choices()}
+    if not name or aee not in valid_aee:
+        messages.error(request, 'An objective needs a name and an AEE alignment.')
+        return redirect('app:edit_goals')
+    try:
+        yr = int(request.POST.get('year') or date.today().year)
+    except (TypeError, ValueError):
+        yr = date.today().year
+    Objective.objects.create(name=name[:150], year=yr, aee_alignment=aee,
+                             description=(request.POST.get('description') or '').strip())
+    messages.success(request, f'Added objective "{name}".')
+    return redirect('app:edit_goals')
+
+
+def _aee_choices():
+    from project.project_field_options import AEE_ALIGNMENT_CHOICES
+    return [c for c in AEE_ALIGNMENT_CHOICES if c[0]]
 
 
 @login_required
@@ -1374,8 +1423,11 @@ def work_in_progress(request):
     vertical_id = scoped_vertical_id(request)
     company_id = scoped_company_id(request)
 
+    # Execution tasks (Actions) of WIP projects -- the parent Project carries the
+    # Kanban status now, so filter by it (not the vestigial Action.status).
     projects = _scope_to(
-        Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score'),
+        Action.objects.filter(project__status='WIP', project__archived=False)
+        .select_related('project', 'objective', 'team').order_by('-project__normalized_score'),
         vertical_id, company_id)
 
     gantt = _build_gantt_data(projects)

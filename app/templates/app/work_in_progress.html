@@ -189,10 +189,15 @@
           }
 
           $label.on('mouseenter', function(e) {
+            var pct2 = Math.max(0, Math.min(100, Number(proj.progress) || 0));
             var html = '<div class="tt-name">' + proj.name + '</div>'
-              + '<div class="tt-row"><span class="tt-key">Value</span><span>' + fmtCurrency(proj.value) + '</span></div>'
+              + '<div class="tt-row"><span class="tt-key">Task progress</span><span>' + pct2 + '%</span></div>'
               + '<div class="tt-row"><span class="tt-key">Team</span><span>' + (proj.team || '—') + '</span></div>'
-              + '<div class="tt-row"><span class="tt-key">Project</span><span>' + (proj.quarterly_rock || '—') + '</span></div>'
+              + '<div style="border-top:1px solid rgba(255,255,255,0.2); margin:5px 0 4px; padding-top:4px; color:#ccc;">Project</div>'
+              + '<div class="tt-row"><span class="tt-key">Name</span><span>' + (proj.project_name || proj.quarterly_rock || '—') + '</span></div>'
+              + '<div class="tt-row"><span class="tt-key">Value</span><span>' + fmtCurrency(proj.project_value != null ? proj.project_value : proj.value) + '</span></div>'
+              + '<div class="tt-row"><span class="tt-key">Score</span><span>' + (proj.project_score != null ? Number(proj.project_score).toFixed(1) : '—') + ' / 10</span></div>'
+              + '<div class="tt-row"><span class="tt-key">Status</span><span>' + (proj.project_status || '—') + '</span></div>'
               + '<div class="tt-row"><span class="tt-key">Objective</span><span>' + (proj.annual_rock || '—') + '</span></div>';
             $tooltip.html(html).css({display: 'block'});
           });

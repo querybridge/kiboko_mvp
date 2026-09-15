@@ -7,6 +7,7 @@ app_name = 'app'
 urlpatterns = [
     # The home page
     path('goals/', views.edit_goals, name='edit_goals'),
+    path('objectives/add/', views.add_objective, name='add_objective'),
     path('actuals/', views.upload_actuals, name='upload_actuals'),
     path('company/', views.settings_company, name='settings_company'),
     path('rocks/', views.settings_rocks, name='settings_rocks'),
