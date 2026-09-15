@@ -571,27 +571,19 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
     elif company_id:
         pipeline_filter &= Q(actions__vertical__company_id=company_id)
 
-    qs = (
+    # Task rollups (child Actions); the value figures use the PROJECT's own
+    # revenue (the scored unit), keyed off the project's Kanban status. Scoped to
+    # the selected company/business unit.
+    qs = _scope_to(
         Project.objects
         .select_related('objective', 'department')
         .annotate(
             project_count=Count('actions', distinct=True, filter=pipeline_filter),
-            active_count=Count(
-                'actions', distinct=True,
-                filter=pipeline_filter & Q(actions__status='WIP'),
-            ),
-            active_value=Coalesce(
-                Sum('actions__value', filter=pipeline_filter & Q(actions__status='WIP')),
-                0, output_field=IntegerField(),
-            ),
-            inactive_value=Coalesce(
-                Sum('actions__value', filter=pipeline_filter & ~Q(actions__status='WIP')),
-                0, output_field=IntegerField(),
-            ),
             avg_progress=Avg('actions__progress', filter=pipeline_filter),
         )
-        .order_by('purpose', 'name')
-    )
+        .exclude(status__in=PIPELINE_EXCLUDED_STATUSES)
+        .order_by('purpose', 'name'),
+        vertical_id, company_id)
 
     project_qs = _scope_to(
         Action.objects.exclude(status__in=PIPELINE_EXCLUDED_STATUSES), vertical_id, company_id)
@@ -599,19 +591,18 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
 
     rows = []
     for s in qs:
-        if (s.project_count or 0) == 0:
-            continue
-
-        projects = [{
+        # Child execution tasks (Actions) under this project.
+        tasks = [{
             'id': p.id,
-            'name': p.name or f'Action {p.id}',
-            'score': float(p.normalized_score) if p.normalized_score is not None else 0.0,
+            'name': p.name or f'Task {p.id}',
+            'score': float(s.normalized_score) if s.normalized_score is not None else 0.0,
             'progress': p.progress or 0,
-            'value': int(p.value or 0),
+            'value': int(s.value or 0),
             'launch': p.launch.isoformat() if p.launch else '',
-            'status': p.status or '',
+            'status': s.status or '',
         } for p in s.actions.all()]
 
+        is_wip = s.status == 'WIP'
         rows.append({
             'id': s.id,
             'name': s.name or f'Project {s.id}',
@@ -621,11 +612,11 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'level': s.level or '',
             'business_unit': s.department.name if s.department_id and s.department else '',
             'project_count': s.project_count or 0,
-            'active_count': s.active_count or 0,
-            'active_value': int(s.active_value or 0),
-            'inactive_value': int(s.inactive_value or 0),
+            'active_count': 1 if is_wip else 0,
+            'active_value': int(s.value or 0) if is_wip else 0,
+            'inactive_value': 0 if is_wip else int(s.value or 0),
             'avg_progress': int(round(s.avg_progress)) if s.avg_progress is not None else None,
-            'projects': projects,
+            'projects': tasks,
         })
     return rows
 

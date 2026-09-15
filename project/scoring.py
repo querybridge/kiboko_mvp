@@ -14,10 +14,11 @@ WEIGHTS = DEFAULT_WEIGHTS
 
 CRITERIA = list(DEFAULT_WEIGHTS.keys())
 
-# The criteria decided by the anonymous all-hands vote. `level_of_effort` is NOT
-# voted -- a Developer sets it as a specialist input during intake -- and revenue
-# (`value`, in $) is set by an Analyst; both are separate from the vote.
-VOTED_CRITERIA = [c for c in CRITERIA if c != 'level_of_effort']
+# The criteria decided by the anonymous all-hands vote -- all six, including
+# level_of_effort (voters weigh it against the lead developer's t-shirt size on
+# the project, Project.effort_size). Revenue (`value`, $) is the Analyst's
+# separate input, not voted.
+VOTED_CRITERIA = list(CRITERIA)
 
 # Human labels + a one-line hint for each criterion (used by the scoring UI and
 # the Score Weights settings page, so both stay in sync).
@@ -27,7 +28,7 @@ CRITERIA_META = {
     'cost_savings':    ('Cost Savings',     'Direct cost the project removes'),
     'operational_cost':('Operational Cost', 'Efficiency it adds to operations'),
     'business_risk':   ('Business Risk',    'How risky it is to take on — unproven tech, no in-house expertise (higher lowers the score)'),
-    'level_of_effort': ('Level of Effort',  'Feasibility (10 = quick win)'),
+    'level_of_effort': ('Level of Effort',  'Impact to the resource/team, weighed against the lead dev’s size (10 = easy)'),
 }
 
 # Criteria the user rates as a *magnitude* where a higher rating is WORSE, so it

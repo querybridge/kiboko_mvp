@@ -150,7 +150,7 @@ def derive_status(project):
         return 'Incomplete Entry'
     if (project.value or 0) <= 0:
         return 'Pending Revenue'
-    if (project.level_of_effort or 0) <= 0:
+    if not getattr(project, 'effort_size', ''):
         return 'Pending LOE'
     return 'Ready to Score'
 

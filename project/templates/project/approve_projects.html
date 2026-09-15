@@ -79,11 +79,11 @@
   <!-- 3. Pending LOE (developer) -->
   <div class="row"><div class="col-md-12">
     <div class="x_panel">
-      <div class="x_title"><h2>3. Pending LOE <small>Developer</small> <span class="badge">{{ pending_loe_projects|length }}</span></h2><div class="clearfix"></div></div>
+      <div class="x_title"><h2>3. Pending LOE <small>Lead Developer sizing</small> <span class="badge">{{ pending_loe_projects|length }}</span></h2><div class="clearfix"></div></div>
       <div class="x_content">
-        <p class="text-muted">Projects with revenue set, awaiting a level-of-effort (0–10) from a Developer. Setting it makes the project Ready to Score.</p>
+        <p class="text-muted">Projects with revenue set, awaiting a t-shirt effort size (XXS–XXL) from a lead Developer. Voters weigh this size when scoring Level of Effort. Sizing it makes the project Ready to Score.</p>
         <table class="table table-striped table-bordered">
-          <thead><tr><th>Project</th><th style="width:140px;">Revenue</th><th style="width:320px;">Level of effort (0–10)</th></tr></thead>
+          <thead><tr><th>Project</th><th style="width:140px;">Revenue</th><th style="width:320px;">Effort size</th></tr></thead>
           <tbody>
             {% for p in pending_loe_projects %}
             <tr>
@@ -92,13 +92,16 @@
               <td>
                 {% if p.user_can_act %}
                 <form method="post" action="{% url 'project:set_loe' p.id %}" style="display:flex; gap:6px;">{% csrf_token %}
-                  <input type="number" name="level_of_effort" min="1" max="10" class="form-control" placeholder="1–10" required>
-                  <button type="submit" class="btn btn-info btn-xs" style="white-space:nowrap;">Save LOE</button>
+                  <select name="effort_size" class="form-control" required>
+                    <option value="">Size…</option>
+                    {% for val, label in effort_sizes %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-info btn-xs" style="white-space:nowrap;">Save size</button>
                 </form>
                 {% else %}<span class="text-muted" title="Developer only">Developer only</span>{% endif %}
               </td>
             </tr>
-            {% empty %}<tr><td colspan="3" class="text-center text-muted">Nothing awaiting LOE.</td></tr>
+            {% empty %}<tr><td colspan="3" class="text-center text-muted">Nothing awaiting sizing.</td></tr>
             {% endfor %}
           </tbody>
         </table>

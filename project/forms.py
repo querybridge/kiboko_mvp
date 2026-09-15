@@ -10,18 +10,25 @@ from crispy_forms.layout import Submit
 class ProjectForm(ModelForm):
     """Add / edit a Project (the scored unit). AEE is inherited from the
     objective, so it isn't set here."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['target_completion'].required = False
+
     class Meta:
         model = Project
-        fields = ['name', 'objective', 'owner', 'vertical', 'department', 'why', 'definition_of_done']
+        fields = ['name', 'objective', 'owner', 'vertical', 'department',
+                  'target_completion', 'why', 'definition_of_done']
         labels = {
             'vertical': 'Business Unit',
             'department': 'Department',
+            'target_completion': 'Target go-live date',
             'definition_of_done': 'Definition of Done',
             'why': 'User Story',
         }
         help_texts = {
             'objective': 'The annual objective this supports (its AEE element is inherited).',
             'vertical': 'The business unit / GA4 property this rolls up to.',
+            'target_completion': 'When it goes live — drives the value-pipeline forecast timing.',
         }
         widgets = {
             'name': TextInput(attrs={}),
@@ -29,6 +36,7 @@ class ProjectForm(ModelForm):
             'owner': Select(attrs={}),
             'vertical': Select(attrs={}),
             'department': Select(attrs={}),
+            'target_completion': DateInput(attrs={'class': 'datepicker', 'type': 'date'}),
             'why': Textarea(attrs={'rows': 3}),
             'definition_of_done': TextInput(attrs={}),
         }

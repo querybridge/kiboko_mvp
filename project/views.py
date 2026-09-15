@@ -199,12 +199,14 @@ def approve_projects(request):
             pending.append(p)
         else:
             incomplete.append(p)
+    from project.project_field_options import EFFORT_SIZE_CHOICES
     return render(request, 'project/approve_projects.html', {
         'title': 'Project Intake',
         'pending_projects': pending,
         'incomplete_projects': incomplete,
         'pending_revenue_projects': pending_revenue,
         'pending_loe_projects': pending_loe,
+        'effort_sizes': EFFORT_SIZE_CHOICES,
     })
 
 
@@ -249,21 +251,21 @@ def set_revenue(request, project_id):
 @login_required
 @require_POST
 def set_loe(request, project_id):
-    """A Developer sets the level of effort (-> Ready to Score)."""
+    """A lead Developer sizes the effort (t-shirt XXS-XXL) -> Ready to Score.
+    Voters weigh this size when scoring the 0-10 Level of Effort criterion."""
+    from project.project_field_options import EFFORT_SIZE_CHOICES
     project = get_object_or_404(Project, pk=project_id)
     if not can_set_loe(request.user, project):
-        messages.error(request, 'Only a developer can set level of effort.')
+        messages.error(request, 'Only a developer can size the effort.')
         return redirect('project:approve_projects')
-    try:
-        project.level_of_effort = max(0, min(10, int(request.POST.get('level_of_effort') or '0')))
-    except (TypeError, ValueError):
-        project.level_of_effort = 0
-    if project.level_of_effort <= 0:
-        messages.error(request, 'Enter a level of effort between 1 and 10.')
+    size = (request.POST.get('effort_size') or '').strip().upper()
+    if size not in {c[0] for c in EFFORT_SIZE_CHOICES}:
+        messages.error(request, 'Pick an effort size (XXS–XXL).')
     else:
+        project.effort_size = size
         project.status = LANE_STATUS['ready_to_score']
         project.save()
-        messages.success(request, f'Set LOE for "{project.name}" — now Ready to Score.')
+        messages.success(request, f'Sized "{project.name}" as {size} — now Ready to Score.')
     return redirect('project:approve_projects')
 
 

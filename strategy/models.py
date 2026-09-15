@@ -7,7 +7,7 @@ from multiselectfield import MultiSelectField
 from django.contrib.auth.models import User
 import datetime
 from .model_field_options import *
-from project.project_field_options import AEE_ALIGNMENT_CHOICES, status_options
+from project.project_field_options import AEE_ALIGNMENT_CHOICES, status_options, EFFORT_SIZE_CHOICES
 
 # Create your all your models here
 
@@ -120,7 +120,10 @@ class Project(models.Model):
     # Tenancy: which BusinessUnit (GA4 property / company unit) this rolls up to.
     vertical = models.ForeignKey('business_unit.BusinessUnit', on_delete=models.SET_NULL, null=True, blank=True, related_name='projects')
     value = models.IntegerField(default=0, null=True, blank=True)          # projected revenue ($) -- Analyst
-    level_of_effort = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])  # Developer
+    # Lead-developer t-shirt sizing (context for the LOE vote), set during intake.
+    effort_size = models.CharField(max_length=4, choices=EFFORT_SIZE_CHOICES, blank=True, default='')
+    # Voted 0-10 Level of Effort criterion (weighed against effort_size).
+    level_of_effort = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
     # Five voted BVM criteria (0-10); level_of_effort above is the 6th, set by a developer.
     customer_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
     business_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])

@@ -39,3 +39,15 @@ AEE_ALIGNMENT_CHOICES = (
 	('engage_customers', 'Engage Customers'),
 	('expand_purchase', 'Expand Purchase'),
 )
+
+# Lead-developer effort sizing (t-shirt sizes). This is the project-level LOE
+# estimate; voters weigh it when scoring the 0-10 Level of Effort criterion.
+EFFORT_SIZE_CHOICES = (
+	('XXS', 'XXS'),
+	('XS', 'XS'),
+	('S', 'S'),
+	('M', 'M'),
+	('L', 'L'),
+	('XL', 'XL'),
+	('XXL', 'XXL'),
+)
