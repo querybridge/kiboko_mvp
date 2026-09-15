@@ -927,9 +927,6 @@ def edit_goals(request):
         'py_pct': total_py_pct,
     }
 
-    from project.services.kanban import is_executive
-    from strategy.models import Objective
-    from project.project_field_options import AEE_ALIGNMENT_CHOICES
     return render(request, 'app/edit_goals.html', {
         'goals_data': goals_data,
         'totals': totals,
@@ -937,9 +934,21 @@ def edit_goals(request):
         'last_year': last_year,
         'prev_year': prev_year,
         'is_summary': is_summary,
-        'can_manage_objectives': is_executive(request.user),
+    })
+
+
+@login_required
+def objectives(request):
+    """Manage annual Objectives (AEE > Objective > Project > Action). Executives
+    add/edit; everyone else sees a read-only list."""
+    from project.services.kanban import is_executive
+    from strategy.models import Objective
+    return render(request, 'app/objectives.html', {
+        'title': 'Objectives',
         'objectives': Objective.objects.order_by('-year', 'name'),
-        'aee_choices': [c for c in AEE_ALIGNMENT_CHOICES if c[0]],
+        'aee_choices': _aee_choices(),
+        'can_manage_objectives': is_executive(request.user),
+        'year': date.today().year,
     })
 
 
@@ -957,7 +966,7 @@ def add_objective(request):
     valid_aee = {c[0] for c in _aee_choices()}
     if not name or aee not in valid_aee:
         messages.error(request, 'An objective needs a name and an AEE alignment.')
-        return redirect('app:edit_goals')
+        return redirect('app:objectives')
     try:
         yr = int(request.POST.get('year') or date.today().year)
     except (TypeError, ValueError):
@@ -965,7 +974,7 @@ def add_objective(request):
     Objective.objects.create(name=name[:150], year=yr, aee_alignment=aee,
                              description=(request.POST.get('description') or '').strip())
     messages.success(request, f'Added objective "{name}".')
-    return redirect('app:edit_goals')
+    return redirect('app:objectives')
 
 
 @login_required
@@ -982,7 +991,7 @@ def edit_objective(request, objective_id):
     aee = (request.POST.get('aee_alignment') or '').strip()
     if not name or aee not in {c[0] for c in _aee_choices()}:
         messages.error(request, 'An objective needs a name and an AEE alignment.')
-        return redirect('app:edit_goals')
+        return redirect('app:objectives')
     try:
         obj.year = int(request.POST.get('year') or obj.year or date.today().year)
     except (TypeError, ValueError):
@@ -992,7 +1001,7 @@ def edit_objective(request, objective_id):
     obj.description = (request.POST.get('description') or '').strip()
     obj.save()
     messages.success(request, f'Updated objective "{obj.name}".')
-    return redirect('app:edit_goals')
+    return redirect('app:objectives')
 
 
 def _aee_choices():

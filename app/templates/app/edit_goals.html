@@ -108,60 +108,6 @@
       </div>
     </div>
 
-    <!-- Objectives (AEE > Objective > Project > Action) -->
-    <div class="row"><div class="col-md-12">
-      <div class="x_panel">
-        <div class="x_title"><h2>Objectives <small>annual · aligned to an AEE element</small></h2><div class="clearfix"></div></div>
-        <div class="x_content">
-          <table class="table table-striped">
-            <thead><tr><th>Objective</th><th style="width:110px;">Year</th><th style="width:220px;">AEE alignment</th>{% if can_manage_objectives %}<th style="width:90px;">Save</th>{% endif %}</tr></thead>
-            <tbody>
-              {% for o in objectives %}
-              {% if can_manage_objectives %}
-              <tr>
-                <form method="post" action="{% url 'app:edit_objective' o.id %}">{% csrf_token %}
-                  <td><input type="text" name="name" value="{{ o.name }}" class="form-control" required></td>
-                  <td><input type="number" name="year" value="{{ o.year }}" class="form-control"></td>
-                  <td>
-                    <select name="aee_alignment" class="form-control" required>
-                      {% if not o.aee_alignment %}<option value="" selected>⚠ Set alignment…</option>{% endif %}
-                      {% for val, label in aee_choices %}<option value="{{ val }}" {% if o.aee_alignment == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
-                    </select>
-                  </td>
-                  <td><button type="submit" class="btn btn-info btn-xs">Save</button></td>
-                </form>
-              </tr>
-              {% else %}
-              <tr><td>{{ o.name }}</td><td>{{ o.year|default:"—" }}</td><td>{{ o.get_aee_alignment_display|default:"—" }}</td></tr>
-              {% endif %}
-              {% empty %}
-              <tr><td colspan="4" class="text-center text-muted">No objectives yet.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-
-          {% if can_manage_objectives %}
-          <h4 style="margin-top:16px;">Add Objective</h4>
-          <form method="post" action="{% url 'app:add_objective' %}">
-            {% csrf_token %}
-            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-              <input type="text" name="name" class="form-control" style="max-width:300px;" placeholder="Objective name" required>
-              <input type="number" name="year" class="form-control" style="max-width:110px;" value="{{ year }}" placeholder="Year">
-              <select name="aee_alignment" class="form-control" style="max-width:220px;" required>
-                <option value="">AEE alignment…</option>
-                {% for val, label in aee_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
-              </select>
-              <button type="submit" class="btn btn-success">Add Objective</button>
-            </div>
-            <small class="text-muted">Every objective must align to an AEE element; its Projects and Actions inherit it.</small>
-          </form>
-          {% else %}
-          <p class="text-muted">Only executives can add objectives.</p>
-          {% endif %}
-        </div>
-      </div>
-    </div></div>
-
   </div>
 </div>
 {% endblock content %}
