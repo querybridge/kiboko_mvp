@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.template import loader
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db import models
@@ -965,6 +965,33 @@ def add_objective(request):
     Objective.objects.create(name=name[:150], year=yr, aee_alignment=aee,
                              description=(request.POST.get('description') or '').strip())
     messages.success(request, f'Added objective "{name}".')
+    return redirect('app:edit_goals')
+
+
+@login_required
+@require_POST
+def edit_objective(request, objective_id):
+    """Edit an existing annual Objective (executives only) -- name, year, AEE,
+    and description. AEE stays required so Projects/Actions always inherit one."""
+    from project.services.kanban import is_executive
+    from strategy.models import Objective
+    if not is_executive(request.user):
+        return HttpResponseForbidden('Only executives can edit objectives.')
+    obj = get_object_or_404(Objective, pk=objective_id)
+    name = (request.POST.get('name') or '').strip()
+    aee = (request.POST.get('aee_alignment') or '').strip()
+    if not name or aee not in {c[0] for c in _aee_choices()}:
+        messages.error(request, 'An objective needs a name and an AEE alignment.')
+        return redirect('app:edit_goals')
+    try:
+        obj.year = int(request.POST.get('year') or obj.year or date.today().year)
+    except (TypeError, ValueError):
+        pass
+    obj.name = name[:150]
+    obj.aee_alignment = aee
+    obj.description = (request.POST.get('description') or '').strip()
+    obj.save()
+    messages.success(request, f'Updated objective "{obj.name}".')
     return redirect('app:edit_goals')
 
 

@@ -8,6 +8,7 @@ urlpatterns = [
     # The home page
     path('goals/', views.edit_goals, name='edit_goals'),
     path('objectives/add/', views.add_objective, name='add_objective'),
+    path('objectives/<int:objective_id>/edit/', views.edit_objective, name='edit_objective'),
     path('actuals/', views.upload_actuals, name='upload_actuals'),
     path('company/', views.settings_company, name='settings_company'),
     path('rocks/', views.settings_rocks, name='settings_rocks'),
