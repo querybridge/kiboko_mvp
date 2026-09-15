@@ -1,10 +1,13 @@
+from decimal import Decimal, ROUND_HALF_UP
 from django.db import models
 from django.forms import ModelForm
 from django import forms
+from django.core.validators import MinValueValidator, MaxValueValidator
 from multiselectfield import MultiSelectField
 from django.contrib.auth.models import User
 import datetime
 from .model_field_options import *
+from project.project_field_options import AEE_ALIGNMENT_CHOICES, status_options
 
 # Create your all your models here
 
@@ -62,11 +65,16 @@ class Measure(models.Model):
 ########################################
 
 class Objective(models.Model):
-    """Top-level annual strategic priority, measured by a KPI."""
+    """Top-level annual strategic priority, measured by a KPI.
+
+    Every objective aligns to one AEE element (Attract / Engage / Expand); the
+    Projects and Actions beneath it inherit that alignment (AEE > Objective >
+    Project > Action)."""
     name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     year = models.IntegerField(null=True, blank=True)
     kpi = models.ForeignKey(KPI, on_delete=models.SET_NULL, null=True, blank=True)
+    aee_alignment = models.CharField(max_length=50, choices=AEE_ALIGNMENT_CHOICES, blank=True, default='')
 
     class Meta:
         verbose_name = 'Objective'
@@ -84,7 +92,12 @@ class Objective(models.Model):
 ########################################
 
 class Project(models.Model):
-    """Quarterly project supporting an Objective, measured by a Metric."""
+    """Quarterly project supporting an Objective, measured by a Metric.
+
+    The Project is the prioritized/scored unit: it carries the workflow
+    (approval, revenue, level of effort, the BVM score, and the Kanban lane).
+    The Actions beneath it (project.Action) are the execution tasks that appear
+    on the WIP gantt."""
     date_created = models.DateField(auto_now_add=True, editable=False)
     date_modified = models.DateField(auto_now=True, editable=False)
     name = models.CharField(max_length=75, null=True)
@@ -102,9 +115,61 @@ class Project(models.Model):
     definition_of_done = models.CharField(max_length=350, blank=True)
     target_completion = models.DateField(null=True, blank=True)
 
+    # --- Prioritization workflow (moved up from Action) --------------------
+    owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_projects')
+    # Tenancy: which BusinessUnit (GA4 property / company unit) this rolls up to.
+    vertical = models.ForeignKey('business_unit.BusinessUnit', on_delete=models.SET_NULL, null=True, blank=True, related_name='projects')
+    value = models.IntegerField(default=0, null=True, blank=True)          # projected revenue ($) -- Analyst
+    level_of_effort = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])  # Developer
+    # Five voted BVM criteria (0-10); level_of_effort above is the 6th, set by a developer.
+    customer_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+    business_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+    cost_savings = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+    operational_cost = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+    business_risk = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+    normalized_score = models.DecimalField(max_digits=4, decimal_places=1, editable=False, null=True, default=0)
+    approved = models.BooleanField(default=False)
+    status = models.CharField(choices=status_options, max_length=350, null=True, blank=True, default=None)
+    is_blocked = models.BooleanField(default=False)
+    archived = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = 'Project'
         verbose_name_plural = 'Projects'
+
+    @property
+    def aee_alignment(self):
+        """Inherited from the objective (single source of truth: AEE > Objective)."""
+        return self.objective.aee_alignment if self.objective_id else ''
+
+    def get_aee_alignment_display(self):
+        return dict(AEE_ALIGNMENT_CHOICES).get(self.aee_alignment, '')
+
+    def _company(self):
+        bu = self.vertical
+        return getattr(bu, 'company', None) if bu else None
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._db_status = instance.status
+        return instance
+
+    def save(self, *args, **kwargs):
+        # Weighted BVM score from the six criteria (5 voted + developer LOE),
+        # using this company's configured weights.
+        from project.scoring import CRITERIA, weighted_score
+        from project.models import ScoringWeights
+        from project.services.kanban import derive_status
+        values = {c: getattr(self, c, 0) or 0 for c in CRITERIA}
+        score = weighted_score(values, weights=ScoringWeights.for_company(self._company()))
+        self.normalized_score = Decimal(str(score)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+        self.status = derive_status(self)
+        self.is_blocked = (self.status == 'Blocked')
+        if self.status == 'Launched':
+            self.archived = True
+        super().save(*args, **kwargs)
+        self._db_status = self.status
 
     def __str__(self):
         return self.name
