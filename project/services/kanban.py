@@ -33,13 +33,15 @@ STATUS_LANE = {status: lane for lane, status in LANE_STATUS.items()}
 # Terminal statuses -- not Kanban columns; they live in the Archive.
 TERMINAL_STATUSES = ('Complete', 'Launched')
 
-# Fields required before a project can be scored
+# Fields required before a project is complete enough to enter the pipeline.
 REQUIRED_FOR_SCORING = [
-    'name', 'project_id', 'business_unit_id', 'owner_id', 'why',
+    'name', 'owner_id', 'vertical_id', 'why',
 ]
 
-# Fields a business-unit lead reviews before approving a project onto the Kanban.
-REQUIRED_FOR_REVIEW = ['name', 'owner_id', 'objective_id', 'aee_alignment', 'impact']
+# Fields a business-unit lead reviews before approving a project into the
+# pipeline. AEE is inherited from the objective, so requiring the objective (with
+# an AEE) covers it. Revenue and LOE are set later (Analyst, then Developer).
+REQUIRED_FOR_REVIEW = ['name', 'owner_id', 'objective_id', 'definition_of_done']
 
 
 def _has_score(project):
@@ -47,13 +49,13 @@ def _has_score(project):
 
 
 def is_ready_for_review(project):
-    """Complete enough for a business-unit lead to approve: name, owner, objective,
-    AEE alignment, Definition of Done, and a projected value."""
+    """Complete enough for a business-unit lead to approve: name, owner, an
+    objective (which carries the AEE element), and a Definition of Done."""
     for field in REQUIRED_FOR_REVIEW:
         val = getattr(project, field, None)
         if val is None or (isinstance(val, str) and not val.strip()):
             return False
-    return (project.value or 0) > 0
+    return True
 
 
 def is_executive(user):
@@ -92,6 +94,21 @@ def is_bul_or_higher(user, project):
     return is_executive(user) or can_approve(user, project)
 
 
+def _has_role(user, role):
+    prof = getattr(user, 'profile', None)
+    return bool(prof and prof.has_role(role))
+
+
+def can_set_revenue(user, project):
+    """Set the projected revenue during intake -- an Analyst (or exec/super)."""
+    return is_executive(user) or _has_role(user, 'analyst')
+
+
+def can_set_loe(user, project):
+    """Set the level of effort during intake -- a Developer (or exec/super)."""
+    return is_executive(user) or _has_role(user, 'developer')
+
+
 # Scoring itself is anonymous, all-hands voting -- see project.services.voting.
 # A project's eligible voters are its business-unit members plus company execs,
 # and it advances to Scored only once everyone has voted.
@@ -101,35 +118,40 @@ def is_bul_or_higher(user, project):
 LANE_ORDER = ('ready_to_score', 'scored', 'executive_approval', 'on_deck', 'active')
 
 
-# The six Kanban columns a card can be placed into. Any of these set on an
-# action is authoritative -- a move or an edit-form change sticks as-is.
+# The six Kanban columns a card can be placed into. Any of these set on a
+# project is authoritative -- a move or an edit-form change sticks as-is.
 COLUMN_STATUSES = set(LANE_STATUS.values())
+
+# Intake pipeline (pre-Kanban): a project is approved by a BU lead, then an
+# Analyst sets revenue, then a Developer sets LOE, then it's Ready to Score.
+PIPELINE_STATUSES = ('Incomplete Entry', 'Pending Revenue', 'Pending LOE')
 
 
 def derive_status(project):
-    """The canonical status (== Kanban column) an Action should carry.
+    """The canonical status a project should carry.
 
-    `status` is the single source of truth: whatever column a move or the edit
-    form sets is honored as-is, so cards stay where you drop them. Terminal
-    states (Complete / Launched) are likewise kept. Only a blank / legacy status
-    -- a brand-new entry or an old Pending Approval/Assignment row -- gets an
-    initial column inferred from completeness + score.
+    `status` is the single source of truth: an explicitly-set Kanban column,
+    intake stage, or terminal state is honored as-is. Only a blank / legacy
+    status gets an initial stage inferred from completeness, approval, revenue,
+    and LOE (the intake sequence: Incomplete -> Pending Revenue -> Pending LOE
+    -> Ready to Score).
     """
     status = (project.status or '').strip()
 
-    # Terminal states and any explicitly-chosen Kanban column are authoritative.
-    if status in TERMINAL_STATUSES or status in COLUMN_STATUSES:
+    # Explicit column / intake / terminal states are authoritative.
+    if (status in TERMINAL_STATUSES or status in COLUMN_STATUSES
+            or status in PIPELINE_STATUSES):
         return status
 
-    # Blank / legacy -> infer. Incomplete OR not-yet-approved entries carry
-    # 'Incomplete Entry' (a status, no longer a Kanban lane); they live in the
-    # Approve Projects view until a business-unit lead approves them.
     if status == 'Pending Assignment':
         return 'On Deck'
+    # Blank / legacy -> infer the intake stage.
     if _is_incomplete(project) or not project.approved:
         return 'Incomplete Entry'
-    if _has_score(project):
-        return 'Scored'
+    if (project.value or 0) <= 0:
+        return 'Pending Revenue'
+    if (project.level_of_effort or 0) <= 0:
+        return 'Pending LOE'
     return 'Ready to Score'
 
 # Transitions: which lanes can a card be dragged INTO
@@ -180,23 +202,12 @@ def group_projects(projects):
 
 
 def compute_lane_totals(projects_in_lane):
-    """Summary totals for the cards in one lane -- the impact of completing them
-    all. `sales` is the headline: total projected value at stake in the column
-    (e.g. how much value is blocked), robust to cards that set `value` but not
-    the per-lever breakdown. visits/close_rate/aov are that breakdown.
-    """
-    visits = close_rate = aov = value = 0
+    """Summary totals for the cards in one lane -- `sales` is the total projected
+    revenue at stake in the column (e.g. how much value is blocked)."""
+    value = 0
     for p in projects_in_lane:
-        visits += p.impact_visits_value or 0
-        close_rate += p.impact_close_rate_value or 0
-        aov += p.impact_aov_value or 0
-        value += (p.value or p.project_value_total or 0)
-    return {
-        'visits': visits,
-        'close_rate': close_rate,
-        'aov': aov,
-        'sales': value,   # total projected value of the column's cards
-    }
+        value += (p.value or 0)
+    return {'sales': value}
 
 
 def compute_all_lane_totals(grouped):

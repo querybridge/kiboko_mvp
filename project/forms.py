@@ -1,10 +1,59 @@
 from django.forms import ModelForm, Textarea, TextInput, CheckboxSelectMultiple, RadioSelect, Select, DateField, DateInput, NumberInput
 from .models import Action, ActionComment
-from strategy.models import Measure
+from strategy.models import Measure, Project
 from django import forms
 from django.forms import widgets
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
+
+
+class ProjectForm(ModelForm):
+    """Add / edit a Project (the scored unit). AEE is inherited from the
+    objective, so it isn't set here."""
+    class Meta:
+        model = Project
+        fields = ['name', 'objective', 'owner', 'vertical', 'department', 'why', 'definition_of_done']
+        labels = {
+            'vertical': 'Business Unit',
+            'department': 'Department',
+            'definition_of_done': 'Definition of Done',
+            'why': 'User Story',
+        }
+        help_texts = {
+            'objective': 'The annual objective this supports (its AEE element is inherited).',
+            'vertical': 'The business unit / GA4 property this rolls up to.',
+        }
+        widgets = {
+            'name': TextInput(attrs={}),
+            'objective': Select(attrs={}),
+            'owner': Select(attrs={}),
+            'vertical': Select(attrs={}),
+            'department': Select(attrs={}),
+            'why': Textarea(attrs={'rows': 3}),
+            'definition_of_done': TextInput(attrs={}),
+        }
+
+
+class ActionTaskForm(ModelForm):
+    """Add / edit an execution task (Action) under a Project."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['measure'].queryset = Measure.objects.filter(active=True)
+        for f in ('team', 'measure', 'launch', 'progress'):
+            self.fields[f].required = False
+
+    class Meta:
+        model = Action
+        fields = ['name', 'owner', 'launch', 'progress', 'team', 'measure']
+        labels = {'team': 'Team', 'measure': 'Measure', 'launch': 'Target date'}
+        widgets = {
+            'name': TextInput(attrs={}),
+            'owner': Select(attrs={}),
+            'launch': DateInput(attrs={'class': 'datepicker', 'type': 'date'}),
+            'progress': NumberInput(attrs={'min': 0, 'max': 100}),
+            'team': Select(attrs={}),
+            'measure': Select(attrs={}),
+        }
 
 
 class ProjectAdd(ModelForm):

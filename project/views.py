@@ -1,22 +1,22 @@
 import json
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.template import loader
-from django.http import HttpResponse, JsonResponse
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.utils import timezone
 from django.urls import reverse
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
-from .models import Action
-from .forms import ProjectAdd, ProjectEdit, CommentForm, ProjectValue, ProjectLoe, ProjectEditManager
-from business_unit.models import Department
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import F, Q
+from django.db.models import Q
+
+from strategy.models import Project, ProjectComment
+from .models import Action
+from .forms import ProjectForm, ActionTaskForm
+from business_unit.models import Department
 from .services.kanban import (
-    LANES, LANE_STATUS, get_lane, group_projects, compute_all_lane_totals, validate_move, apply_move,
-    is_ready_for_review, can_approve,
+    LANES, LANE_STATUS, PIPELINE_STATUSES, get_lane, group_projects, compute_all_lane_totals,
+    validate_move, apply_move, is_ready_for_review, can_approve, can_set_revenue, can_set_loe,
 )
 
 # Statuses that are terminal / not represented as a Kanban lane. These never
@@ -25,13 +25,11 @@ NON_KANBAN_STATUSES = ['Complete', 'Launched']
 
 
 def _get_vertical_id(request):
-    """The selected Vertical id (from the top-bar scope), or None for Summary."""
     from business_unit.scope import scoped_vertical_id
     return scoped_vertical_id(request)
 
 
 def _get_company_id(request):
-    """The selected Company id (from the top-bar scope), or None."""
     from business_unit.scope import scoped_company_id
     return scoped_company_id(request)
 
@@ -46,34 +44,26 @@ def _scope(qs, vertical_id, company_id):
     return qs
 
 
-#from .models import Project
+# ---------------------------------------------------------------------------
+# Backlog
+# ---------------------------------------------------------------------------
 @login_required
-# Create your views here.
-
-# View All Projects Page
 def view(request):
-    from .project_field_options import AEE_ALIGNMENT_CHOICES
+    """Backlog of approved projects on the executive board, grouped by lane."""
+    from project.project_field_options import AEE_ALIGNMENT_CHOICES
 
-    context = {}
-    title = ""
     vertical_id = _get_vertical_id(request)
-    # Optional AEE-alignment filter (from the analytics "Related Projects" links)
-    aee = request.GET.get('aee', '')
     aee_labels = dict(AEE_ALIGNMENT_CHOICES)
+    aee = request.GET.get('aee', '')
     if aee not in aee_labels or aee == '':
         aee = ''
-    # Optional measure filter (from clicking a card on a detail dashboard)
-    measure = request.GET.get('measure', '').strip()
-    # Backlog candidates: approved (on the executive Kanban), not archived, not
-    # terminal. Incomplete/pending-review entries live in Approve Projects.
-    base = _scope(Action.objects.filter(archived=False, approved=True).exclude(
-        status__in=NON_KANBAN_STATUSES
-    ).select_related('owner', 'measure', 'business_unit', 'vertical', 'project'),
+
+    base = _scope(Project.objects.filter(archived=False, approved=True).exclude(
+        status__in=NON_KANBAN_STATUSES + list(PIPELINE_STATUSES)
+    ).select_related('owner', 'objective', 'vertical', 'department'),
         vertical_id, _get_company_id(request))
     if aee:
-        base = base.filter(aee_alignment=aee)
-    if measure:
-        base = base.filter(measure__name=measure)
+        base = base.filter(objective__aee_alignment=aee)
 
     buckets = {key: [] for key in LANES}
     for p in base:
@@ -81,221 +71,210 @@ def view(request):
         p.kanban_lane_label = LANES.get(p.kanban_lane_key, '')
         buckets[p.kanban_lane_key].append(p)
 
-    # Business-unit owners only see their own units' not-yet-in-flight work;
-    # WIP & On Deck stay visible to all.
+    # Business-unit owners only see their own department's not-yet-in-flight work.
     owned_bus = Department.objects.filter(owner=request.user)
     if owned_bus.exists():
         owned_ids = set(owned_bus.values_list('id', flat=True))
         for key in ('blocked', 'ready_to_score', 'scored', 'executive_approval'):
-            buckets[key] = [p for p in buckets[key] if p.business_unit_id in owned_ids]
+            buckets[key] = [p for p in buckets[key] if p.department_id in owned_ids]
 
-    # In flight -> WIP + On Deck; awaiting the executive meeting -> Ready to Score
-    # + Scored + Executive Approval. (Incomplete/pending live in Approve Projects.)
     approved_projects = buckets['active'] + buckets['on_deck']
     pending_review_projects = buckets['ready_to_score'] + buckets['scored'] + buckets['executive_approval']
-    incomplete_projects = []
     blocked_projects = buckets['blocked']
-    # Optional single-lane filter (from clicking a Kanban column header).
     lane = request.GET.get('lane', '').strip()
     lane_filter = lane if lane in LANES else ''
     return render(request, 'project/view.html', {
         'approved_projects': approved_projects,
         'pending_review_projects': pending_review_projects,
-        'incomplete_projects': incomplete_projects,
+        'incomplete_projects': [],
         'blocked_projects': blocked_projects,
         'lane_filter': lane_filter,
         'lane_filter_label': LANES.get(lane_filter, ''),
         'lane_filter_projects': buckets.get(lane_filter, []),
-        'title': title,
+        'title': '',
         'aee_filter': aee,
         'aee_filter_label': aee_labels.get(aee, ''),
-        'measure_filter': measure,
+        'measure_filter': '',
     })
-    
-#Add New Project
-#https://stackoverflow.com/questions/18806668/django-form-showing-no-input-fields
-#https://simpleisbetterthancomplex.com/article/2017/08/19/how-to-render-django-form-manually.html
 
+
+# ---------------------------------------------------------------------------
+# Add / edit / detail
+# ---------------------------------------------------------------------------
 @login_required
 def project(request):
-    form = ProjectAdd(request.POST or None)
+    """Add a new Project. It enters the intake pipeline (Incomplete -> BU-lead
+    approval -> Analyst revenue -> Developer LOE -> Ready to Score)."""
     if request.method == 'POST':
+        form = ProjectForm(request.POST)
         if form.is_valid():
-            form.save()
-            #strategy.save()
-            return HttpResponseRedirect("view.html")
+            p = form.save()
+            messages.success(request, f'Added "{p.name}" — pending business-unit approval.')
+            return redirect('project:project_detail', project_id=p.id)
     else:
-        form = ProjectAdd()
+        form = ProjectForm()
+    return render(request, 'project/add.html', {'form': form, 'title': 'Add Project'})
 
-    return render(request, 'project/add.html', {
-        'form': form 
-    })
 
-#Action Detail
 @login_required
 def project_detail(request, project_id):
-    project = get_object_or_404(Action, pk=project_id)
-    return render(request, 'project/detail.html', {'project': project})
+    """A Project with its execution tasks (Actions) and an add-task form."""
+    project = get_object_or_404(Project, pk=project_id)
+    actions = project.actions.select_related('owner', 'team', 'measure').order_by('launch', 'name')
+    return render(request, 'project/detail.html', {
+        'project': project,
+        'actions': actions,
+        'action_form': ActionTaskForm(),
+    })
 
-#Edit Project
+
 @login_required
-def get_absolute_url(self):
-    return reverse('Project.views.project_edit', args=[str(self.id)])	
+@require_POST
+def add_action(request, project_id):
+    """Add an execution task (Action) to a Project."""
+    project = get_object_or_404(Project, pk=project_id)
+    form = ActionTaskForm(request.POST)
+    if form.is_valid():
+        action = form.save(commit=False)
+        action.project = project
+        action.business_unit = project.department or Department.objects.first()
+        action.vertical = project.vertical
+        action.objective = project.objective
+        action.save()
+        messages.success(request, f'Added task "{action.name}".')
+    else:
+        messages.error(request, 'Could not add the task — check the fields.')
+    return redirect('project:project_detail', project_id=project.id)
+
 
 @login_required
 def project_edit(request, project_id):
-    project = get_object_or_404(Action, pk=project_id)
-    ref_url = request.META.get('HTTP_REFERER', '/')
+    project = get_object_or_404(Project, pk=project_id)
     next = request.POST.get('next', '/')
-    if request.method == "POST":
-        form = ProjectEdit(request.POST, instance=project)
+    if request.method == 'POST':
+        form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
-            project = form.save(commit=False)
-            project.modified_date = timezone.now()
-            if 'approve' in request.POST:
-                project.approved = True
-                project.status = 'On Deck'
-            project.save()
-            if 'approve' in request.POST:
-                return redirect('project:all')
+            form.save()
             return HttpResponseRedirect(next)
     else:
-        title = "Edit Project"
-        form = ProjectEdit(instance=project)
-    return render(request, 'project/edit.html', {'form': form, 'title': title})
-
-@login_required
-def project_edit_manager(request, project_id):
-    project = get_object_or_404(Action, pk=project_id)
-    ref_url = request.META.get('HTTP_REFERER', '/')
-    next = request.POST.get('next', '/')
-    is_admin = getattr(getattr(request.user, 'profile', None), 'role', '') == 'admin'
-    if request.method == "POST":
-        form = ProjectEditManager(request.POST, instance=project)
-        if not is_admin:
-            form.fields['value'].disabled = True
-        if form.is_valid():
-            project = form.save(commit=False)
-            #project.author = request.user
-            project.modified_date = timezone.now()
-            project.save()
-            return HttpResponseRedirect(next)
-    else:
-        title = "Edit Project"
-        form = ProjectEditManager(instance=project)
-        if not is_admin:
-            form.fields['value'].disabled = True
-    return render(request, 'project/edit_manager.html', {'form': form, 'title': title})
+        form = ProjectForm(instance=project)
+    return render(request, 'project/edit.html', {'form': form, 'title': 'Edit Project'})
 
 
-   
-@login_required
-def project_value(request, project_id):
-    project = get_object_or_404(Action, pk=project_id)
-    ref_url = request.META.get('HTTP_REFERER', '/')
-    next = request.POST.get('next', '/')
-    if request.method == "POST":
-        form = ProjectValue(request.POST, instance=project)
-        form.fields['project'].disabled = True
-        form.fields['name'].disabled = True
-        form.fields['impact'].disabled = True
-        if form.is_valid():
-            project = form.save(commit=False)
-            project.modified_date = timezone.now()
-            project.save()
-            return HttpResponseRedirect(next)
-    else:
-        title = "Value Project"
-        form = ProjectValue(instance=project)
-        form.fields['project'].disabled = True
-        form.fields['name'].disabled = True
-        form.fields['impact'].disabled = True
-    return render(request, 'project/add_value.html', {'form': form, 'title': title})
-
-
-
-@login_required
-def project_loe(request, project_id):
-    project = get_object_or_404(Action, pk=project_id)
-    ref_url = request.META.get('HTTP_REFERER', '/')
-    next = request.POST.get('next', '/')
-    if request.method == "POST":
-        form = ProjectLoe(request.POST, instance=project)
-        form.fields['project'].disabled = True
-        form.fields['name'].disabled = True
-        form.fields['impact'].disabled = True
-        form.fields['value'].disabled = True
-        if form.is_valid():
-            project = form.save(commit=False)
-            project.modified_date = timezone.now()
-            project.save()
-            return HttpResponseRedirect(next)
-    else:
-        title = "Estimate Level of Effort"
-        form = ProjectLoe(instance=project)
-        form.fields['project'].disabled = True
-        form.fields['name'].disabled = True
-        form.fields['impact'].disabled = True
-        form.fields['value'].disabled = True
-    return render(request, 'project/add_loe.html', {'form': form, 'title': title})
-
-
-
-# Projects that need Valued
-@login_required
-def value(request):
-    vertical_id = _get_vertical_id(request)
-    projects = _scope(Action.objects.filter(value=0), vertical_id, _get_company_id(request))
-    title = "Assign Value"
-    return render(request, 'project/value.html', {'projects': projects, 'title': title})
-
-# Projects that need LOE
-@login_required
-def loe(request):
-    vertical_id = _get_vertical_id(request)
-    projects = _scope(Action.objects.filter(level_of_effort=0), vertical_id, _get_company_id(request))
-    title = "Assign Level of Effort"
-    return render(request, 'project/loe.html', {'projects': projects, 'title': title})
-
-# Projects that need approval
-@login_required
-def approve(request):
-    vertical_id = _get_vertical_id(request)
-    projects = _scope(
-        Action.objects.filter(approved__exact='False', normalized_score__gt=0).exclude(status__in=['WIP', 'On Deck']),
-        vertical_id, _get_company_id(request))
-    title = "Approve and Prioritize"
-    return render(request, 'project/approvals.html', {'projects': projects, 'title': title})
-    
-    
 @login_required
 def add_comment_to_project(request, project_id):
-    project = get_object_or_404(Action, pk=project_id)
-    ref_url = request.META.get('HTTP_REFERER', '/')
+    project = get_object_or_404(Project, pk=project_id)
     next = request.POST.get('next', '/')
-    if request.method == "POST":
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.author = request.user
-            comment.action = project
-            comment.save()
-        #return redirect(ref_url, {'project': project})    
-    #return render(request, 'project/detail.html', {'project': project})
+    if request.method == 'POST':
+        text = (request.POST.get('text') or '').strip()
+        if text:
+            ProjectComment.objects.create(project=project, author=request.user, text=text)
         return HttpResponseRedirect(next)
+    return redirect('project:project_detail', project_id=project.id)
 
+
+# ---------------------------------------------------------------------------
+# Intake pipeline: approval -> revenue (Analyst) -> LOE (Developer)
+# ---------------------------------------------------------------------------
+@login_required
+def approve_projects(request):
+    """Intake queue. Projects flow: Incomplete -> Pending Approval (BU lead) ->
+    Pending Revenue (Analyst) -> Pending LOE (Developer) -> Ready to Score."""
+    vertical_id = _get_vertical_id(request)
+    qs = _scope(Project.objects.filter(archived=False).filter(
+        Q(approved=False) | Q(status__in=('Pending Revenue', 'Pending LOE'))
+    ).select_related('owner', 'objective', 'vertical', 'department'),
+        vertical_id, _get_company_id(request))
+
+    pending, incomplete, pending_revenue, pending_loe = [], [], [], []
+    for p in qs:
+        if p.status == 'Pending Revenue':
+            p.user_can_act = can_set_revenue(request.user, p)
+            pending_revenue.append(p)
+        elif p.status == 'Pending LOE':
+            p.user_can_act = can_set_loe(request.user, p)
+            pending_loe.append(p)
+        elif is_ready_for_review(p):
+            p.user_can_act = can_approve(request.user, p)
+            pending.append(p)
+        else:
+            incomplete.append(p)
+    return render(request, 'project/approve_projects.html', {
+        'title': 'Project Intake',
+        'pending_projects': pending,
+        'incomplete_projects': incomplete,
+        'pending_revenue_projects': pending_revenue,
+        'pending_loe_projects': pending_loe,
+    })
+
+
+@login_required
+@require_POST
+def approve_action(request, project_id):
+    """A business-unit lead approves a project into the pipeline (-> Pending Revenue)."""
+    project = get_object_or_404(Project, pk=project_id)
+    if not can_approve(request.user, project):
+        messages.error(request, 'Only a business-unit lead can approve this project.')
+    elif not is_ready_for_review(project):
+        messages.error(request, 'This project is missing required fields for approval.')
     else:
-        form = CommentForm()
-    return render(request, 'project/add_comment_to_project.html', {'form': form})
+        project.approved = True
+        project.status = 'Pending Revenue'
+        project.save()
+        messages.success(request, f'Approved "{project.name}" — awaiting revenue (Analyst).')
+    return redirect('project:approve_projects')
+
+
+@login_required
+@require_POST
+def set_revenue(request, project_id):
+    """An Analyst sets the projected revenue (-> Pending LOE)."""
+    project = get_object_or_404(Project, pk=project_id)
+    if not can_set_revenue(request.user, project):
+        messages.error(request, 'Only an analyst can set revenue.')
+        return redirect('project:approve_projects')
+    try:
+        project.value = max(0, int((request.POST.get('value') or '0').replace(',', '')))
+    except (TypeError, ValueError):
+        project.value = 0
+    if project.value <= 0:
+        messages.error(request, 'Enter a projected revenue greater than 0.')
+    else:
+        project.status = 'Pending LOE'
+        project.save()
+        messages.success(request, f'Set revenue for "{project.name}" — awaiting LOE (Developer).')
+    return redirect('project:approve_projects')
+
+
+@login_required
+@require_POST
+def set_loe(request, project_id):
+    """A Developer sets the level of effort (-> Ready to Score)."""
+    project = get_object_or_404(Project, pk=project_id)
+    if not can_set_loe(request.user, project):
+        messages.error(request, 'Only a developer can set level of effort.')
+        return redirect('project:approve_projects')
+    try:
+        project.level_of_effort = max(0, min(10, int(request.POST.get('level_of_effort') or '0')))
+    except (TypeError, ValueError):
+        project.level_of_effort = 0
+    if project.level_of_effort <= 0:
+        messages.error(request, 'Enter a level of effort between 1 and 10.')
+    else:
+        project.status = LANE_STATUS['ready_to_score']
+        project.save()
+        messages.success(request, f'Set LOE for "{project.name}" — now Ready to Score.')
+    return redirect('project:approve_projects')
 
 
 @login_required
 def approve_project(request, project_id):
-    project = Action.objects.get(pk=project_id)
-    next_url = request.GET.get('next', request.POST.get('next', '/project/approvals.html'))
+    project = get_object_or_404(Project, pk=project_id)
+    next_url = request.GET.get('next', request.POST.get('next', '/project/approve/'))
     project.approved = not project.approved
     project.save()
     return HttpResponseRedirect(next_url)
+
 
 @login_required
 def delete(request, project_id):
@@ -304,85 +283,38 @@ def delete(request, project_id):
     return redirect('project:all')
 
 
+# ---------------------------------------------------------------------------
+# Archive
+# ---------------------------------------------------------------------------
 @login_required
 def archive(request):
-    """View archived (launched) projects with pagination."""
     vertical_id = _get_vertical_id(request)
-    # Archived actions plus Complete ones (Complete isn't a Kanban lane, so it
-    # only lives here, not in the Backlog).
-    archived_projects = _scope(Action.objects.filter(
+    archived_projects = _scope(Project.objects.filter(
         Q(archived=True) | Q(status='Complete')
-    ).order_by('-launch', '-date_modified'), vertical_id, _get_company_id(request))
+    ).order_by('-date_modified'), vertical_id, _get_company_id(request))
     paginator = Paginator(archived_projects, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'project/archive.html', {
-        'page_obj': page_obj,
-        'title': 'Archived Projects',
-    })
+        'page_obj': page_obj, 'title': 'Archived Projects'})
 
 
+# ---------------------------------------------------------------------------
+# Kanban
+# ---------------------------------------------------------------------------
 @login_required
-@login_required
-def approve_projects(request):
-    """Business-unit leaders' queue. Complete projects can be approved onto the
-    executive Kanban (-> Ready to Score); incomplete ones are finished first.
-    Two tables (incomplete vs pending), scoped to the top-bar selection."""
-    vertical_id = _get_vertical_id(request)
-    qs = _scope(Action.objects.filter(archived=False, approved=False).exclude(
-        status__in=NON_KANBAN_STATUSES
-    ).select_related('owner', 'objective', 'vertical', 'business_unit'),
-        vertical_id, _get_company_id(request))
-
-    pending, incomplete = [], []
-    for p in qs:
-        p.user_can_approve = can_approve(request.user, p)
-        (pending if is_ready_for_review(p) else incomplete).append(p)
-    return render(request, 'project/approve_projects.html', {
-        'title': 'Approve Projects',
-        'pending_projects': pending,
-        'incomplete_projects': incomplete,
-    })
-
-
-@login_required
-@require_POST
-def approve_action(request, project_id):
-    """A business-unit lead approves a project onto the executive Kanban."""
-    project = get_object_or_404(Action, pk=project_id)
-    if not can_approve(request.user, project):
-        messages.error(request, 'Only a business-unit lead can approve this project.')
-    elif not is_ready_for_review(project):
-        messages.error(request, 'This project is missing required fields for approval.')
-    else:
-        project.approved = True
-        project.status = LANE_STATUS['ready_to_score']   # onto the executive board
-        project.save()
-        messages.success(request, f'Approved "{project.name}" — now on the executive board (Ready to Score).')
-    return redirect('project:approve_projects')
-
-
 def kanban_view(request):
-    """Render the Kanban board."""
     vertical_id = _get_vertical_id(request)
-    projects = _scope(Action.objects.filter(archived=False, approved=True).exclude(
-        status__in=NON_KANBAN_STATUSES
-    ).select_related(
-        'project', 'business_unit', 'vertical', 'owner',
-    ), vertical_id, _get_company_id(request))
+    projects = _scope(Project.objects.filter(archived=False, approved=True).exclude(
+        status__in=NON_KANBAN_STATUSES + list(PIPELINE_STATUSES)
+    ).select_related('objective', 'department', 'vertical', 'owner'),
+        vertical_id, _get_company_id(request))
 
     grouped = group_projects(projects)
     lane_totals = compute_all_lane_totals(grouped)
-
-    lanes_data = []
-    for key, label in LANES.items():
-        lanes_data.append({
-            'key': key,
-            'label': label,
-            'projects': grouped[key],
-            'totals': lane_totals[key],
-            'count': len(grouped[key]),
-        })
+    lanes_data = [{
+        'key': key, 'label': label, 'projects': grouped[key],
+        'totals': lane_totals[key], 'count': len(grouped[key]),
+    } for key, label in LANES.items()]
 
     return render(request, 'project/kanban.html', {
         'lanes_data': lanes_data,
@@ -394,7 +326,6 @@ def kanban_view(request):
 @require_POST
 @login_required
 def kanban_move(request):
-    """AJAX endpoint: move a project to a new Kanban lane."""
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -402,40 +333,25 @@ def kanban_move(request):
 
     project_id = data.get('project_id')
     target_lane = data.get('target_lane')
-
     if not project_id or not target_lane:
         return JsonResponse({'ok': False, 'error': 'Missing project_id or target_lane'}, status=400)
 
-    project = get_object_or_404(Action, pk=project_id)
+    project = get_object_or_404(Project, pk=project_id)
     from_lane = get_lane(project)
     ok, err = apply_move(project, target_lane, user=request.user)
-
     if not ok:
         return JsonResponse({'ok': False, 'error': err}, status=422)
 
-    # Audit trail: record who moved the card and the transition.
     if from_lane != target_lane:
-        from .models import ActionComment
         who = request.user.get_full_name() or request.user.username
-        ActionComment.objects.create(
-            action=project, author=request.user, approved_comment=True,
+        ProjectComment.objects.create(
+            project=project, author=request.user, approved_comment=True,
             text=f'{who} moved this from {LANES.get(from_lane, from_lane)} to {LANES.get(target_lane, target_lane)}.')
 
-    # Recompute lane totals/counts after the move -- scope to the SAME vertical
-    # the board was loaded with (from the session), matching kanban_view. The
-    # client's ?vertical= URL param may be absent (e.g. navigated via sidebar),
-    # which previously made the recompute global and returned wrong counts.
     vertical_id = _get_vertical_id(request)
-    qs = _scope(
-        Action.objects.filter(archived=False, approved=True).exclude(status__in=NON_KANBAN_STATUSES),
-        vertical_id, _get_company_id(request))
-
+    qs = _scope(Project.objects.filter(archived=False, approved=True).exclude(
+        status__in=NON_KANBAN_STATUSES + list(PIPELINE_STATUSES)), vertical_id, _get_company_id(request))
     grouped = group_projects(qs)
     lane_totals = compute_all_lane_totals(grouped)
     lane_counts = {key: len(projects) for key, projects in grouped.items()}
-
-    return JsonResponse({
-        'ok': True,
-        'lane_totals': lane_totals,
-        'lane_counts': lane_counts,
-    })
+    return JsonResponse({'ok': True, 'lane_totals': lane_totals, 'lane_counts': lane_counts})

@@ -1833,19 +1833,20 @@ def score_projects(request):
     A per-project progress bar shows how many eligible voters have submitted.
     You see and edit only your own vote; individual votes are never shown.
     """
-    from project.services.kanban import LANE_STATUS
+    from project.services.kanban import LANE_STATUS, PIPELINE_STATUSES
     from project.services import voting
-    from project.scoring import CRITERIA, CRITERIA_META
+    from project.scoring import VOTED_CRITERIA, CRITERIA_META
     from project.models import ScoringWeights, ScoreVote
+    from strategy.models import Project
 
     if request.method == 'POST':
         pid = request.POST.get('project_id')
-        proj = Action.objects.filter(id=pid, archived=False).first()
+        proj = Project.objects.filter(id=pid, archived=False).first()
         if not proj or not voting.is_eligible(proj, request.user):
             messages.error(request, 'You are not among the voters for that project.')
             return redirect(request.get_full_path())
         values = {}
-        for c in CRITERIA:
+        for c in VOTED_CRITERIA:
             try:
                 values[c] = int(request.POST.get(c, 0))
             except (TypeError, ValueError):
@@ -1860,14 +1861,14 @@ def score_projects(request):
 
     vertical_id = scoped_vertical_id(request)
     company_id = scoped_company_id(request)
-    qs = _scope_to(Action.objects.filter(
+    qs = _scope_to(Project.objects.filter(
         archived=False, approved=True, status=LANE_STATUS['ready_to_score'],
-    ).select_related('owner', 'objective', 'vertical', 'vertical__company', 'business_unit'),
+    ).select_related('owner', 'objective', 'vertical', 'vertical__company', 'department'),
         vertical_id, company_id)
 
     # Only projects the current user is a voter on, ordered: not-yet-voted first,
     # then by projected value so the highest-stakes decisions surface.
-    my_votes = {v.action_id: v for v in ScoreVote.objects.filter(user=request.user)}
+    my_votes = {v.project_id: v for v in ScoreVote.objects.filter(user=request.user)}
     projects = []
     for p in qs:
         eligible = voting.eligible_scorer_ids(p)
@@ -1876,20 +1877,21 @@ def score_projects(request):
         p.progress = voting.vote_progress(p, eligible=eligible)
         p.my_vote = my_votes.get(p.id)
         p.has_voted = p.my_vote is not None
-        crit = _scoring_criteria(ScoringWeights.for_company(p.vertical.company if p.vertical else None))
+        # Only the five voted criteria have sliders (LOE is the developer's input).
+        crit = [c for c in _scoring_criteria(ScoringWeights.for_company(p._company()))
+                if c['field'] in VOTED_CRITERIA]
         vote_vals = p.my_vote.as_values() if p.my_vote else {}
         p.score_rows = [dict(c, value=vote_vals.get(c['field'], 0)) for c in crit]
         projects.append(p)
 
-    projects.sort(key=lambda p: (p.has_voted, -(p.value or p.project_value_total or 0),
-                                 p.aee_alignment or 'zzz'))
-    total_value = sum((p.value or p.project_value_total or 0) for p in projects)
+    projects.sort(key=lambda p: (p.has_voted, -(p.value or 0), p.aee_alignment or 'zzz'))
+    total_value = sum((p.value or 0) for p in projects)
     pending = sum(1 for p in projects if not p.has_voted)
 
     return render(request, 'app/score_projects.html', {
         'title': 'Score Projects',
         'projects': projects,
-        'criteria_labels': [CRITERIA_META[f][0] for f in CRITERIA],
+        'criteria_labels': [CRITERIA_META[f][0] for f in VOTED_CRITERIA],
         'total_value': total_value,
         'pending_count': pending,
     })

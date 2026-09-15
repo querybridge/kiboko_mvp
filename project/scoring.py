@@ -14,6 +14,11 @@ WEIGHTS = DEFAULT_WEIGHTS
 
 CRITERIA = list(DEFAULT_WEIGHTS.keys())
 
+# The criteria decided by the anonymous all-hands vote. `level_of_effort` is NOT
+# voted -- a Developer sets it as a specialist input during intake -- and revenue
+# (`value`, in $) is set by an Analyst; both are separate from the vote.
+VOTED_CRITERIA = [c for c in CRITERIA if c != 'level_of_effort']
+
 # Human labels + a one-line hint for each criterion (used by the scoring UI and
 # the Score Weights settings page, so both stay in sync).
 CRITERIA_META = {

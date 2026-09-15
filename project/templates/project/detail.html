@@ -1,218 +1,102 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Action Details {% endblock title %}
-
-{% block sidebar_class %}menu_fixed{% endblock sidebar_class %}
-
-{% block stylesheets %}
-  {{ block.super }}
-{% endblock stylesheets %}
-
+{% block title %} {{ project.name }} {% endblock title %}
 {% block content %}
-  <div class="right_col" role="main">
-    <div class="">
-      <div class="page-title">
-        <div class="title_right">
+<div class="right_col" role="main">
+  <div class="page-title">
+    <div class="title_left"><h3>{{ project.name }} <small>Project</small></h3></div>
+    <div class="clearfix"></div>
+  </div>
 
+  {% if messages %}
+  <div class="row"><div class="col-md-12">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  <div class="row">
+    <!-- Summary -->
+    <div class="col-md-5 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title">
+          <h2>Details</h2>
+          <ul class="nav navbar-right panel_toolbox"><li>
+            <a href="{% url 'project:project_edit' project.id %}" class="btn btn-info btn-xs">Edit</a>
+          </li></ul>
+          <div class="clearfix"></div>
+        </div>
+        <div class="x_content">
+          <table class="table">
+            <tr><th>Status</th><td>{{ project.status|default:"—" }}</td></tr>
+            <tr><th>Score</th><td>{{ project.normalized_score|default:"0.0" }} / 10</td></tr>
+            <tr><th>Projected revenue</th><td>${{ project.value|default:0|intcomma }}</td></tr>
+            <tr><th>Level of effort</th><td>{{ project.level_of_effort|default:"—" }}</td></tr>
+            <tr><th>Owner</th><td>{{ project.owner|default:"—" }}</td></tr>
+            <tr><th>Business unit</th><td>{{ project.vertical|default:"—" }}</td></tr>
+            <tr><th>Objective</th><td>{{ project.objective|default:"—" }}</td></tr>
+            <tr><th>AEE alignment</th><td>{{ project.get_aee_alignment_display|default:"— (set on the objective)" }}</td></tr>
+            <tr><th>Definition of Done</th><td>{{ project.definition_of_done|default:"—" }}</td></tr>
+            <tr><th>User story</th><td>{{ project.why|default:"—" }}</td></tr>
+          </table>
         </div>
       </div>
+    </div>
 
-      <div class="clearfix"></div>
+    <!-- Execution tasks (Actions) -->
+    <div class="col-md-7 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title"><h2>Actions <small>execution tasks</small> <span class="badge">{{ actions|length }}</span></h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          <table class="table table-striped">
+            <thead><tr><th>Task</th><th>Owner</th><th>Team</th><th style="width:110px;">Target</th><th style="width:90px;">Progress</th></tr></thead>
+            <tbody>
+              {% for a in actions %}
+              <tr>
+                <td>{{ a.name }}</td>
+                <td>{{ a.owner|default:"—" }}</td>
+                <td>{{ a.team|default:"—" }}</td>
+                <td>{{ a.launch|date:"M j, Y"|default:"—" }}</td>
+                <td>{{ a.progress|default:0 }}%</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted">No tasks yet. Add the first one below.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
 
-      <div class="row">
-        <div class="col-md-12">
-          <div class="x_panel">
-              <ul class="nav navbar-right project_action" style="padding-top: 20px, display: inline">
-                {% for group in user.groups.all %}
-                {% if group.name == 'VP' %}         
-                <li style="display: inline-block; padding-top: 10px">
-                  {% if project.normalized_score == 0 %}
-
-                  {% else %}
-                  <a class="btn btn-sm btn-success" id="approve-btn" href="approve/?next={{ request.path|urlencode }}">
-                    {% if project.approved == True %}
-                      Pause <i class="fa fa-pencil"></i>
-                    {% else %}
-                      Approve <i class="fa fa-pencil"></i>
-                    {% endif %} 
-                  </a>
-                </li>
-                {% endif %}
-                {% endif %}
-                {% endfor %}
-				<!-- <li><a href="#" class="btn btn-sm btn-warning">Pause</a></li> -->
-				<li style="display: inline-block; padding-top: 10px">
-          <!-- <a href="{% if 'edit' in request.path %} {{request.build_absolute_uri}} {% else %} {{ request.path }}edit {% endif %}" class="btn btn-sm btn-info">Edit</a>-->
-		          {% for group in user.groups.all %}
-		          {% if group.name == 'Manager' or group.name == 'Owner' %}
-		          <a href="edit_manager/?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Edit</a>
-		          {% else %}
-		          <a href="edit/?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Edit</a>
-		          {% endif %}
-		          {% endfor %}
-		        </li>
-				<!--<li style="display: inline-block"><a href="#" class="btn btn-sm btn-danger">Delete</a></li>-->
-              </ul>
-            <div class="x_title">
-              <h1><strong>Action: </strong>{{ project.name }}<br/><small><strong>Project: </strong>{{ project.project.name }}</small></h1>
-              <div class="clearfix"></div>
-            </div>
-
-            <div class="x_content">
-
-              <div class="col-md-12 col-sm-12 col-xs-12">
-<div class="row top_tiles">
-                <ul class="stats-overview">
-                  <li style="display: inline-block">
-                    <span class="name"> Estimated Value </span>
-                    <span class="value text-success"> ${{ project.value|intcomma }} </span>
-                  </li>
-                  <li style="display: inline-block">
-                    <span class="name"> Score </span>
-                    <span class="value text-success"> {{ project.normalized_score }} </span>
-                  </li>
-                  <li style="display: inline-block">
-                    <span class="name"> Launch Date </span>
-                    <span class="value text-success">{{  project.launch }} </span>
-                  </li>
-                  <li style="display: inline-block">
-                    <span class="name"> Action Progress </span>
-                    <span class="value text-success">
-					<!-- <span class="project_progress"> -->
-                      <div class="progress progress_sm center-block" style="width:75%;"> 
-                        <div class="progress-bar bg-green" role="progressbar" data-transitiongoal="{{ project.progress }}"></div>
-                      </div>
-                      <small>{{ project.progress }}% Complete</small>
-					<!--</span> -->
-					</span>
-                  </li>				  
-                </ul>
-                <br />
-</div>
-				
-				<!-- Chart
-                <div id="mainb" style="height:350px;"></div>
--->
-                <div>
-				<div class="row">
-				<div class="col-md-8 col-sm-8 col-xs-12">
-                  <div>
-				  <h4>Recent Activity</h4>
-				  <ul class="nav navbar-right project_action">
-					<li><a href="comment/?next={{ request.path|urlencode }}" class="btn btn-sm btn-info">Add Comment</a></li>
-				  </ul>
-				</div>
-				<div class="clearfix"></div>
-                  <!-- end of user messages -->
-                  <ul class="messages">
-	                {% for comment in project.comments.all %}
-                    <li>
-                      <div class="message_date">
-                        <h3 class="date text-info">{{ comment.created_date }}</h3>
-                      </div>
-                      <div class="message_wrapper">
-                        <h4 class="heading">{{ comment.author }}</h4>
-                        <blockquote class="message">{{  comment.text|linebreaks }}</blockquote>
-                        <br />
-                    {% empty %}
-                  <ul class="messages">
-                    <li>
-                      <!-- <img src="" class="avatar" alt="Avatar"> -->
-                      <div class="message_date">
-                        <h3 class="date text-info"></h3>
-                      </div>
-                      <div class="message_wrapper">
-                        <h4 class="heading"></h4>
-                        <blockquote class="message">Nothing posted yet. Start the convo!</blockquote>
-                        <br />
-                    	
-                    {% endfor %}
-                      </div>
-                    </li>
-                  </ul>
-				  </div>
-                  <!-- end of user messages -->
-
-				
-                
-
-
-              
-
-              <!-- start project-detail sidebar -->
-              <div class="col-md-4 col-sm-4 col-xs-12">
-
-                <section class="panel">
-
-                  <div class="x_title">
-                    <h2>Action Description</h2>
-                    <div class="clearfix"></div>
-                  </div>
-                  <div class="panel-body">
-                    <!-- </div><h3 class="green"><i class="fa fa-paint-brush"></i> Gentelella</h3> -->
-
-                    <div class="project_detail">
-                    <p class="title">Action Owner</p>
-                    <p>{{ project.owner }}</p>
-                    <p class="title">Department</p>
-                    <p>{{ project.business_unit|default:"-" }}</p>
-                    <p class="title">Objective</p>
-                    <p>{{ project.objective|default:"-" }}</p>
-                    <p class="title">Vertical</p>
-                    <p>{{ project.vertical|default:"-" }}</p>
-                    <p class="title">Measure</p>
-                    <p>{{ project.measure|default:"-" }}{% if project.measure %} <i class="fa fa-info-circle" title="Quantifiable data points used to track progress and performance against the parent metric"></i>{% endif %}</p>
-                    <p class="title">Created:</p>
-                    <p>{{ project.date_created }}</p>
-                    <p class="title">Modified:</p>
-                    <p>{{ project.date_modified }}</p>
-                    <p class="title">User Story</p>
-                    <p>{{ project.why }}</p>
-                      {% if request.user.is_superuser %}
-                      <p class="title">Weighted Score</p>
-                      <p>{{ project.normalized_score }}</p>
-                      {% endif %}
-                    </div>
-
-                    <br />
-                    <h3>Score Elements</h3>
-                    <ul class="list-unstyled project_files">
-                      <li><i class="fa fa-star"></i><span class="score_detail">   Customer Value: {{ project.customer_value|default:"0" }}</span>
-                      </li>
-                      <li><i class="fa fa-briefcase"></i><span class="score_detail">   Business Value: {{ project.business_value|default:"0" }}</span>
-                      </li>
-                      <li><i class="fa fa-money"></i><span class="score_detail">   Cost Savings: {{ project.cost_savings|default:"0" }}</span>
-                      </li>
-                      <li><i class="fa fa-cogs"></i><span class="score_detail">   Operational Cost: {{ project.operational_cost|default:"0" }}</span>
-                      </li>
-                      <li><i class="fa fa-shield"></i><span class="score_detail">   Business Risk: {{ project.business_risk|default:"0" }}</span>
-                      </li>
-                      <li><i class="fa fa-tasks"></i><span class="score_detail">   Level of Effort: {{ project.level_of_effort|default:"0" }}</span>
-                      </li>
-                      <li><i class="fa fa-money"></i><span class="score_detail">   Value: ${{ project.value|intcomma }}</span>
-                      </li>
-                      <li><i class="fa fa-check"></i><span class="score_detail">   Approved: {{ project.approved }}</span>
-                      </li>
-                    </ul>
-                    <br />
-
-                  </div>
-
-                </section>
-
-              </div>
-              <!-- end project-detail sidebar -->
-			</div>
-            </div>
-          </div>
+          <h4 style="margin-top:18px;">Add Action</h4>
+          <form method="post" action="{% url 'project:add_action' project.id %}">
+            {% csrf_token %}
+            {{ action_form.as_p }}
+            <button type="submit" class="btn btn-success btn-sm">Add Action</button>
+          </form>
         </div>
       </div>
     </div>
   </div>
-{% endblock content %}
 
-{% block javascripts %}
-  {{ block.super }}
-  <!-- ECharts -->
-  <script src="/static/vendors/echarts/dist/echarts.min.js"></script>
-{% endblock javascripts %}
+  <!-- Comments -->
+  <div class="row"><div class="col-md-12">
+    <div class="x_panel">
+      <div class="x_title"><h2>Activity &amp; comments</h2><div class="clearfix"></div></div>
+      <div class="x_content">
+        {% for c in project.comments.all %}
+        <p style="margin-bottom:6px;"><strong>{{ c.author.get_full_name|default:c.author.username }}</strong>
+          <small class="text-muted">{{ c.created_date|date:"M j, Y P" }}</small><br>{{ c.text }}</p>
+        {% empty %}<p class="text-muted">No activity yet.</p>{% endfor %}
+        <form method="post" action="{% url 'project:add_comment_to_project' project.id %}" style="margin-top:12px;">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <div style="display:flex; gap:6px;">
+            <input type="text" name="text" class="form-control" placeholder="Add a comment…" required>
+            <button type="submit" class="btn btn-primary btn-sm">Post</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div></div>
+
+</div>
+{% endblock content %}
