@@ -395,7 +395,8 @@
         <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
           <div class="tile-stats">
             <div class="x_title" style="text-align:center; background: {{ item.color }}; border-radius:6px 6px 0 0; padding:12px 8px; border-bottom:none;">
-			<h3 style="color:#fff; margin-top:4px;">{{ item.rock.name }}</h3>
+			<h3 style="color:#fff; margin-top:4px; margin-bottom:2px;">{{ item.rock.name }}</h3>
+            {% if item.aee_element %}<div style="color:#fff; text-align:center; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; font-size:13px;">{{ item.aee_element }}</div>{% endif %}
             <p style="color:rgba(255,255,255,0.88); margin-bottom:0;">{{ item.rock.description }}</p>
 			</div>
               <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">

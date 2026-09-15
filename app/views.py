@@ -505,6 +505,7 @@ def index(request):
             'count_p': count_p,
             'value_p': value_p,
             'color': _objective_bar_colors(rock.name)['fill'],
+            'aee_element': _AEE_ELEMENT.get(rock.aee_alignment, ''),
         })
 
     # Enforce display order: Shopper Volume, Close Rate, Average Order Value
@@ -544,6 +545,14 @@ def index(request):
         'performance_data': json.dumps(performance_data),
         'initiatives': initiatives,
     })
+
+
+# Short AEE element name shown as the tile's second line (e.g. "Attract").
+_AEE_ELEMENT = {
+    'attract_traffic': 'Attract',
+    'engage_customers': 'Engage',
+    'expand_purchase': 'Expand',
+}
 
 
 PURPOSE_COLORS = {
