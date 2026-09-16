@@ -48,6 +48,22 @@ class ProjectForm(ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # Unique project name per company (case-insensitive), so lazy duplicates
+        # and re-suggested ideas don't fragment the backlog. Different companies
+        # may reuse a name; archived projects don't block reuse.
+        name = (cleaned.get('name') or '').strip()
+        if name:
+            cleaned['name'] = name
+            vertical = cleaned.get('vertical')
+            dupes = Project.objects.filter(archived=False, name__iexact=name)
+            if vertical is not None:
+                dupes = dupes.filter(vertical__company=vertical.company)
+            else:
+                dupes = dupes.filter(vertical__isnull=True)
+            if self.instance and self.instance.pk:
+                dupes = dupes.exclude(pk=self.instance.pk)
+            if dupes.exists():
+                self.add_error('name', 'A project with this name already exists — use a distinct name.')
         # Lever must pull the objective's AEE element (AEE > Objective > Project).
         objective, lever = cleaned.get('objective'), cleaned.get('lever')
         if objective and lever:

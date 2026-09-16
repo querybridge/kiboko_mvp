@@ -2134,8 +2134,19 @@ def insights_add_project(request):
     metric_label = dict(I.METRIC_CHOICES).get(rec.metric, rec.metric)
     moving = 'improving' if rec.direction == 'win' else 'declining'
 
+    # Don't re-add a recommendation that's already queued (same name, same company).
+    name = rec.text[:75].strip()
+    existing = Project.objects.filter(archived=False, name__iexact=name)
+    existing = existing.filter(vertical__company=bu.company) if bu is not None else existing.filter(vertical__isnull=True)
+    dup = existing.first()
+    if dup is not None:
+        messages.info(request, format_html(
+            '“{}” is already in <a href="{}">Project Prioritization</a> — not added again.',
+            dup.name, reverse('project:approve_projects')))
+        return redirect(request.POST.get('next') or 'app:insights')
+
     p = Project(
-        name=rec.text[:75], owner=request.user, vertical=bu, department=dept,
+        name=name, owner=request.user, vertical=bu, department=dept,
         objective=objective, year=date.today().year, approved=False,
         why=f'From Insights: {metric_label} is {moving}. {rec.text}'[:1000],
         definition_of_done=rec.text[:350])
