@@ -146,10 +146,46 @@ def realized_fraction(launch, ramp_days, today=None, year_end=None):
     return total / DAYS_IN_YEAR
 
 
+def plausibility(target, levels):
+    """How plausible is reaching `target` for a lever, given its recent history?
+
+    `levels` = the lever's level in each of the trailing weeks. Returns a z-score
+    vs. that distribution, how many weeks ever reached the target, a band label +
+    heat color, a 0..1 gauge position (blue→red), and a risk multiplier P used to
+    optionally discount the expected impact (accountability for big claims).
+    """
+    vals = [float(x) for x in levels if x == x]          # drop NaN
+    if len(vals) < 3:
+        return {'ok': False}
+    import statistics as _s
+    mean = _s.fmean(vals)
+    std = _s.pstdev(vals) if len(vals) < 2 else _s.stdev(vals)
+    std = std or 1e-9
+    z = (target - mean) / std
+    n = len(vals)
+    reached = sum(1 for v in vals if v >= target)
+    if z <= 1.0:
+        band, color = 'Plausible', '#2b83ba'             # within normal range
+    elif z <= 2.0:
+        band, color = 'A stretch', '#7fbf7b'
+    elif z <= 3.0:
+        band, color = 'Aggressive', '#fdae61'
+    else:
+        band, color = 'Implausible', '#d7191c'
+    position = min(1.0, max(0.0, (z + 1.0) / 5.0))        # z in [-1, 4] -> [0, 1]
+    P = 1.0 if z <= 1.0 else max(0.15, 1.0 - (z - 1.0) / 3.0)
+    return {'ok': True, 'z': z, 'mean': mean, 'std': std, 'n': n,
+            'reached': reached, 'hist_max': max(vals), 'hist_min': min(vals),
+            'band': band, 'color': color, 'position': position, 'factor': P}
+
+
 def estimate(lever, target_from, target_to, s0_annual, *, launch, ramp_days,
              capability='mostly', effort='M', direct_expense=0.0,
-             margin_factor=0.35, fit=1.0, today=None):
-    """Estimate a project's impact + priority. See the spec for the model."""
+             margin_factor=0.35, fit=1.0, plausibility=1.0, today=None):
+    """Estimate a project's impact + priority. See the spec for the model.
+
+    `plausibility` (0..1) optionally risk-adjusts the expected impact based on how
+    achievable the target level is vs. history (see plausibility())."""
     if lever not in LEVERS:
         raise ValueError(f'unknown lever {lever!r}')
     target_from = float(target_from) or 1e-9
@@ -158,7 +194,7 @@ def estimate(lever, target_from, target_to, s0_annual, *, launch, ramp_days,
     rf = realized_fraction(launch, ramp_days, today=today)
     realized_annual = gross_annual * rf
     C = CAPABILITY.get(capability, ('', 0.85))[1]
-    expected_realized = realized_annual * C
+    expected_realized = realized_annual * C * float(plausibility)
     net_annual = gross_annual * margin_factor - float(direct_expense)
     effort_cost = LOE_COST.get(effort, 1.4)
     kiboko_raw = (expected_realized * margin_factor - float(direct_expense)) * fit / effort_cost

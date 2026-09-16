@@ -27,6 +27,13 @@ Opens in the browser with **sample history** by default. Two tabs:
   see gross vs. realized-this-year vs. expected vs. net, a 0–10 priority score,
   and the cumulative-impact curve. Drop capability or lengthen the ramp: the $
   value holds but the score falls (the "Kiboko Effect").
+  - **Plausibility (accountability):** the target is scored against the lever's
+    own last-12-months distribution — a **blue→red heat gauge** + a histogram
+    with current/target markers, a z-score, and "reached N of 52 weeks." A wild
+    claim (e.g. a target only hit once, 3σ out) lights up red, nudging the user
+    to back down — or to knowingly own a bold call. Optionally **risk-adjusts**
+    the expected impact by a plausibility factor `P` (so over-estimators can't
+    quietly inflate numbers; they either temper the target or go on record).
 - **Backtest** — LMDI decomposition splits an actual sales change (recent N days
   vs. the prior N) into **exact per-lever dollar drivers** (contributions sum to
   the change). Plus an "estimator vs. actual" confounding check for any lever.

@@ -10,6 +10,7 @@ Data: sample by default; upload a CSV (date + 6 GA4 metrics) for a real backtest
 """
 from datetime import date, timedelta
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -68,9 +69,52 @@ with est_tab:
                                   index=1, format_func=lambda k: E.CAPABILITY[k][0])
         effort = st.selectbox('Level of effort', list(E.LOE_COST), index=2)
 
+    # --- Plausibility: how does the target level compare to the last 12 months? ---
+    levels = D.weekly_lever_levels(df, lever, weeks=52)
+    pl = E.plausibility(to, levels)
+    st.markdown('---')
+    st.markdown('**Plausibility of the target** — accountability check vs. recent history')
+    P = 1.0
+    if pl.get('ok'):
+        pc1, pc2 = st.columns([1, 1])
+        with pc1:
+            pos = pl['position'] * 100
+            st.markdown(f'''
+              <div style="margin:2px 0 3px;font-weight:700;color:{pl['color']};">{pl['band']} · {pl['z']:+.1f}σ</div>
+              <div style="position:relative;height:20px;border-radius:10px;
+                   background:linear-gradient(90deg,#2b83ba 0%, #7fbf7b 28%, #fdae61 62%, #d7191c 100%);">
+                <div style="position:absolute;left:{pos:.1f}%;top:-5px;width:0;height:0;
+                     border-left:6px solid transparent;border-right:6px solid transparent;
+                     border-top:9px solid #111;transform:translateX(-6px);"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-top:3px;">
+                <span>Plausible</span><span>Implausible</span></div>
+            ''', unsafe_allow_html=True)
+            st.caption(f"Target **{to:,.4g}** was reached **{pl['reached']} of the last {pl['n']} weeks** "
+                       f"({pl['z']:+.1f}σ vs. a {pl['mean']:,.4g} mean). "
+                       f"12-mo range {pl['hist_min']:,.4g}–{pl['hist_max']:,.4g}.")
+            if pl['z'] > 3:
+                st.warning("Beyond nearly all recent experience — back it down, or own the bold call.")
+            elif pl['z'] > 2:
+                st.info("Aggressive — rarely achieved. Make sure the project justifies it.")
+        with pc2:
+            dfl = pd.DataFrame({'level': levels})
+            hist = alt.Chart(dfl).mark_bar(opacity=0.55, color='#8899aa').encode(
+                alt.X('level:Q', bin=alt.Bin(maxbins=28), title=f'{E.LEVERS[lever][0]} — weekly, 12 mo'),
+                alt.Y('count()', title='weeks'))
+            r_from = alt.Chart(pd.DataFrame({'x': [frm]})).mark_rule(color='#2b83ba', size=2).encode(x='x')
+            r_to = alt.Chart(pd.DataFrame({'x': [to]})).mark_rule(color=pl['color'], size=3).encode(x='x')
+            st.altair_chart(hist + r_from + r_to, use_container_width=True)
+            st.caption('Blue rule = current level · colored rule = target')
+        risk_adj = st.checkbox('Risk-adjust impact by plausibility (×P)', value=(pl['z'] > 2),
+                               help=f'Multiply expected impact by P={pl["factor"]:.2f}. Uncheck to own the full claim.')
+        P = pl['factor'] if risk_adj else 1.0
+    else:
+        st.caption('Not enough history to assess plausibility.')
+
     e = E.estimate(lever, frm, to, base['s0_annual'], launch=launch, ramp_days=ramp,
                    capability=capability, effort=effort, direct_expense=direct_expense,
-                   margin_factor=margin)
+                   margin_factor=margin, plausibility=P)
 
     # 0-10 score relative to an illustrative backlog (each lever, +10%, same terms).
     backlog = [E.estimate(k, base['levels'][k], base['levels'][k] * 1.10, base['s0_annual'],
@@ -83,7 +127,9 @@ with est_tab:
     m = st.columns(5)
     m[0].metric('Gross impact / yr', f'${e.gross_annual:,.0f}', help='S0 × %Δ lever, full run-rate')
     m[1].metric('Realized this year', f'${e.realized_annual:,.0f}', help=f'× {e.realized_fraction:.0%} after ramp + timing')
-    m[2].metric('Expected (× capability)', f'${e.expected_realized:,.0f}')
+    m[2].metric('Expected (risk-adj.)' if P < 1 else 'Expected (× capability)',
+                f'${e.expected_realized:,.0f}',
+                help=f'realized × capability × plausibility (P={P:.2f})')
     m[3].metric('Net contribution / yr', f'${e.net_annual:,.0f}', help='gross × margin − direct expense')
     m[4].metric('Priority score (0–10)', f'{score10}', help=f'Kiboko raw: {e.kiboko_raw:,.0f}')
 

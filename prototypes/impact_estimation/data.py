@@ -27,16 +27,19 @@ def generate_sample(seed=7, days=730, start=None):
     idx = [start + timedelta(days=i) for i in range(days)]
     t = np.arange(days)
 
-    def season(amp):  # weekly seasonality
+    def season(amp):  # day-of-week seasonality
         return 1 + amp * np.sin(2 * np.pi * (t % 7) / 7)
 
-    # Baseline lever paths (levels), each with a gentle trend + noise.
-    visitors = 3000 * (1 + 0.00025 * t) * season(0.18) * rng.normal(1, 0.05, days)
-    vpv = 1.42 * (1 + 0.00005 * t) * rng.normal(1, 0.01, days)
-    cart_creation = 0.100 * rng.normal(1, 0.03, days)
-    cart_completion = 0.350 * rng.normal(1, 0.03, days)
-    units_per_order = 2.05 * rng.normal(1, 0.02, days)
-    avg_unit_price = 44.0 * (1 + 0.0001 * t) * rng.normal(1, 0.015, days)
+    def wk(cv):  # week-level multiplier (creates realistic week-to-week variance)
+        return np.repeat(rng.normal(1, cv, days // 7 + 1), 7)[:days]
+
+    # Baseline lever paths (levels): gentle trend + week-level swings + daily noise.
+    visitors = 3000 * (1 + 0.00025 * t) * season(0.18) * wk(0.14) * rng.normal(1, 0.04, days)
+    vpv = 1.42 * (1 + 0.00005 * t) * wk(0.03) * rng.normal(1, 0.008, days)
+    cart_creation = 0.100 * wk(0.07) * rng.normal(1, 0.02, days)
+    cart_completion = 0.350 * wk(0.06) * rng.normal(1, 0.02, days)
+    units_per_order = 2.05 * wk(0.04) * rng.normal(1, 0.015, days)
+    avg_unit_price = 44.0 * (1 + 0.0001 * t) * wk(0.05) * rng.normal(1, 0.01, days)
 
     # --- Injected interventions (what a real "project" would look like) ---
     def ramp_step(series, start_day, pct, ramp):
@@ -80,13 +83,34 @@ def window_metrics(df, start, end):
     return {c: float(m[c].sum()) for c in RAW_COLS}
 
 
+def _levels_per_day(m, days):
+    """Lever levels on a per-DAY basis so flow metrics (visitors, sales) are
+    comparable across windows of different length. Ratio levers are unchanged."""
+    md = {k: (v / max(1, days)) for k, v in m.items()}
+    return levers_from_metrics(md)
+
+
+def weekly_lever_levels(df, lever, weeks=52, ref=None):
+    """The lever's per-day level in each of the trailing `weeks` 7-day buckets
+    (for the plausibility distribution). Chronological order."""
+    ref = ref or df['date'].max()
+    out = []
+    for w in range(weeks):
+        end = ref - timedelta(days=7 * w)
+        start = end - timedelta(days=6)
+        m = window_metrics(df, start, end)
+        if m['sessions'] > 0:
+            out.append(_levels_per_day(m, 7)[lever])
+    return list(reversed(out))
+
+
 def baselines(df, window_days=90, ref=None):
-    """Current lever levels + annualized sales run-rate S0, from the trailing
-    `window_days` ending at `ref` (default: last date in the data)."""
+    """Current per-day lever levels + annualized sales run-rate S0, from the
+    trailing `window_days` ending at `ref` (default: last date in the data)."""
     ref = ref or df['date'].max()
     start = ref - timedelta(days=window_days - 1)
     m = window_metrics(df, start, ref)
-    lv = levers_from_metrics(m)
-    s0_annual = lv['sales'] * (365.0 / window_days)
+    lv = _levels_per_day(m, window_days)
+    s0_annual = lv['sales'] * 365.0            # per-day sales x 365
     return {'levels': {k: lv[k] for k in LEVER_KEYS}, 's0_annual': s0_annual,
             'window': (start, ref), 'raw': m}
