@@ -73,6 +73,7 @@
   }
   .baseline-src i { margin-right: 4px; }
   .baseline-src.loading { color: var(--text-muted); }
+  .baseline-src.warn { color: var(--status-warning); }
   input.ga4-auto { border-color: rgba(85,200,146,.55) !important; }
 
   .est-footnote { color: var(--text-muted); font-size: 11.5px; margin-top: 14px; line-height: 1.5; }
@@ -360,7 +361,15 @@
 
   function fetchBaseline() {
     var v = bu && bu.value;
-    if (!v) { GA4 = null; if (srcBadge) srcBadge.style.display = 'none'; recalc(); return; }
+    if (!v) {
+      GA4 = null;
+      // Nudge: the form's Business Unit (not the top-bar scope) drives GA4 auto-fill.
+      if (srcBadge && lever && lever.value) {
+        srcBadge.style.display = ''; srcBadge.className = 'baseline-src loading';
+        srcBadge.innerHTML = '<i class="fa fa-info-circle"></i>Select a Business Unit to auto-fill from GA4.';
+      } else if (srcBadge) { srcBadge.style.display = 'none'; }
+      recalc(); return;
+    }
     if (srcBadge) {
       srcBadge.style.display = ''; srcBadge.className = 'baseline-src loading';
       srcBadge.innerHTML = '<i class="fa fa-spinner fa-spin"></i>checking GA4…';
@@ -375,18 +384,38 @@
             srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from GA4 (' + d.window_days + '-day baseline)'; }
           autofill();
         } else {
-          GA4 = null; if (srcBadge) srcBadge.style.display = 'none';
+          GA4 = null;
+          showBadgeReason(d && d.reason);
         }
         recalc();
       })
-      .catch(function () { GA4 = null; if (srcBadge) srcBadge.style.display = 'none'; recalc(); });
+      .catch(function () { GA4 = null; showBadgeReason('fetch-failed'); recalc(); });
+  }
+
+  var BADGE_MSG = {
+    'no-property':   'No GA4 property on this Business Unit — enter baselines manually.',
+    'not-signed-in': 'Sign in with Google to auto-fill baselines from GA4.',
+    'no-oauth':      'GA4 sign-in isn’t configured — enter baselines manually.',
+    'fetch-failed':  'Couldn’t reach GA4 just now — enter manually or reselect to retry.',
+    'no-data':       'No GA4 data in the baseline window — enter baselines manually.'
+  };
+  function showBadgeReason(reason) {
+    if (!srcBadge) return;
+    var msg = BADGE_MSG[reason];
+    if (!msg) { srcBadge.style.display = 'none'; return; }   // no-access / no-business-unit -> silent
+    srcBadge.style.display = '';
+    srcBadge.className = 'baseline-src warn';
+    srcBadge.innerHTML = '<i class="fa fa-exclamation-triangle"></i>' + msg;
   }
 
   // Treat server-rendered values (e.g. after a POST error) as manual so we don't clobber them.
   if (from && from.value) from.dataset.manual = '1';
   if (s0 && s0.value) s0.dataset.manual = '1';
 
-  if (lever) lever.addEventListener('change', function () { autofill(); recalc(); });
+  if (lever) lever.addEventListener('change', function () {
+    if (GA4) autofill(); else if (!(bu && bu.value)) fetchBaseline();   // refresh the nudge
+    recalc();
+  });
   [to, ramp, launch].forEach(function (el) {
     if (el) { el.addEventListener('input', recalc); el.addEventListener('change', recalc); }
   });

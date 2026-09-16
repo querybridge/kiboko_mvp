@@ -884,31 +884,50 @@ def _bq_daily_actuals(bqp, start, end):
         return None
 
 
-def baseline_daily_for_bu(request, business_unit, days, end=None):
-    """{'YYYY-MM-DD': fundamentals} summed for ONE business unit over the last
-    `days` (through `end`, default yesterday), or None when it isn't connected /
-    the user can't read it. Unlike the dashboards this is driven by the intake
-    form's chosen Business Unit, not the top-bar scope. Fundamentals keys:
-    visits, visitors, new_visitors, carts, orders, units, sales."""
+def baseline_status(request, business_unit):
+    """Why a BU can/can't auto-fill baselines, WITHOUT any network call:
+    'premium' / 'standard' (connectable) or 'no-access' / 'no-property' /
+    'no-oauth' / 'not-signed-in' (blocked)."""
     from business_unit.models import BigQueryConnection
     from business_unit.access import can_access_company, allowed_bu_ids
     user = getattr(request, 'user', None)
-    pid = getattr(business_unit, 'ga4_property_id', '')
-    if not user or not user.is_authenticated or not pid:
-        return None
+    if not user or not user.is_authenticated:
+        return 'no-access'
+    if not getattr(business_unit, 'ga4_property_id', ''):
+        return 'no-property'
     company = business_unit.company
     if not can_access_company(user, company):
-        return None
+        return 'no-access'
     allowed = allowed_bu_ids(user, company)            # None = all
     if allowed is not None and business_unit.id not in allowed:
-        return None
+        return 'no-access'
+    bq = BigQueryConnection.objects.filter(company=company).first()
+    if bq and bq.service_account_json:
+        return 'premium'
+    if not google_oauth.is_enabled():
+        return 'no-oauth'
+    if not getattr(user, 'google_identity', None):
+        return 'not-signed-in'
+    return 'standard'
 
+
+def baseline_daily_for_bu(request, business_unit, days, end=None):
+    """{'YYYY-MM-DD': fundamentals} summed for ONE business unit over the last
+    `days` (through `end`, default yesterday), or None when it isn't connected /
+    the user can't read it / the fetch fails. Driven by the intake form's chosen
+    Business Unit, not the top-bar scope. Fundamentals keys: visits, visitors,
+    new_visitors, carts, orders, units, sales."""
+    status = baseline_status(request, business_unit)
+    if status not in ('premium', 'standard'):
+        return None
+    pid = business_unit.ga4_property_id
+    company = business_unit.company
     end = end or (datetime.date.today() - datetime.timedelta(days=1))
     start = end - datetime.timedelta(days=days - 1)
 
-    # Premium (BigQuery / rollup) takes precedence over Standard (GA4 Data API).
-    bq = BigQueryConnection.objects.filter(company=company).first()
-    if bq and bq.service_account_json:
+    if status == 'premium':
+        from business_unit.models import BigQueryConnection
+        bq = BigQueryConnection.objects.filter(company=company).first()
         try:
             out = {}
             for day, rec in _daily_fundamentals(bq, [pid], start, end).items():
@@ -919,11 +938,7 @@ def baseline_daily_for_bu(request, business_unit, days, end=None):
                            type(e).__name__, e)
             return None
 
-    if not google_oauth.is_enabled():
-        return None
-    identity = getattr(user, 'google_identity', None)
-    if not identity:
-        return None
+    identity = getattr(request.user, 'google_identity', None)
     try:
         creds = google_oauth.credentials_from_identity(identity)
         out = {}

@@ -145,9 +145,12 @@ def estimator_baseline(request):
         return JsonResponse({'connected': False, 'reason': 'no-business-unit'})
     settings = EstimatorSettings.current(bu.company)
     window = (settings.baseline_window_days if settings else 90) or 90
+    status = ga4_dashboard.baseline_status(request, bu)
+    if status not in ('premium', 'standard'):
+        return JsonResponse({'connected': False, 'reason': status})
     daily = ga4_dashboard.baseline_daily_for_bu(request, bu, max(window, 364))
-    if not daily:
-        return JsonResponse({'connected': False, 'reason': 'not-connected'})
+    if daily is None:
+        return JsonResponse({'connected': False, 'reason': 'fetch-failed'})
     b = impact.baselines_from_daily(daily, window)
     if not b:
         return JsonResponse({'connected': False, 'reason': 'no-data'})
