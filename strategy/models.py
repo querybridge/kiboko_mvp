@@ -134,6 +134,21 @@ class Project(models.Model):
     capability = models.CharField(max_length=12, choices=CAPABILITY_CHOICES, blank=True, default='')  # developer only
     direct_expense = models.IntegerField(default=0)
     plausibility_factor = models.FloatField(default=1.0)        # target plausibility risk-adjustment (P)
+    # Evidence-backed target: when the target's plausibility rests on evidence the
+    # recent GA4 window can't see (a level sustained before a regression, an A/B
+    # result, an external benchmark), plausibility is anchored to `evidence_prior_level`
+    # instead of the current baseline, so a well-supported recovery isn't discounted.
+    # Auditable: any proposer may set it, with a required note shown to voters.
+    EVIDENCE_KIND_CHOICES = [
+        ('prior_level', 'Restoring a prior sustained level'),
+        ('ab_test', 'A/B or experiment result'),
+        ('benchmark', 'External / competitor benchmark'),
+        ('other', 'Other (see note)'),
+    ]
+    evidence_backed = models.BooleanField(default=False)
+    evidence_kind = models.CharField(max_length=16, choices=EVIDENCE_KIND_CHOICES, blank=True, default='')
+    evidence_prior_level = models.DecimalField(max_digits=16, decimal_places=4, null=True, blank=True)
+    evidence_note = models.CharField(max_length=300, blank=True, default='')
     algo_raw = models.FloatField(null=True, blank=True)          # raw algorithmic priority (kiboko_raw)
     voted_score = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)  # BVM weighted vote (0-10)
     # Five voted BVM criteria (0-10); level_of_effort above is the 6th, set by a developer.

@@ -101,6 +101,17 @@
   }
   .est-ig .form-control.ga4-auto { border-color: rgba(85,200,146,.55) !important; }
 
+  /* Evidence-backed target box */
+  .evidence-box {
+    margin-top: 16px; padding: 12px 14px; border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-card); background: rgba(85,200,146,.05);
+  }
+  .evidence-toggle { display: flex; align-items: baseline; gap: 8px; margin: 0; cursor: pointer; font-weight: 600; }
+  .evidence-toggle input { margin: 0; position: relative; top: 1px; }
+  .evidence-toggle small { color: var(--text-muted); font-weight: 400; font-size: 11px; }
+  #evidence_detail { margin-top: 12px; }
+  #evidence_detail .est-hint i { color: var(--status-success); margin-right: 5px; }
+
   .est-footnote { color: var(--text-muted); font-size: 11.5px; margin-top: 14px; line-height: 1.5; }
   .est-panel .form-group { margin-bottom: 12px; }
   .intake-actions { margin-top: 8px; }
@@ -263,6 +274,41 @@
                   over-aggressive target auto-discounts the score.</p>
               </div>
 
+              <!-- Evidence-backed target: anchor plausibility to an evidenced prior
+                   level the recent GA4 window can't see (e.g. restoring a rate that
+                   held before a regression). Auditable + shown to voters. -->
+              <div class="evidence-box">
+                <label class="evidence-toggle">
+                  {{ form.evidence_backed }}
+                  <span>Evidence-backed target</span>
+                  <small>the target rests on evidence recent history can’t see</small>
+                </label>
+                <div id="evidence_detail" style="display:none;">
+                  <div class="form-group">
+                    <label for="id_evidence_kind">Evidence type</label>
+                    {{ form.evidence_kind }}
+                  </div>
+                  <div class="form-group">
+                    <label for="disp_evidence">Evidenced prior level
+                      <small class="text-muted">plausibility is measured against this</small></label>
+                    <div class="input-group est-ig">
+                      <span class="input-group-addon ig-pre" id="evidence_pre" style="display:none;">$</span>
+                      <input type="text" class="form-control" id="disp_evidence" autocomplete="off" inputmode="decimal">
+                      <span class="input-group-addon ig-suf" id="evidence_suf" style="display:none;">%</span>
+                    </div>
+                    {{ form.evidence_prior_level }}
+                  </div>
+                  <div class="form-group">
+                    <label for="id_evidence_note">Evidence note <small class="text-muted">(shown to voters &amp; logged)</small></label>
+                    {{ form.evidence_note }}
+                  </div>
+                  <p class="est-hint" style="margin-top:2px;"><i class="fa fa-shield"></i>
+                    This waives the plausibility discount by anchoring to your stated level. Your note is
+                    shown to every voter and recorded for audit — the team vote and post-launch Realized
+                    Performance are the check.</p>
+                </div>
+              </div>
+
               <p class="est-footnote">
                 The <strong>Kiboko Effect</strong> rewards the heaviest impact, delivered fastest and most
                 certainly for the least effort. <strong>Level of effort</strong> and <strong>capability to
@@ -304,8 +350,11 @@
       bu = $('id_vertical'), pfactor = $('id_plausibility_factor'), srcBadge = $('baseline_src'),
       chip = $('aee_chip'), panel = $('lever_accent');
   // Hidden raw fields (engine units) and their visible, formatted displays.
-  var HID = { from: $('id_target_from'), to: $('id_target_to'), s0: $('id_s0_annual'), de: $('id_direct_expense') };
-  var DISP = { from: $('disp_from'), to: $('disp_to'), s0: $('disp_s0'), de: $('disp_de') };
+  var HID = { from: $('id_target_from'), to: $('id_target_to'), s0: $('id_s0_annual'),
+              de: $('id_direct_expense'), ev: $('id_evidence_prior_level') };
+  var DISP = { from: $('disp_from'), to: $('disp_to'), s0: $('disp_s0'),
+               de: $('disp_de'), ev: $('disp_evidence') };
+  var evChk = $('id_evidence_backed'), evDetail = $('evidence_detail');
 
   // ---- formatting helpers (rates xx.xx%, comma numbers, US-finance $) ----
   function comma(v, dec) { dec = dec == null ? 0 : dec;
@@ -375,17 +424,18 @@
   // Show/hide the $ / % addons for the lever inputs based on the selected lever.
   function applyLeverUnitUI() {
     var unit = leverUnit(lever && lever.value);
-    ['from', 'to'].forEach(function (k) {
-      $(k + '_pre').style.display = (unit === 'money') ? '' : 'none';
-      $(k + '_suf').style.display = (unit === 'percent') ? '' : 'none';
+    ['from', 'to', 'evidence'].forEach(function (k) {
+      var pre = $(k + '_pre'), suf = $(k + '_suf');
+      if (pre) pre.style.display = (unit === 'money') ? '' : 'none';
+      if (suf) suf.style.display = (unit === 'percent') ? '' : 'none';
     });
   }
   // Re-render the visible fields from the hidden raw values (skips a field being typed in).
   function refreshDisplays() {
     applyLeverUnitUI();
     var unit = leverUnit(lever && lever.value);
-    [['from', HID.from, DISP.from], ['to', HID.to, DISP.to]].forEach(function (t) {
-      if (document.activeElement === t[2]) return;
+    [['from', HID.from, DISP.from], ['to', HID.to, DISP.to], ['evidence', HID.ev, DISP.ev]].forEach(function (t) {
+      if (!t[2] || document.activeElement === t[2]) return;
       var raw = parseFloat(t[1].value);
       t[2].value = isFinite(raw) ? fmtLever(raw, unit) : '';
     });
@@ -441,7 +491,10 @@
 
   function updatePlaus() {
     var lv = lever && lever.value, t = parseFloat(HID.to.value), unit = leverUnit(lv);
-    var center = parseFloat(HID.from.value);                 // the current level (baseline)
+    // Evidence-backed: anchor to the evidenced prior level instead of the baseline.
+    var evidence = evChk && evChk.checked, evLevel = parseFloat(HID.ev.value);
+    var anchored = evidence && isFinite(evLevel);
+    var center = anchored ? evLevel : parseFloat(HID.from.value);   // reference level
     var levels = (GA4 && GA4.weekly) ? GA4.weekly[lv] : null;
     var pl = (levels && isFinite(t)) ? plausibility(t, levels, center) : null;
     if (pl) {
@@ -449,13 +502,15 @@
       $('plaus_empty').style.display = 'none';
       $('plaus_marker').style.left = (pl.position * 100).toFixed(1) + '%';
       var band = $('plaus_band');
-      band.textContent = pl.band + ' · ' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ';
-      band.style.color = pl.color;
+      band.textContent = (anchored ? 'Evidence-backed · ' : '') + pl.band + ' · ' +
+        (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ';
+      band.style.color = anchored ? '#55C892' : pl.color;
+      var ref = anchored ? 'evidenced ' + fmtLever(pl.ref, unit) + ' level' : 'your ' + fmtLever(pl.ref, unit) + ' current level';
       $('plaus_caption').innerHTML = 'Target reached <strong>' + pl.reached + ' of the last ' + pl.n +
-        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ above your ' +
-        fmtLever(pl.ref, unit) + ' current level). ' + (pl.factor < 1
+        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ above ' + ref + '). ' +
+        (pl.factor < 1
           ? 'Impact auto-discounted ×' + pl.factor.toFixed(2) + ' for the stretch.'
-          : 'Within recent range — no discount.');
+          : (anchored ? 'No discount — anchored to your evidence.' : 'Within recent range — no discount.'));
       if (pfactor) pfactor.value = pl.factor.toFixed(4);
       return;
     }
@@ -538,7 +593,7 @@
 
   // ---- wire the visible (display) fields to their hidden raw fields ----
   // Lever inputs: parse on type, show bare value on focus, format on blur.
-  [['from', HID.from, DISP.from], ['to', HID.to, DISP.to]].forEach(function (t) {
+  [['from', HID.from, DISP.from], ['to', HID.to, DISP.to], ['evidence', HID.ev, DISP.ev]].forEach(function (t) {
     var hid = t[1], disp = t[2];
     if (!disp) return;
     disp.addEventListener('input', function () {
@@ -589,6 +644,14 @@
     if (el) { el.addEventListener('input', recalc); el.addEventListener('change', recalc); }
   });
   if (bu) bu.addEventListener('change', fetchBaseline);
+
+  // Evidence-backed toggle: reveal the detail fields + re-anchor plausibility.
+  function syncEvidence() {
+    if (evDetail) evDetail.style.display = (evChk && evChk.checked) ? '' : 'none';
+    updatePlaus();
+  }
+  if (evChk) evChk.addEventListener('change', syncEvidence);
+  syncEvidence();
 
   // Window toggle (90 / 180 / 365) re-scopes both baseline + plausibility.
   var winBtns = document.querySelectorAll('#win_toggle .win-btn');

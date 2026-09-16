@@ -16,6 +16,9 @@
   .score-card .sc-title { font-size:16px; font-weight:600; margin:0 0 4px; color:var(--text-primary); }
   .score-card .sc-meta { font-size:12px; color:var(--text-muted); }
   .score-card .sc-why { font-size:13px; color:var(--text-secondary); margin:6px 0 0; }
+  .sc-evidence { font-size:12px; color:var(--text-secondary); margin:6px 0 0; }
+  .sc-evidence .evidence-flag { display:inline-block; font-weight:700; color:#55C892; margin-right:6px; }
+  .sc-evidence .evidence-flag i { margin-right:3px; }
   .sc-value { text-align:right; white-space:nowrap; }
   .sc-value .amt { font-size:20px; font-weight:700; color:var(--status-success); }
   .sc-value .lbl { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
@@ -99,6 +102,12 @@
               {% if p.aee_alignment %} &middot; <span class="aee-badge aee-{{ p.aee_alignment }}">{{ p.get_aee_alignment_display }}</span>{% endif %}
             </div>
             {% if p.why %}<p class="sc-why">{{ p.why|truncatechars:220 }}</p>{% endif %}
+            {% if p.evidence_backed %}
+            <p class="sc-evidence" title="{{ p.evidence_note }}">
+              <span class="evidence-flag"><i class="fa fa-shield"></i> Evidence-backed target</span>
+              <span>{{ p.get_evidence_kind_display }} — {{ p.evidence_note|truncatechars:160 }}</span>
+            </p>
+            {% endif %}
           </div>
           <div class="sc-value">
             {% if p.has_voted %}<div style="margin-bottom:6px;"><span class="voted-badge"><i class="fa fa-check"></i> You voted</span></div>{% endif %}

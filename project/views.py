@@ -120,6 +120,13 @@ def project(request):
         form = ProjectForm(request.POST)
         if form.is_valid():
             p = form.save()
+            # Audit trail: record an evidence-backed claim as a comment for voters.
+            if p.evidence_backed and p.evidence_note:
+                from strategy.models import ProjectComment
+                kind = dict(p.EVIDENCE_KIND_CHOICES).get(p.evidence_kind, 'Evidence')
+                ProjectComment.objects.create(
+                    project=p, author=request.user, approved_comment=True,
+                    text=f'Evidence-backed target ({kind}): {p.evidence_note}')
             from project.services import impact
             impact.recompute_scores(company=p._company())
             messages.success(request, f'Added "{p.name}" — pending business-unit approval.')

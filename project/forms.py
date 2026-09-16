@@ -13,7 +13,8 @@ class ProjectForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense',
-                  'ramp_days', 'plausibility_factor'):
+                  'ramp_days', 'plausibility_factor',
+                  'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note'):
             self.fields[f].required = False
         self.fields['plausibility_factor'].initial = 1.0
 
@@ -26,12 +27,28 @@ class ProjectForm(ModelForm):
             return first or u.get_username()
         self.fields['owner'].label_from_instance = _owner_label
 
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('evidence_backed'):
+            if not (cleaned.get('evidence_note') or '').strip():
+                self.add_error('evidence_note', 'A note is required for an evidence-backed target.')
+            if cleaned.get('evidence_prior_level') in (None, ''):
+                self.add_error('evidence_prior_level',
+                               'Enter the evidenced prior level the target is anchored to.')
+        else:
+            # Clear evidence detail when the flag is off, so stale values don't linger.
+            cleaned['evidence_kind'] = ''
+            cleaned['evidence_prior_level'] = None
+            cleaned['evidence_note'] = ''
+        return cleaned
+
     class Meta:
         model = Project
         fields = ['name', 'objective', 'owner', 'vertical', 'department',
                   'target_completion', 'why', 'definition_of_done',
                   'lever', 'target_from', 'target_to', 's0_annual', 'ramp_days',
-                  'direct_expense', 'plausibility_factor']
+                  'direct_expense', 'plausibility_factor',
+                  'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note']
         labels = {
             'vertical': 'Business Unit',
             'department': 'Department',
@@ -71,7 +88,16 @@ class ProjectForm(ModelForm):
             'direct_expense': forms.HiddenInput(),
             'ramp_days': NumberInput(attrs={'min': 1}),
             'plausibility_factor': forms.HiddenInput(),
+            'evidence_backed': forms.CheckboxInput(),
+            'evidence_kind': Select(),
+            'evidence_prior_level': forms.HiddenInput(),      # raw; formatted display in template
+            'evidence_note': TextInput(attrs={'maxlength': 300,
+                                              'placeholder': 'e.g. restoring the 28% rate sustained before the March checkout regression'}),
         }
+        labels = dict(labels, **{
+            'evidence_kind': 'Evidence type',
+            'evidence_note': 'Evidence note (shown to voters)',
+        })
 
 
 class ActionTaskForm(ModelForm):
