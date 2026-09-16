@@ -139,7 +139,9 @@ def project(request):
             from business_unit.models import BusinessUnit
             if BusinessUnit.objects.filter(pk=sv).exists():
                 initial['vertical'] = sv
-        default_dept = Department.objects.first()
+        # Department defaults to the creator's own (Profile.department), else the first.
+        profile = getattr(request.user, 'profile', None)
+        default_dept = getattr(profile, 'department', None) or Department.objects.first()
         if default_dept:
             initial['department'] = default_dept.pk
         form = ProjectForm(initial=initial)
