@@ -47,19 +47,16 @@ class ActionTaskForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['measure'].queryset = Measure.objects.filter(active=True)
-        for f in ('team', 'measure', 'launch', 'progress', 'value'):
+        for f in ('team', 'measure', 'launch', 'progress'):
             self.fields[f].required = False
 
     class Meta:
         model = Action
-        fields = ['name', 'owner', 'value', 'launch', 'progress', 'team', 'measure']
-        labels = {'team': 'Team', 'measure': 'Measure', 'launch': 'Target date',
-                  'value': 'Value unlocked ($)'}
-        help_texts = {'value': 'The revenue this task unlocks; sums to the Total Project Value.'}
+        fields = ['name', 'owner', 'launch', 'progress', 'team', 'measure']
+        labels = {'team': 'Team', 'measure': 'Measure', 'launch': 'Target date'}
         widgets = {
             'name': TextInput(attrs={}),
             'owner': Select(attrs={}),
-            'value': NumberInput(attrs={'min': 0}),
             'launch': DateInput(attrs={'class': 'datepicker', 'type': 'date'}),
             'progress': NumberInput(attrs={'min': 0, 'max': 100}),
             'team': Select(attrs={}),

@@ -462,11 +462,11 @@
                       <td class="text-right" id="summary-forecast"></td>
                     </tr>
                     <tr>
-                      <td><strong>Active Project Value</strong></td>
+                      <td><strong>WIP Value</strong></td>
                       <td class="text-right" id="summary-project-value"></td>
                     </tr>
                     <tr>
-                      <td><strong>End of Period Total</strong></td>
+                      <td><strong>Forecast + WIP Value</strong></td>
                       <td class="text-right" id="summary-end-total" style="font-weight:700"></td>
                     </tr>
                     <tr>
@@ -582,7 +582,6 @@
                               <th>Action</th>
                               <th>Score</th>
                               <th>Progress</th>
-                              <th class="text-right">Value</th>
                               <th>Launch Date</th>
                               <th>Status</th>
                             </tr>
@@ -598,12 +597,11 @@
                                   </div>
                                   <small>{{ p.progress }}%</small>
                                 </td>
-                                <td class="text-right">${{ p.value|intcomma }}</td>
                                 <td>{{ p.launch|default:"—" }}</td>
                                 <td><span class="status-pill status-{{ p.status|lower }}">{{ p.status|default:"—" }}</span></td>
                               </tr>
                             {% empty %}
-                              <tr><td class="empty-children" colspan="6">No actions associated with this project.</td></tr>
+                              <tr><td class="empty-children" colspan="5">No actions associated with this project.</td></tr>
                             {% endfor %}
                           </tbody>
                         </table>
@@ -791,7 +789,8 @@
       var deltaEl = $('#summary-delta');
       deltaEl.text('$' + Math.abs(s.delta).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
       deltaEl.removeClass('green red');
-      deltaEl.addClass(s.delta > 0 ? 'red' : 'green');
+      // Green when Forecast + WIP Value meets/exceeds Budget; red when it falls short.
+      deltaEl.addClass((s.forecast + s.project_value) >= s.budget_total ? 'green' : 'red');
     }
 
     // Set initial summary

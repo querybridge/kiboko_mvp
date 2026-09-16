@@ -613,15 +613,12 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'name': p.name or f'Task {p.id}',
             'score': float(s.normalized_score) if s.normalized_score is not None else 0.0,
             'progress': p.progress or 0,
-            'value': int(p.value or 0),
             'launch': p.launch.isoformat() if p.launch else '',
             'status': s.status or '',
         } for p in s.actions.all()]
 
         is_wip = s.status == 'WIP'
         val = int(s.value or 0)
-        # Total project value being unlocked = aggregation of its actions' values.
-        total_action_value = sum(t['value'] for t in tasks)
         aee = s.objective.aee_alignment if (s.objective_id and s.objective) else ''
         rows.append({
             'id': s.id,
@@ -635,7 +632,7 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'active_count': 1 if is_wip else 0,
             'wip_value': val if s.status == 'WIP' else 0,
             'ondeck_value': val if s.status == 'On Deck' else 0,
-            'total_value': total_action_value,
+            'total_value': val,
             'avg_progress': int(round(s.avg_progress)) if s.avg_progress is not None else None,
             'projects': tasks,
         })

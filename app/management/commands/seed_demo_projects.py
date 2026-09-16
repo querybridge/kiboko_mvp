@@ -100,7 +100,6 @@ class Command(BaseCommand):
                 project=p, owner=p.owner, business_unit=dept, vertical=bu,
                 name=f'{name[:40]} — build', why=why, impact=dod,
                 objective=p.objective, launch=launch, progress=progress,
-                value=revenue,   # the value this action unlocks (aggregates to Total Project Value)
                 team=(rng.choice(teams) if teams else None),
                 measure=(rng.choice(measures) if measures else None),
             )
