@@ -284,6 +284,8 @@
 	}
 	#initiatives-summary-table .status-pill.status-active { background: #1a7a5c; color: #fff; }
 	#initiatives-summary-table .status-pill.status-launched { background: #337ab7; color: #fff; }
+	#initiatives-summary-table .status-pill.status-wip { background: #1a7a5c; color: #fff; }
+	#initiatives-summary-table .status-pill.status-ondeck { background: #E0A65A; color: #160C2E; }
 	#gantt-tooltip {
 		position: fixed;
 		display: none;
@@ -517,11 +519,10 @@
                     <th class="col-initiative">PROJECTS</th>
                     <th>AEE</th>
                     <th>Objective</th>
+                    <th>Score</th>
+                    <th>Status</th>
                     <th>Avg Progress</th>
-                    <th class="text-right">WIP Value</th>
-                    <th class="text-right">On Deck Value</th>
                     <th class="text-right">Total Project Value</th>
-                    <th>Level</th>
                     <th>Business Unit</th>
                   </tr>
                 </thead>
@@ -550,6 +551,8 @@
                         {% endif %}
                       </td>
                       <td>{{ init.objective|default:"—" }}</td>
+                      <td style="font-weight:700;">{{ init.score|floatformat:1 }}</td>
+                      <td><span class="status-pill status-{{ init.status|lower|cut:' ' }}">{{ init.status|default:"—" }}</span></td>
                       <td class="avg-progress-cell">
                         {% if init.avg_progress is not None %}
                           <div class="avg-progress">
@@ -562,20 +565,13 @@
                           <span class="zero">—</span>
                         {% endif %}
                       </td>
-                      <td class="currency{% if not init.wip_value %} zero{% endif %}">
-                        {% if init.wip_value %}${{ init.wip_value|intcomma }}{% else %}$ —{% endif %}
-                      </td>
-                      <td class="currency{% if not init.ondeck_value %} zero{% endif %}">
-                        {% if init.ondeck_value %}${{ init.ondeck_value|intcomma }}{% else %}$ —{% endif %}
-                      </td>
                       <td class="currency{% if not init.total_value %} zero{% endif %}">
                         {% if init.total_value %}${{ init.total_value|intcomma }}{% else %}$ —{% endif %}
                       </td>
-                      <td>{{ init.level|default:"—" }}</td>
                       <td>{{ init.business_unit|default:"—" }}</td>
                     </tr>
                     <tr class="children-row is-hidden" data-init-id="{{ init.id }}">
-                      <td colspan="9">
+                      <td colspan="8">
                         <table class="children-table">
                           <thead>
                             <tr>

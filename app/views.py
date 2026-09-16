@@ -590,6 +590,7 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
     # Task rollups (child Actions); the value figures use the PROJECT's own
     # revenue (the scored unit), keyed off the project's Kanban status. Scoped to
     # the selected company/business unit.
+    # Executive view: only in-flight (WIP) and up-next (On Deck) projects.
     qs = _scope_to(
         Project.objects
         .select_related('objective', 'department')
@@ -597,7 +598,7 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             project_count=Count('actions', distinct=True, filter=pipeline_filter),
             avg_progress=Avg('actions__progress', filter=pipeline_filter),
         )
-        .exclude(status__in=PIPELINE_EXCLUDED_STATUSES)
+        .filter(status__in=('WIP', 'On Deck'))
         .order_by('purpose', 'name'),
         vertical_id, company_id)
 
@@ -627,12 +628,11 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'aee_element': _AEE_ELEMENT.get(aee, ''),
             'aee_color': _AEE_COLOR.get(aee, '#888'),
             'objective': s.objective.name if s.objective_id and s.objective else '',
-            'level': s.level or '',
+            'score': float(s.normalized_score) if s.normalized_score is not None else 0.0,
+            'status': s.status or '',
             'business_unit': s.department.name if s.department_id and s.department else '',
             'project_count': s.project_count or 0,
             'active_count': 1 if is_wip else 0,
-            'wip_value': val if s.status == 'WIP' else 0,
-            'ondeck_value': val if s.status == 'On Deck' else 0,
             'total_value': val,
             'avg_progress': int(round(s.avg_progress)) if s.avg_progress is not None else None,
             'projects': tasks,
