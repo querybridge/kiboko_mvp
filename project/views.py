@@ -129,8 +129,14 @@ def project(request):
                     text=f'Evidence-backed target ({kind}): {p.evidence_note}')
             from project.services import impact
             impact.recompute_scores(company=p._company())
-            messages.success(request, f'Added "{p.name}" — pending business-unit approval.')
-            return redirect('project:project_detail', project_id=p.id)
+            from django.utils.html import format_html
+            messages.success(request, format_html(
+                'Project “{}” submitted. Next: a business-unit lead approves it, a '
+                'developer sizes effort &amp; capability, then the team scores it. '
+                '<a href="{}">View project</a>',
+                p.name, reverse('project:project_detail', kwargs={'project_id': p.id})))
+            # Back to a fresh Add form so the fields reset for the next project.
+            return redirect('project:project')
     else:
         # Convenience defaults (all still editable on the form).
         initial = {
