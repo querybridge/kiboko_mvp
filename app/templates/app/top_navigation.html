@@ -112,6 +112,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% if user.is_authenticated %}
 <!-- Feedback modal (replaces the old activity feed) -->
+<style>
+  #feedbackModal .modal-content { background: var(--card-fill, var(--bg-surface, #170E2B)); color: var(--text-primary, #F4EEFC);
+    border: 1px solid var(--border-strong, #4A3380); border-radius: var(--radius-card, 12px); box-shadow: var(--shadow-panel, 0 20px 50px rgba(0,0,0,0.42)); }
+  #feedbackModal .modal-header, #feedbackModal .modal-footer { border-color: var(--border-subtle, #2F1F55); }
+  #feedbackModal .modal-title { color: var(--text-primary, #F4EEFC); }
+  #feedbackModal .modal-body p { color: var(--text-secondary, #C8BCDF); }
+  #feedbackModal textarea.form-control { background: var(--bg-surface-muted, #1F1438); color: var(--text-primary, #F4EEFC);
+    border: 1px solid var(--border-subtle, #2F1F55); }
+  #feedbackModal textarea.form-control::placeholder { color: var(--text-muted, #A493C4); }
+  #feedbackModal textarea.form-control:focus { border-color: var(--accent-primary, #a78bfa); box-shadow: none; }
+  #feedbackModal .close { color: var(--text-secondary, #C8BCDF); opacity: 0.85; text-shadow: none; }
+  #feedbackModal .close:hover { color: var(--text-primary, #F4EEFC); opacity: 1; }
+  #feedbackModal .btn-default { background: var(--bg-elevated, #2A1B4D); color: var(--text-secondary, #C8BCDF);
+    border: 1px solid var(--border-subtle, #2F1F55); }
+  #feedbackModal .btn-default:hover { background: var(--bg-surface-muted, #1F1438); color: var(--text-primary, #F4EEFC); }
+</style>
 <div class="modal fade" id="feedbackModal" tabindex="-1" role="dialog" aria-labelledby="feedbackTitle">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
