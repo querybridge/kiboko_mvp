@@ -488,16 +488,17 @@ def index(request):
         Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score'),
         vertical_id, company_id)
 
-    # Dynamic Objective tiles -- counts/values are of PROJECTS (the prioritized
-    # unit) under each objective, not their execution tasks.
+    # Dynamic Objective tiles -- the pending pipeline (potential, not actual):
+    # WIP projects (in flight) and On Deck projects (up next), by objective.
+    # Completed/launched value is Actual revenue, so it's excluded here.
     from strategy.models import Project
     annual_rocks_data = []
     for rock in Objective.objects.filter(year=date.today().year):
         base_qs = _scope_to(Project.objects.filter(objective=rock, archived=False), vertical_id, company_id)
         count = base_qs.filter(status='WIP').count()
         value = base_qs.filter(status='WIP').aggregate(Sum('value'))
-        count_p = base_qs.exclude(status='WIP').count()
-        value_p = base_qs.exclude(status='WIP').aggregate(Sum('value'))
+        count_p = base_qs.filter(status='On Deck').count()
+        value_p = base_qs.filter(status='On Deck').aggregate(Sum('value'))
         annual_rocks_data.append({
             'rock': rock,
             'count': count,
@@ -552,6 +553,12 @@ _AEE_ELEMENT = {
     'attract_traffic': 'Attract',
     'engage_customers': 'Engage',
     'expand_purchase': 'Expand',
+}
+# AEE pill colors -- mirror the value-pipeline palette.
+_AEE_COLOR = {
+    'attract_traffic': '#3FC9E0',
+    'engage_customers': '#ECB752',
+    'expand_purchase': '#55C892',
 }
 
 
@@ -612,11 +619,12 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
         } for p in s.actions.all()]
 
         is_wip = s.status == 'WIP'
+        aee = s.objective.aee_alignment if (s.objective_id and s.objective) else ''
         rows.append({
             'id': s.id,
             'name': s.name or f'Project {s.id}',
-            'purpose': s.purpose or '',
-            'purpose_color': PURPOSE_COLORS.get(s.purpose, '#888'),
+            'aee_element': _AEE_ELEMENT.get(aee, ''),
+            'aee_color': _AEE_COLOR.get(aee, '#888'),
             'objective': s.objective.name if s.objective_id and s.objective else '',
             'level': s.level or '',
             'business_unit': s.department.name if s.department_id and s.department else '',
@@ -865,7 +873,7 @@ def edit_goals(request):
         bu = BusinessUnit.objects.filter(pk=vertical_id).first()
         if not bu or not can_manage_goals(request.user, bu):
             return HttpResponseForbidden(
-                'Only owners, executives, and business-unit leads can edit goals.')
+                'Only owners, executives, and business-unit leads can edit the budget.')
         for m in range(1, 13):
             month_date = date(year, m, 1)
             budget_val = request.POST.get(f'budget_{m}', '0')
@@ -878,7 +886,7 @@ def edit_goals(request):
                 vertical_id=vertical_id,
                 defaults={'budget': budget_val}
             )
-        messages.success(request, 'Budget goals saved successfully.')
+        messages.success(request, 'Budget saved successfully.')
         return redirect(f'/app/goals/?vertical={vertical_id}')
 
     # GET: build data for current year and historical years
@@ -1834,7 +1842,7 @@ def getting_started(request):
          'url': '/app/manage-users/', 'desc': 'Add users and set each one’s role and business units.'},
         {'label': 'Connect analytics data', 'done': has_data,
          'url': '/app/data-connection/', 'desc': 'Connect GA4 (Standard) or a BigQuery service account (Premium).'},
-        {'label': 'Set your goals', 'done': MonthlyGoal.objects.filter(vertical__company_id__in=company_ids).exists(),
+        {'label': 'Set your budget', 'done': MonthlyGoal.objects.filter(vertical__company_id__in=company_ids).exists(),
          'url': '/app/goals/', 'desc': 'Enter monthly revenue targets per business unit.'},
     ]
     return render(request, 'app/getting_started.html', {

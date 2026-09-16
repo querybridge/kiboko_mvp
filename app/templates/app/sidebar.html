@@ -61,7 +61,7 @@
         <!-- Settings -->
         <li><a><i class="fa fa-cog"></i> Settings <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
-            <li><a href="/app/goals/">Edit Goals</a></li>
+            <li><a href="/app/goals/">Edit Budget</a></li>
             <li><a href="{% url 'app:objectives' %}">Edit Objectives</a></li>
             <li><a href="{% url 'app:data_connection' %}">Data Connection</a></li>
             {% if user.is_superuser or user.profile.role == 'admin' or user.profile.role == 'senior_leadership' or user.company_memberships.exists %}

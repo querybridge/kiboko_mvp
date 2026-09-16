@@ -184,6 +184,15 @@
 		font-weight: 600;
 		color: #fff;
 	}
+	#initiatives-summary-table .aee-pill {
+		display: inline-block;
+		padding: 2px 10px;
+		border-radius: 12px;
+		font-size: 11px;
+		font-weight: 700;
+		border: 1px solid currentColor;
+		background: transparent;
+	}
 	#initiatives-summary-table .avg-progress-cell {
 		min-width: 140px;
 	}
@@ -390,6 +399,16 @@
 					</div>
 					</div>
 				-->
+      <!-- Period selector: governs the Revenue chart + Performance scorecards.
+           The objective cards below are the pending-pipeline snapshot (potential),
+           independent of the period. -->
+      <div class="row"><div class="col-md-12" style="text-align:right; margin-bottom:2px;">
+        <span style="font-size:12px; opacity:0.75; margin-right:8px;">Period</span>
+        <button class="btn btn-sm btn-info active" data-period="mtd">MTD</button>
+        <button class="btn btn-sm btn-default" data-period="qtd">QTD</button>
+        <button class="btn btn-sm btn-default" data-period="ytd">YTD</button>
+      </div></div>
+
       <div class="row top_tiles"><hr/>
         {% for item in annual_rocks_data %}
         <div class="animated flipInY col-lg-4 col-md-4 col-sm-12 col-xs-12">
@@ -403,7 +422,7 @@
               	<div class="count">
               	{{ item.count }} Projects
               	<br>
-              	<p>{{ item.count_p }} Inactive</p>
+              	<p>{{ item.count_p }} On Deck</p>
               </div>
           	</div>
 			<div class="col-lg-6 col-md-6 col-sm-6 col-xs-6 tile_stats_count">
@@ -423,12 +442,7 @@
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
           <div class="x_panel" id="revenueChart-panel">
             <div class="x_title">
-              <h3>Revenue</h3>
-              <div class="pull-right">
-                <button class="btn btn-sm btn-info active" data-period="mtd">MTD</button>
-                <button class="btn btn-sm btn-default" data-period="qtd">QTD</button>
-                <button class="btn btn-sm btn-default" data-period="ytd">YTD</button>
-              </div>
+              <h3>Revenue <small id="revenue-period-label">MTD</small></h3>
               <div class="clearfix"></div>
             </div>
             <div class="x_content">
@@ -501,7 +515,7 @@
                 <thead>
                   <tr>
                     <th class="col-initiative">PROJECTS</th>
-                    <th>Purpose</th>
+                    <th>AEE</th>
                     <th>Objective</th>
                     <th>Avg Progress</th>
                     <th class="text-right">Active Value</th>
@@ -513,7 +527,7 @@
                 <tbody>
                   {% for init in initiatives %}
                     <tr class="initiative-summary-row" data-init-id="{{ init.id }}">
-                      <td class="initiative-cell" style="--purpose-color: {{ init.purpose_color }};">
+                      <td class="initiative-cell" style="--purpose-color: {{ init.aee_color }};">
                         <div class="initiative-row">
                           <span class="initiative-name">{{ init.name }}</span>
                           <button type="button" class="initiative-chevron" aria-label="Expand"><i class="fa fa-chevron-right"></i></button>
@@ -528,8 +542,8 @@
                         </div>
                       </td>
                       <td>
-                        {% if init.purpose %}
-                          <span class="purpose-badge" style="background: {{ init.purpose_color }};">{{ init.purpose }}</span>
+                        {% if init.aee_element %}
+                          <span class="aee-pill" style="color: {{ init.aee_color }}; border-color: {{ init.aee_color }};">{{ init.aee_element }}</span>
                         {% else %}
                           <span class="zero">—</span>
                         {% endif %}
@@ -793,6 +807,7 @@
       revenueChart.data.datasets[3].data = d.project_value_add;
       revenueChart.update();
       updateSummary(d);
+      $('#revenue-period-label').text(period.toUpperCase());
 
       $(document).trigger('dashboard:period-change', [period]);
     });
@@ -873,7 +888,7 @@
             .append(chevron(card.delta_ly))
             .append($('<span></span>').text(fmtDelta(card.delta_ly))))
           .append($('<div class="perf-delta"></div>').addClass(trafficClass(card.delta_goal))
-            .append($('<span class="perf-key"></span>').text('vs Goal'))
+            .append($('<span class="perf-key"></span>').text('vs Budget'))
             .append(chevron(card.delta_goal))
             .append($('<span></span>').text(fmtDelta(card.delta_goal))));
         $grid.append($card);

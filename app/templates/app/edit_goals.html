@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Edit Goals {% endblock title %}
+{% block title %} Edit Budget {% endblock title %}
 
 {% block stylesheets %}
   {{ block.super }}
@@ -16,14 +16,14 @@
   <div class="">
     <div class="page-title">
       <div class="title_left">
-        <h3>Budget Goals - {{ year }}</h3>
+        <h3>Budget - {{ year }}</h3>
       </div>
       <div class="clearfix"></div>
       <div class="row">
         <div class="col-md-12 col-sm-12 col-xs-12">
           <div class="x_panel">
             <div class="x_title">
-              <h2>Monthly Budget Goals</h2>
+              <h2>Monthly Budget</h2>
               <div class="clearfix"></div>
             </div>
             <div class="x_content">
@@ -99,7 +99,7 @@
                   </tfoot>
                 </table>
                 {% if not is_summary %}
-                <button type="submit" class="btn btn-success">Save Goals</button>
+                <button type="submit" class="btn btn-success">Save Budget</button>
                 {% endif %}
               </form>
             </div>
