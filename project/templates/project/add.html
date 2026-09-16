@@ -51,7 +51,14 @@
     background: linear-gradient(90deg,#2b83ba 0%, #7fbf7b 28%, #fdae61 62%, #d7191c 100%);
     opacity: .9;
   }
+  /* Grayscale (disabled) state until enough GA4 history exists */
+  .plaus-bar.plaus-empty {
+    background: linear-gradient(90deg,#2B2B33 0%, #4D4D57 40%, #70707B 70%, #9A9AA2 100%);
+    opacity: .45;
+  }
   .plaus-ends { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted); }
+  .plaus-ends.plaus-empty span { color: var(--text-disabled); }
+  .plaus-note i { margin-right: 5px; opacity: .8; }
 
   .est-footnote { color: var(--text-muted); font-size: 11.5px; margin-top: 14px; line-height: 1.5; }
   .est-panel .form-group { margin-bottom: 12px; }
@@ -143,10 +150,18 @@
               </div>
 
               <div class="est-section-label" style="margin-top:16px;">Plausibility</div>
+              {% if has_ga4_history %}
               <div class="plaus-bar"></div>
               <div class="plaus-ends"><span>Plausible</span><span>Implausible</span></div>
-              <p class="est-hint" style="margin-top:6px;">Assessed against the lever's own GA4 history once a data
-                connection is live — an over-aggressive target auto-discounts the score.</p>
+              <p class="est-hint" style="margin-top:6px;">Assessed against the lever's own GA4 history —
+                an over-aggressive target auto-discounts the score.</p>
+              {% else %}
+              <div class="plaus-bar plaus-empty"></div>
+              <div class="plaus-ends plaus-empty"><span>Plausible</span><span>Implausible</span></div>
+              <p class="est-hint plaus-note" style="margin-top:6px;"><i class="fa fa-lock"></i>Available with at least
+                {{ plaus_min_weeks }} weeks (~{{ plaus_min_days }} days) of connected GA4 history for this lever —
+                then an over-aggressive target auto-discounts the score.</p>
+              {% endif %}
 
               <p class="est-footnote">
                 The <strong>Kiboko Effect</strong> rewards the heaviest impact, delivered fastest and most

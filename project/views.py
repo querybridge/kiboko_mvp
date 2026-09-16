@@ -122,7 +122,11 @@ def project(request):
     lever_aee = {k: {'aee': aee, 'color': aee_color.get(aee, '#9B7FE0'),
                      'label': lbl} for k, (lbl, aee) in impact.LEVERS.items()}
     return render(request, 'project/add.html', {
-        'form': form, 'title': 'Add Project', 'lever_aee': lever_aee})
+        'form': form, 'title': 'Add Project', 'lever_aee': lever_aee,
+        # GA4 history isn't wired into intake yet -> gauge shown greyed out.
+        'has_ga4_history': False,
+        'plaus_min_weeks': impact.PLAUSIBILITY_MIN_WEEKS,
+        'plaus_min_days': impact.PLAUSIBILITY_MIN_WEEKS * 7})
 
 
 @login_required

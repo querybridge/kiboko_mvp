@@ -45,6 +45,9 @@ LOE_COST = {'XXS': 0.5, 'XS': 0.7, 'S': 1.0, 'M': 1.4, 'L': 2.0, 'XL': 2.8, 'XXL
 DAYS_IN_YEAR = 365
 DEFAULT_MARGIN = 0.35
 
+# Minimum weekly history needed before the plausibility gauge is meaningful.
+PLAUSIBILITY_MIN_WEEKS = 3
+
 
 def levers_from_metrics(m):
     """Derive the six lever levels + sales from raw GA4 aggregates."""
@@ -85,7 +88,7 @@ def plausibility(target, levels):
     Returns z-score, weeks reached, band, gauge position, and a risk factor P
     (used to auto-discount the algorithmic score). Empty history -> neutral P=1."""
     vals = [float(x) for x in (levels or []) if x == x]
-    if len(vals) < 3:
+    if len(vals) < PLAUSIBILITY_MIN_WEEKS:
         return {'ok': False, 'factor': 1.0}
     import statistics as _s
     mean = _s.fmean(vals)
