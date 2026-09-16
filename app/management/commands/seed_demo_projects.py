@@ -135,5 +135,7 @@ class Command(BaseCommand):
                 prev = _mk_action(step_name, launch_d, prog, dep=prev)
             created += 1
 
+        from project.services import impact
+        impact.recompute_scores(company=demo)   # populate blended normalized_score
         self.stdout.write(self.style.SUCCESS(
             f'seed_demo_projects: {created} projects created on {demo.name} / {bu.name}.'))

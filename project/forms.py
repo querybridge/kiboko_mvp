@@ -12,23 +12,34 @@ class ProjectForm(ModelForm):
     objective, so it isn't set here."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['target_completion'].required = False
+        for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense', 'ramp_days'):
+            self.fields[f].required = False
 
     class Meta:
         model = Project
         fields = ['name', 'objective', 'owner', 'vertical', 'department',
-                  'target_completion', 'why', 'definition_of_done']
+                  'target_completion', 'why', 'definition_of_done',
+                  'lever', 'target_from', 'target_to', 's0_annual', 'ramp_days', 'direct_expense']
         labels = {
             'vertical': 'Business Unit',
             'department': 'Department',
             'target_completion': 'Target go-live date',
             'definition_of_done': 'Definition of Done',
             'why': 'User Story',
+            'lever': 'Lever it moves',
+            'target_from': 'Current level (baseline)',
+            'target_to': 'Target level',
+            's0_annual': 'Annual sales baseline ($)',
+            'ramp_days': 'Ramp to full effect (days)',
+            'direct_expense': 'Direct expense ($)',
         }
         help_texts = {
             'objective': 'The annual objective this supports (its AEE element is inherited).',
             'vertical': 'The business unit / GA4 property this rolls up to.',
-            'target_completion': 'When it goes live — drives the value-pipeline forecast timing.',
+            'target_completion': 'When it goes live — drives the forecast + realized timing.',
+            'lever': 'Which of the six sales levers this project improves.',
+            'target_from': 'Auto-filled from GA4 when available; enter manually otherwise.',
+            's0_annual': 'The business unit’s annual sales run-rate (auto from GA4 when available).',
         }
         widgets = {
             'name': TextInput(attrs={}),
@@ -39,6 +50,12 @@ class ProjectForm(ModelForm):
             'target_completion': DateInput(attrs={'class': 'datepicker', 'type': 'date'}),
             'why': Textarea(attrs={'rows': 3}),
             'definition_of_done': TextInput(attrs={}),
+            'lever': Select(attrs={}),
+            'target_from': NumberInput(attrs={'step': 'any'}),
+            'target_to': NumberInput(attrs={'step': 'any'}),
+            's0_annual': NumberInput(attrs={'step': '1000'}),
+            'ramp_days': NumberInput(attrs={'min': 1}),
+            'direct_expense': NumberInput(attrs={'min': 0}),
         }
 
 

@@ -16,7 +16,7 @@ from .forms import ProjectForm, ActionTaskForm
 from business_unit.models import Department
 from .services.kanban import (
     LANES, LANE_STATUS, PIPELINE_STATUSES, get_lane, group_projects, compute_all_lane_totals,
-    validate_move, apply_move, is_ready_for_review, can_approve, can_set_revenue, can_set_loe,
+    validate_move, apply_move, is_ready_for_review, can_approve, can_set_loe,
 )
 
 # Statuses that are terminal / not represented as a Kanban lane. These never
@@ -109,6 +109,8 @@ def project(request):
         form = ProjectForm(request.POST)
         if form.is_valid():
             p = form.save()
+            from project.services import impact
+            impact.recompute_scores(company=p._company())
             messages.success(request, f'Added "{p.name}" — pending business-unit approval.')
             return redirect('project:project_detail', project_id=p.id)
     else:
@@ -176,24 +178,22 @@ def add_comment_to_project(request, project_id):
 
 
 # ---------------------------------------------------------------------------
-# Intake pipeline: approval -> revenue (Analyst) -> LOE (Developer)
+# Intake pipeline: approval (BU lead) -> effort + capability (Developer)
+# (revenue is auto-estimated at Add Project -- no Analyst stage)
 # ---------------------------------------------------------------------------
 @login_required
 def approve_projects(request):
-    """Intake queue. Projects flow: Incomplete -> Pending Approval (BU lead) ->
-    Pending Revenue (Analyst) -> Pending LOE (Developer) -> Ready to Score."""
+    """Intake queue: Incomplete -> Pending Approval (BU lead) -> Pending LOE
+    (Developer sets effort size + capability) -> Ready to Score."""
     vertical_id = _get_vertical_id(request)
     qs = _scope(Project.objects.filter(archived=False).filter(
-        Q(approved=False) | Q(status__in=('Pending Revenue', 'Pending LOE'))
+        Q(approved=False) | Q(status='Pending LOE')
     ).select_related('owner', 'objective', 'vertical', 'department'),
         vertical_id, _get_company_id(request))
 
-    pending, incomplete, pending_revenue, pending_loe = [], [], [], []
+    pending, incomplete, pending_loe = [], [], []
     for p in qs:
-        if p.status == 'Pending Revenue':
-            p.user_can_act = can_set_revenue(request.user, p)
-            pending_revenue.append(p)
-        elif p.status == 'Pending LOE':
+        if p.status == 'Pending LOE':
             p.user_can_act = can_set_loe(request.user, p)
             pending_loe.append(p)
         elif is_ready_for_review(p):
@@ -201,21 +201,21 @@ def approve_projects(request):
             pending.append(p)
         else:
             incomplete.append(p)
-    from project.project_field_options import EFFORT_SIZE_CHOICES
+    from project.project_field_options import EFFORT_SIZE_CHOICES, CAPABILITY_CHOICES
     return render(request, 'project/approve_projects.html', {
         'title': 'Project Intake',
         'pending_projects': pending,
         'incomplete_projects': incomplete,
-        'pending_revenue_projects': pending_revenue,
         'pending_loe_projects': pending_loe,
         'effort_sizes': EFFORT_SIZE_CHOICES,
+        'capability_choices': [c for c in CAPABILITY_CHOICES if c[0]],
     })
 
 
 @login_required
 @require_POST
 def approve_action(request, project_id):
-    """A business-unit lead approves a project into the pipeline (-> Pending Revenue)."""
+    """A business-unit lead approves a project into the pipeline (-> Pending LOE)."""
     project = get_object_or_404(Project, pk=project_id)
     if not can_approve(request.user, project):
         messages.error(request, 'Only a business-unit lead can approve this project.')
@@ -223,51 +223,34 @@ def approve_action(request, project_id):
         messages.error(request, 'This project is missing required fields for approval.')
     else:
         project.approved = True
-        project.status = 'Pending Revenue'
-        project.save()
-        messages.success(request, f'Approved "{project.name}" — awaiting revenue (Analyst).')
-    return redirect('project:approve_projects')
-
-
-@login_required
-@require_POST
-def set_revenue(request, project_id):
-    """An Analyst sets the projected revenue (-> Pending LOE)."""
-    project = get_object_or_404(Project, pk=project_id)
-    if not can_set_revenue(request.user, project):
-        messages.error(request, 'Only an analyst can set revenue.')
-        return redirect('project:approve_projects')
-    try:
-        project.value = max(0, int((request.POST.get('value') or '0').replace(',', '')))
-    except (TypeError, ValueError):
-        project.value = 0
-    if project.value <= 0:
-        messages.error(request, 'Enter a projected revenue greater than 0.')
-    else:
         project.status = 'Pending LOE'
         project.save()
-        messages.success(request, f'Set revenue for "{project.name}" — awaiting LOE (Developer).')
+        messages.success(request, f'Approved "{project.name}" — awaiting effort + capability (Developer).')
     return redirect('project:approve_projects')
 
 
 @login_required
 @require_POST
 def set_loe(request, project_id):
-    """A lead Developer sizes the effort (t-shirt XXS-XXL) -> Ready to Score.
-    Voters weigh this size when scoring the 0-10 Level of Effort criterion."""
-    from project.project_field_options import EFFORT_SIZE_CHOICES
+    """A lead Developer sets the effort size (t-shirt XXS-XXL) and Capability to
+    Complete -- both feed the algorithmic score -> Ready to Score."""
+    from project.project_field_options import EFFORT_SIZE_CHOICES, CAPABILITY_CHOICES
+    from project.services import impact
     project = get_object_or_404(Project, pk=project_id)
     if not can_set_loe(request.user, project):
-        messages.error(request, 'Only a developer can size the effort.')
+        messages.error(request, 'Only a developer can set effort and capability.')
         return redirect('project:approve_projects')
     size = (request.POST.get('effort_size') or '').strip().upper()
-    if size not in {c[0] for c in EFFORT_SIZE_CHOICES}:
-        messages.error(request, 'Pick an effort size (XXS–XXL).')
+    cap = (request.POST.get('capability') or '').strip()
+    if size not in {c[0] for c in EFFORT_SIZE_CHOICES} or cap not in {c[0] for c in CAPABILITY_CHOICES if c[0]}:
+        messages.error(request, 'Pick both an effort size (XXS–XXL) and a capability.')
     else:
         project.effort_size = size
+        project.capability = cap
         project.status = LANE_STATUS['ready_to_score']
         project.save()
-        messages.success(request, f'Sized "{project.name}" as {size} — now Ready to Score.')
+        impact.recompute_scores(company=project._company())
+        messages.success(request, f'Set effort {size} + capability for "{project.name}" — now Ready to Score.')
     return redirect('project:approve_projects')
 
 

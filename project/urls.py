@@ -11,7 +11,6 @@ urlpatterns = [
     # Intake pipeline
     path('approve/', views.approve_projects, name='approve_projects'),
     path('<int:project_id>/approve-action/', views.approve_action, name='approve_action'),
-    path('<int:project_id>/set-revenue/', views.set_revenue, name='set_revenue'),
     path('<int:project_id>/set-loe/', views.set_loe, name='set_loe'),
     # Kanban
     path('kanban/', views.kanban_view, name='kanban'),

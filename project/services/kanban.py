@@ -145,12 +145,12 @@ def derive_status(project):
 
     if status == 'Pending Assignment':
         return 'On Deck'
-    # Blank / legacy -> infer the intake stage.
+    # Blank / legacy -> infer the intake stage. Revenue is auto-estimated at Add
+    # Project, so there's no Analyst stage: after BU-lead approval a Developer
+    # sets the effort size + capability, then it's Ready to Score.
     if _is_incomplete(project) or not project.approved:
         return 'Incomplete Entry'
-    if (project.value or 0) <= 0:
-        return 'Pending Revenue'
-    if not getattr(project, 'effort_size', ''):
+    if not (getattr(project, 'effort_size', '') and getattr(project, 'capability', '')):
         return 'Pending LOE'
     return 'Ready to Score'
 

@@ -135,6 +135,8 @@ docs/google_oauth_setup.md
 client_secret_*.json
 *.sqlite3
 *.sqlite3-journal
+*.sqlite3.bak*
+*.bak_prerefactor
 media/
 staticfiles/
 # collectstatic output (STATIC_ROOT); regenerated on deploy. Source lives in app/static/.

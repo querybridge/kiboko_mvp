@@ -14,11 +14,18 @@ WEIGHTS = DEFAULT_WEIGHTS
 
 CRITERIA = list(DEFAULT_WEIGHTS.keys())
 
-# The criteria decided by the anonymous all-hands vote -- all six, including
-# level_of_effort (voters weigh it against the lead developer's t-shirt size on
-# the project, Project.effort_size). Revenue (`value`, $) is the Analyst's
-# separate input, not voted.
-VOTED_CRITERIA = list(CRITERIA)
+# The criteria decided by the anonymous all-hands vote. level_of_effort is NOT
+# voted -- effort is a developer input (t-shirt size) that feeds the algorithmic
+# score. Revenue is auto-derived by the impact estimator, not voted.
+VOTED_CRITERIA = [c for c in CRITERIA if c != 'level_of_effort']
+
+
+def voted_weights(weights):
+    """The voted criteria's weights, renormalized to sum to 100 (LOE's weight is
+    excluded since it isn't voted) so the voted score stays on a clean 0-10."""
+    sub = {c: weights.get(c, 0) for c in VOTED_CRITERIA}
+    total = sum(sub.values()) or 1
+    return {c: w * 100.0 / total for c, w in sub.items()}
 
 # Human labels + a one-line hint for each criterion (used by the scoring UI and
 # the Score Weights settings page, so both stay in sync).

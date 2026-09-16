@@ -40,8 +40,7 @@ AEE_ALIGNMENT_CHOICES = (
 	('expand_purchase', 'Expand Purchase'),
 )
 
-# Lead-developer effort sizing (t-shirt sizes). This is the project-level LOE
-# estimate; voters weigh it when scoring the 0-10 Level of Effort criterion.
+# Lead-developer effort sizing (t-shirt sizes) -- feeds the algorithmic score.
 EFFORT_SIZE_CHOICES = (
 	('XXS', 'XXS'),
 	('XS', 'XS'),
@@ -50,4 +49,25 @@ EFFORT_SIZE_CHOICES = (
 	('L', 'L'),
 	('XL', 'XL'),
 	('XXL', 'XXL'),
+)
+
+# The lever a project moves (impact estimation). Two per AEE element.
+LEVER_CHOICES = (
+	('', '---------'),
+	('visitors', 'Visitors'),
+	('visits_per_visitor', 'Visits per Visitor'),
+	('cart_creation', 'Cart Creation Rate'),
+	('cart_completion', 'Cart Completion Rate'),
+	('units_per_order', 'Units per Order'),
+	('avg_unit_price', 'Avg Unit Price'),
+)
+
+# Current Capability to Complete (developer input) -- feeds certainty discount.
+CAPABILITY_CHOICES = (
+	('', '---------'),
+	('fully', 'Fully capable in-house'),
+	('mostly', 'Mostly capable'),
+	('stretch', 'Partially / stretch'),
+	('new', 'Needs new capability'),
+	('unable', 'Not currently capable'),
 )

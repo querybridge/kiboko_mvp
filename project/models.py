@@ -182,6 +182,34 @@ class ScoringWeights(models.Model):
 		return f'Score weights for {self.company}'
 
 
+class EstimatorSettings(models.Model):
+	"""Per-company impact-estimator assumptions (Settings -> Edit Estimator)."""
+	company = models.OneToOneField('business_unit.Company', on_delete=models.CASCADE,
+	                               related_name='estimator_settings')
+	margin_factor = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.35'),
+	                                     help_text='Contribution margin (direct-expense revenue factor)')
+	default_ramp_days = models.PositiveSmallIntegerField(default=30)
+	baseline_window_days = models.PositiveSmallIntegerField(default=90)
+	updated = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		verbose_name = 'Estimator Settings'
+		verbose_name_plural = 'Estimator Settings'
+
+	@classmethod
+	def current(cls, company):
+		return cls.objects.filter(company=company).first() if company is not None else None
+
+	@classmethod
+	def margin_for(cls, company):
+		from project.services import impact
+		s = cls.current(company)
+		return float(s.margin_factor) if s else impact.DEFAULT_MARGIN
+
+	def __str__(self):
+		return f'Estimator settings for {self.company}'
+
+
 class ScoreVote(models.Model):
 	"""One user's anonymous BVM vote on a Project.
 

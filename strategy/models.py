@@ -7,7 +7,8 @@ from multiselectfield import MultiSelectField
 from django.contrib.auth.models import User
 import datetime
 from .model_field_options import *
-from project.project_field_options import AEE_ALIGNMENT_CHOICES, status_options, EFFORT_SIZE_CHOICES
+from project.project_field_options import (AEE_ALIGNMENT_CHOICES, status_options,
+                                            EFFORT_SIZE_CHOICES, LEVER_CHOICES, CAPABILITY_CHOICES)
 
 # Create your all your models here
 
@@ -119,11 +120,22 @@ class Project(models.Model):
     owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_projects')
     # Tenancy: which BusinessUnit (GA4 property / company unit) this rolls up to.
     vertical = models.ForeignKey('business_unit.BusinessUnit', on_delete=models.SET_NULL, null=True, blank=True, related_name='projects')
-    value = models.IntegerField(default=0, null=True, blank=True)          # projected revenue ($) -- Analyst
-    # Lead-developer t-shirt sizing (context for the LOE vote), set during intake.
+    value = models.IntegerField(default=0, null=True, blank=True)          # projected gross revenue impact ($/yr) -- computed by the estimator
+    # Lead-developer t-shirt sizing -- feeds the algorithmic score (developer only).
     effort_size = models.CharField(max_length=4, choices=EFFORT_SIZE_CHOICES, blank=True, default='')
-    # Voted 0-10 Level of Effort criterion (weighed against effort_size).
-    level_of_effort = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
+    level_of_effort = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])  # legacy; no longer voted
+
+    # --- Impact estimation (the auto-derived "Kiboko estimated impact") ---
+    lever = models.CharField(max_length=30, choices=LEVER_CHOICES, blank=True, default='')
+    target_from = models.DecimalField(max_digits=16, decimal_places=4, null=True, blank=True)  # baseline lever level
+    target_to = models.DecimalField(max_digits=16, decimal_places=4, null=True, blank=True)    # proposed level
+    s0_annual = models.DecimalField(max_digits=16, decimal_places=2, null=True, blank=True)     # baseline annual sales
+    ramp_days = models.PositiveSmallIntegerField(default=30)
+    capability = models.CharField(max_length=12, choices=CAPABILITY_CHOICES, blank=True, default='')  # developer only
+    direct_expense = models.IntegerField(default=0)
+    plausibility_factor = models.FloatField(default=1.0)        # target plausibility risk-adjustment (P)
+    algo_raw = models.FloatField(null=True, blank=True)          # raw algorithmic priority (kiboko_raw)
+    voted_score = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)  # BVM weighted vote (0-10)
     # Five voted BVM criteria (0-10); level_of_effort above is the 6th, set by a developer.
     customer_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
     business_value = models.PositiveSmallIntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(10)])
@@ -158,15 +170,36 @@ class Project(models.Model):
         instance._db_status = instance.status
         return instance
 
+    def _estimate(self):
+        """Run the impact estimator from the stored inputs; None if incomplete."""
+        from project.services import impact
+        from project.models import EstimatorSettings
+        if not (self.lever and self.target_from and self.target_to and self.s0_annual):
+            return None
+        return impact.estimate(
+            target_from=float(self.target_from), target_to=float(self.target_to),
+            s0_annual=float(self.s0_annual), launch=self.target_completion,
+            ramp_days=self.ramp_days, capability=self.capability or 'mostly',
+            effort=self.effort_size or 'M', direct_expense=self.direct_expense or 0,
+            margin_factor=EstimatorSettings.margin_for(self._company()),
+            plausibility_factor=self.plausibility_factor or 1.0)
+
     def save(self, *args, **kwargs):
-        # Weighted BVM score from the six criteria (5 voted + developer LOE),
-        # using this company's configured weights.
-        from project.scoring import CRITERIA, weighted_score
+        # Voted component: BVM weighted average of the voted criteria (LOE dropped
+        # -- effort is a developer input on the algorithmic side).
+        from project.scoring import weighted_score, voted_weights, VOTED_CRITERIA
         from project.models import ScoringWeights
         from project.services.kanban import derive_status
-        values = {c: getattr(self, c, 0) or 0 for c in CRITERIA}
-        score = weighted_score(values, weights=ScoringWeights.for_company(self._company()))
-        self.normalized_score = Decimal(str(score)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+        values = {c: getattr(self, c, 0) or 0 for c in VOTED_CRITERIA}
+        vs = weighted_score(values, weights=voted_weights(ScoringWeights.for_company(self._company())))
+        self.voted_score = Decimal(str(vs)).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+        # Algorithmic side: gross revenue impact -> `value`, raw priority -> algo_raw.
+        est = self._estimate()
+        if est is not None:
+            self.value = int(round(est['gross_annual']))
+            self.algo_raw = est['kiboko_raw']
+        # normalized_score (the blended final) is set by impact.recompute_scores()
+        # after a vote finalizes / estimate changes -- it needs the backlog.
         self.status = derive_status(self)
         self.is_blocked = (self.status == 'Blocked')
         if self.status == 'Launched':

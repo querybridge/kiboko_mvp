@@ -1,0 +1,62 @@
+{% extends "app/base_site.html" %}
+{% block title %} Edit Estimator {% endblock title %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="">
+    <div class="page-title">
+      <div class="title_left"><h3>Edit Estimator <small>Impact-estimation assumptions</small></h3></div>
+      <div class="clearfix"></div>
+    </div>
+
+    {% if messages %}
+    <div class="row"><div class="col-md-12">
+      {% for message in messages %}
+      <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">{{ message }}</div>
+      {% endfor %}
+    </div></div>
+    {% endif %}
+
+    <div class="row"><div class="col-md-12">
+      <p style="color:var(--text-secondary, #555); margin-bottom:16px;">
+        These assumptions feed the auto-derived impact estimate and the algorithmic
+        half of each project's score. Set per company; changes re-score the backlog.
+      </p>
+    </div></div>
+
+    {% for entry in companies_ctx %}
+    <div class="row"><div class="col-md-7 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title"><h2>{{ entry.company.name }}</h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="company" value="{{ entry.company.id }}">
+            <div class="form-group">
+              <label>Contribution margin <small class="text-muted">(direct-expense revenue factor, 0–1)</small></label>
+              <input type="number" name="margin_factor" min="0.01" max="1" step="0.01" class="form-control"
+                     value="{{ entry.s.margin_factor|default:'0.35' }}">
+            </div>
+            <div class="form-group">
+              <label>Default ramp (days)</label>
+              <input type="number" name="default_ramp_days" min="1" class="form-control"
+                     value="{{ entry.s.default_ramp_days|default:'30' }}">
+            </div>
+            <div class="form-group">
+              <label>Baseline window (days) <small class="text-muted">for GA4 baselines when auto-filled</small></label>
+              <input type="number" name="baseline_window_days" min="7" class="form-control"
+                     value="{{ entry.s.baseline_window_days|default:'90' }}">
+            </div>
+            <button type="submit" class="btn btn-success">Save</button>
+          </form>
+        </div>
+      </div>
+    </div></div>
+    {% empty %}
+    <div class="row"><div class="col-md-12">
+      <div class="alert alert-info">You don't administer any companies yet.</div>
+    </div></div>
+    {% endfor %}
+
+  </div>
+</div>
+{% endblock content %}

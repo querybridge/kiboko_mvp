@@ -75,4 +75,7 @@ def finalize_if_complete(project):
         setattr(project, c, int(round(sum(getattr(v, c) for v in votes) / n)))
     project.status = LANE_STATUS['scored']     # only now does it advance
     project.save()
+    # Blend the vote with the algorithmic score (relative to the backlog).
+    from project.services import impact
+    impact.recompute_scores(company=project._company())
     return True

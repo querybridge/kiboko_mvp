@@ -1941,6 +1941,47 @@ def settings_score_weights(request):
 
 
 @login_required
+def settings_estimator(request):
+    """Per-company impact-estimator assumptions. Executives / org admins only."""
+    from project.models import EstimatorSettings
+    from project.services import impact
+    from project.services.kanban import is_executive
+    if not is_executive(request.user):
+        return HttpResponseForbidden('Only executives and org admins can edit estimator settings.')
+    companies = _weight_companies(request.user)
+    if not companies.exists():
+        return HttpResponseForbidden('You do not administer any companies.')
+
+    if request.method == 'POST':
+        company = companies.filter(pk=request.POST.get('company', '')).first()
+        if not company:
+            messages.error(request, 'Unknown company.')
+            return redirect('app:settings_estimator')
+        s, _ = EstimatorSettings.objects.get_or_create(company=company)
+        try:
+            s.margin_factor = max(Decimal('0.01'), min(Decimal('1'),
+                                  Decimal(str(request.POST.get('margin_factor', '0.35')))))
+        except (InvalidOperation, TypeError):
+            pass
+        try:
+            s.default_ramp_days = max(1, int(request.POST.get('default_ramp_days', 30)))
+        except (TypeError, ValueError):
+            pass
+        try:
+            s.baseline_window_days = max(7, int(request.POST.get('baseline_window_days', 90)))
+        except (TypeError, ValueError):
+            pass
+        s.save()
+        impact.recompute_scores(company=company)   # margin change flows into scores
+        messages.success(request, f'Saved estimator settings for {company.name}.')
+        return redirect('app:settings_estimator')
+
+    companies_ctx = [{'company': c, 's': EstimatorSettings.current(c)} for c in companies]
+    return render(request, 'app/settings_estimator.html', {
+        'title': 'Edit Estimator', 'companies_ctx': companies_ctx})
+
+
+@login_required
 def score_projects(request):
     """Anonymous, all-hands BVM scoring.
 

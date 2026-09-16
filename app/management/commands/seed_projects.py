@@ -29,7 +29,7 @@ PROJECTS = [
     ('B2B bulk order CSV upload',        'WIP',                True,  600000, 'L',  45, 'Wholesale customers upload large orders'),
     ('B2B net-30 payment terms',         'Executive Approval', True,  250000, 'S',   0, 'Invoice-based payment for B2B accounts'),
     ('Homepage personalization A/B test','Scored',             True,  500000, 'M',   0, 'Personalized hero banners vs static'),
-    ('Recommendation engine pipeline',   'Pending Revenue',    False,      0, '',    0, 'ETL pipeline feeding the ML model'),
+    ('Recommendation engine pipeline',   'Incomplete Entry',   False,      0, '',    0, 'ETL pipeline feeding the ML model'),
     ('Holiday email drip sequences',     'Pending LOE',        False, 200000, '',    0, 'Automated flows for the holiday season'),
     ('Gift guide landing pages',         'Incomplete Entry',   False,      0, '',    0, 'Curated gift guides by price and recipient'),
     ('Site search autocomplete upgrade', 'Scored',             True,  275000, 'M',   0, 'AI-powered autocomplete'),
@@ -113,4 +113,8 @@ class Command(BaseCommand):
             created += 1
             self.stdout.write(f'  [{status:18s}] {name} (score={p.normalized_score}, ${revenue:,})')
 
+        from project.services import impact
+        from business_unit.models import Company
+        for co in Company.objects.all():
+            impact.recompute_scores(company=co)
         self.stdout.write(self.style.SUCCESS(f'Created {created} Projects (+ child tasks).'))
