@@ -1377,8 +1377,17 @@ def _ga4_rows(request, primary, compare):
 @login_required
 def analytics_grow_sales(request):
     from app import analytics_data as ad
+    from strategy.models import Objective
     primary, compare, ctx = _analytics_filter(request)
     cards, charts = ad.build_grow_sales(primary, compare, rows=_ga4_rows(request, primary, compare))
+    # Append each AEE pillar's objective to its heading (e.g. "ATTRACT: Increase
+    # Shopper Volume"), so the lever card names the objective it drives.
+    yr = date.today().year
+    for card_key, aee in (('attract', 'attract_traffic'), ('engage', 'engage_customers'), ('expand', 'expand_purchase')):
+        obj = (Objective.objects.filter(aee_alignment=aee, year=yr).first()
+               or Objective.objects.filter(aee_alignment=aee).first())
+        if obj and card_key in cards:
+            cards[card_key]['title'] = f"{cards[card_key]['title']}: {obj.name}"
     ctx.update({'cards': cards, 'charts_json': json.dumps(charts)})
     return render(request, 'app/analytics/grow_sales.html', ctx)
 
