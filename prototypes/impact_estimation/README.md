@@ -36,7 +36,9 @@ Opens in the browser with **sample history** by default. Two tabs:
     quietly inflate numbers; they either temper the target or go on record).
 - **Backtest** — LMDI decomposition splits an actual sales change (recent N days
   vs. the prior N) into **exact per-lever dollar drivers** (contributions sum to
-  the change). Plus an "estimator vs. actual" confounding check for any lever.
+  the change). Plus an "estimator vs. actual" confounding check for any lever,
+  and a **trend chart** of that lever's 7-day-rolling level over time with the
+  actual (recent) window vs. its historical average highlighted.
 
 ## Data
 

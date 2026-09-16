@@ -204,3 +204,29 @@ with back_tab:
     err = (pred - actual)
     cc[2].metric('Difference', f'${err:,.0f}',
                  help='Driven by concurrent movement in other levers + nonlinearity.')
+
+    # --- Trend: the lever over time, actual (recent) vs historical ---
+    st.markdown(f'**{E.LEVERS[lk][0]} — daily trend (7-day rolling): actual vs. historical**')
+    span_days = max(120, 2 * n + 28)
+    series = D.rolling_lever_series(df, lk, window=7, days=span_days, ref=rec[1])
+    if len(series):
+        hist_avg = D._levels_per_day(before, n)[lk]     # prior-window level = "historical"
+        act_avg = D._levels_per_day(after, n)[lk]       # recent-window level = "actual"
+        line = alt.Chart(series).mark_line(color='#4a1f8a').encode(
+            x=alt.X('date:T', title=None),
+            y=alt.Y('level:Q', title=E.LEVERS[lk][0], scale=alt.Scale(zero=False)),
+            tooltip=['date:T', alt.Tooltip('level:Q', format=',.4g')])
+        band_recent = alt.Chart(pd.DataFrame({'start': [rec[0]], 'end': [rec[1]]})).mark_rect(
+            color='#26b99a', opacity=0.12).encode(x='start:T', x2='end:T')
+        band_prior = alt.Chart(pd.DataFrame({'start': [pri[0]], 'end': [pri[1]]})).mark_rect(
+            color='#888', opacity=0.10).encode(x='start:T', x2='end:T')
+        rule_hist = alt.Chart(pd.DataFrame({'y': [hist_avg]})).mark_rule(
+            color='#888', strokeDash=[5, 4]).encode(y='y')
+        rule_act = alt.Chart(pd.DataFrame({'y': [act_avg]})).mark_rule(
+            color='#26b99a', size=2).encode(y='y')
+        st.altair_chart(band_prior + band_recent + line + rule_hist + rule_act,
+                        use_container_width=True)
+        st.caption(f'Green band/line = actual (recent {n} days, avg {act_avg:,.4g}) · '
+                   f'grey band/dashed = historical (prior {n} days, avg {hist_avg:,.4g}).')
+    else:
+        st.caption('Not enough data for a trend on this lever.')

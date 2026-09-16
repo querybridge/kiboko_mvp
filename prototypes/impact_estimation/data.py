@@ -104,6 +104,21 @@ def weekly_lever_levels(df, lever, weeks=52, ref=None):
     return list(reversed(out))
 
 
+def rolling_lever_series(df, lever, window=7, days=182, ref=None):
+    """Per-day lever level using a trailing `window`-day rolling aggregate, for
+    the last `days` days ending at `ref`. Returns DataFrame(date, level)."""
+    ref = ref or df['date'].max()
+    start = ref - timedelta(days=days - 1)
+    rows = []
+    d = start
+    while d <= ref:
+        m = window_metrics(df, d - timedelta(days=window - 1), d)
+        if m['sessions'] > 0:
+            rows.append((d, _levels_per_day(m, window)[lever]))
+        d += timedelta(days=1)
+    return pd.DataFrame(rows, columns=['date', 'level'])
+
+
 def baselines(df, window_days=90, ref=None):
     """Current per-day lever levels + annualized sales run-rate S0, from the
     trailing `window_days` ending at `ref` (default: last date in the data)."""
