@@ -2102,25 +2102,26 @@ def insights(request):
 
 @login_required
 def insights_add_project(request):
-    """Create a draft backlog project (Action) from a recommendation, scoped to
-    the current business unit and linked to the metric's objective. Unscored, so
-    it lands in the backlog to be scored in Project Prioritization."""
+    """Create a draft Project (the scored unit) from a recommendation, scoped to
+    the current business unit and linked to the metric's objective. It enters the
+    intake pipeline (Incomplete Entry, unapproved) to be approved, sized, and
+    scored in Project Prioritization."""
     if request.method != 'POST':
         return redirect('app:insights')
+    from datetime import date
+    from django.urls import reverse
+    from django.utils.html import format_html
     from app import insights as I
     from app.models import MetricRecommendation
-    from project.models import Action
     from strategy.models import Project, Objective
     from business_unit.models import Department
+    from project.services import impact
 
     rec = MetricRecommendation.objects.filter(pk=request.POST.get('recommendation_id')).first()
     if not rec:
         messages.error(request, 'Recommendation not found.')
         return redirect('app:insights')
 
-    project, _ = Project.objects.get_or_create(
-        name='Insights Recommendations',
-        defaults={'why': 'Projects created from Insights recommendations.'})
     profile = getattr(request.user, 'profile', None)
     dept = (profile.department if profile and profile.department_id else None) or Department.objects.first()
     if dept is None:
@@ -2133,10 +2134,16 @@ def insights_add_project(request):
     metric_label = dict(I.METRIC_CHOICES).get(rec.metric, rec.metric)
     moving = 'improving' if rec.direction == 'win' else 'declining'
 
-    Action.objects.create(
-        project=project, owner=request.user, business_unit=dept,
-        name=rec.text[:350],
-        why=f'From Insights: {metric_label} is {moving}. {rec.text}'[:500],
-        vertical=bu, objective=objective, value=0)
-    messages.success(request, f'Added to backlog: "{rec.text}". Score it in Project Prioritization.')
+    p = Project(
+        name=rec.text[:75], owner=request.user, vertical=bu, department=dept,
+        objective=objective, year=date.today().year, approved=False,
+        why=f'From Insights: {metric_label} is {moving}. {rec.text}'[:1000],
+        definition_of_done=rec.text[:350])
+    p.save()   # derive_status -> 'Incomplete Entry' (intake); approved=False
+    impact.recompute_scores(company=p._company())
+
+    messages.success(request, format_html(
+        'Added to Project Prioritization: “{}” is in <a href="{}">intake</a> awaiting '
+        'business-unit approval before it can be scored.',
+        p.name, reverse('project:approve_projects')))
     return redirect(request.POST.get('next') or 'app:insights')
