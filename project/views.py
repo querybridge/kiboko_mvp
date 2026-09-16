@@ -157,8 +157,12 @@ def project(request):
                  'expand_purchase': '#55C892'}
     lever_aee = {k: {'aee': aee, 'color': aee_color.get(aee, '#9B7FE0'),
                      'label': lbl} for k, (lbl, aee) in impact.LEVERS.items()}
+    # objective -> AEE element, so the lever dropdown can be scoped to it.
+    objective_aee = {str(o.pk): o.aee_alignment
+                     for o in form.fields['objective'].queryset}
     return render(request, 'project/add.html', {
         'form': form, 'title': 'Add Project', 'lever_aee': lever_aee,
+        'objective_aee': objective_aee,
         # Baselines are fetched from GA4 client-side (per selected Business Unit).
         'baseline_url': reverse('project:estimator_baseline'),
         'baseline_windows': BASELINE_WINDOWS,

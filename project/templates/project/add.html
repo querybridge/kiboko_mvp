@@ -112,6 +112,15 @@
   #evidence_detail { margin-top: 12px; }
   #evidence_detail .est-hint i { color: var(--status-success); margin-right: 5px; }
 
+  /* Estimator locked until project details are complete */
+  .est-lock {
+    display: flex; align-items: center; gap: 6px; padding: 10px 12px; margin-bottom: 10px;
+    border-radius: var(--radius-card); background: var(--bg-surface-muted);
+    border: 1px solid var(--border-strong); color: var(--text-secondary); font-size: 12.5px;
+  }
+  .est-lock i { color: var(--accent-primary); }
+  .est-body.locked { opacity: .4; filter: grayscale(.7); pointer-events: none; user-select: none; }
+
   .est-footnote { color: var(--text-muted); font-size: 11.5px; margin-top: 14px; line-height: 1.5; }
   .est-panel .form-group { margin-bottom: 12px; }
   .intake-actions { margin-top: 8px; }
@@ -162,6 +171,10 @@
               <div class="clearfix"></div>
             </div>
             <div class="x_content">
+              <div id="est_lock" class="est-lock" style="display:none;">
+                <i class="fa fa-lock"></i> Complete the <strong>project details</strong> to start estimating.
+              </div>
+              <div class="est-body" id="est_body">
               <p class="est-hint">A project targets one sales lever, moving it from a current level to a
                 target. Because sales is the product of the six levers, that raises sales by the same %.</p>
 
@@ -315,6 +328,7 @@
                 complete</strong> are set by the developer during sizing; the final priority score is the
                 average of the team vote and this algorithmic estimate — computed once the project is scored.
               </p>
+              </div><!-- /est-body -->
             </div>
           </div>
         </div>
@@ -340,6 +354,10 @@
     {% endfor %}
   };
   var AEE_NAME = {attract_traffic: 'Attract', engage_customers: 'Engage', expand_purchase: 'Expand'};
+  var OBJ_AEE = {
+    {% for k, v in objective_aee.items %}'{{ k }}': '{{ v }}'{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
 
   var BASELINE_URL = '{{ baseline_url }}', MIN_WEEKS = {{ plaus_min_weeks }};
   var CUR_WINDOW = {{ default_baseline_window }};
@@ -347,8 +365,9 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var lever = $('id_lever'), ramp = $('id_ramp_days'), launch = $('id_target_completion'),
-      bu = $('id_vertical'), pfactor = $('id_plausibility_factor'), srcBadge = $('baseline_src'),
-      chip = $('aee_chip'), panel = $('lever_accent');
+      bu = $('id_vertical'), objective = $('id_objective'), pfactor = $('id_plausibility_factor'),
+      srcBadge = $('baseline_src'), chip = $('aee_chip'), panel = $('lever_accent'),
+      estBody = $('est_body'), estLock = $('est_lock');
   // Hidden raw fields (engine units) and their visible, formatted displays.
   var HID = { from: $('id_target_from'), to: $('id_target_to'), s0: $('id_s0_annual'),
               de: $('id_direct_expense'), ev: $('id_evidence_prior_level') };
@@ -663,6 +682,40 @@
     });
   });
 
+  // ---- Scope the lever to the objective's AEE element (AEE > Objective > Project) ----
+  function filterLevers() {
+    if (!lever) return;
+    var aee = objective ? OBJ_AEE[objective.value] : '';
+    var cur = lever.value, curOk = false;
+    Array.prototype.forEach.call(lever.options, function (opt) {
+      if (opt.value === '') { opt.hidden = false; opt.disabled = false; return; }
+      var info = LEVER_AEE[opt.value];
+      var ok = !aee || (info && info.aee === aee);   // no objective yet -> allow all
+      opt.hidden = !ok; opt.disabled = !ok;
+      if (opt.value === cur && ok) curOk = true;
+    });
+    if (cur && !curOk) { lever.value = ''; }          // drop a lever that no longer fits
+  }
+  if (objective) objective.addEventListener('change', function () { filterLevers(); recalc(); });
+
+  // ---- Gray the estimator until the project details are complete ----
+  var DETAIL_IDS = ['id_name', 'id_why', 'id_definition_of_done', 'id_objective',
+                    'id_owner', 'id_vertical', 'id_department', 'id_target_completion'];
+  function detailsComplete() {
+    return DETAIL_IDS.every(function (id) { var el = $(id); return el && String(el.value || '').trim() !== ''; });
+  }
+  function updateGate() {
+    var ok = detailsComplete();
+    if (estBody) estBody.classList.toggle('locked', !ok);
+    if (estLock) estLock.style.display = ok ? 'none' : '';
+  }
+  DETAIL_IDS.forEach(function (id) {
+    var el = $(id);
+    if (el) { el.addEventListener('input', updateGate); el.addEventListener('change', updateGate); }
+  });
+
+  filterLevers();
+  updateGate();
   refreshDisplays();                       // format any pre-rendered raw values
   if (bu && bu.value) fetchBaseline(); else recalc();
 })();

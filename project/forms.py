@@ -29,6 +29,15 @@ class ProjectForm(ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # Lever must pull the objective's AEE element (AEE > Objective > Project).
+        objective, lever = cleaned.get('objective'), cleaned.get('lever')
+        if objective and lever:
+            from project.services import impact
+            lever_aee = impact.LEVERS.get(lever, ('', ''))[1]
+            if objective.aee_alignment and lever_aee and lever_aee != objective.aee_alignment:
+                self.add_error('lever',
+                               f'“{objective.name}” is an {objective.get_aee_alignment_display()} '
+                               f'objective — pick a matching lever.')
         if cleaned.get('evidence_backed'):
             if not (cleaned.get('evidence_note') or '').strip():
                 self.add_error('evidence_note', 'A note is required for an evidence-backed target.')
@@ -91,8 +100,8 @@ class ProjectForm(ModelForm):
             'evidence_backed': forms.CheckboxInput(),
             'evidence_kind': Select(),
             'evidence_prior_level': forms.HiddenInput(),      # raw; formatted display in template
-            'evidence_note': TextInput(attrs={'maxlength': 300,
-                                              'placeholder': 'e.g. restoring the 28% rate sustained before the March checkout regression'}),
+            'evidence_note': Textarea(attrs={'rows': 3, 'maxlength': 300,
+                                             'placeholder': 'e.g. restoring the 28% rate sustained before the March checkout regression'}),
         }
         labels = dict(labels, **{
             'evidence_kind': 'Evidence type',
