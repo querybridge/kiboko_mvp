@@ -1380,14 +1380,14 @@ def analytics_grow_sales(request):
     from strategy.models import Objective
     primary, compare, ctx = _analytics_filter(request)
     cards, charts = ad.build_grow_sales(primary, compare, rows=_ga4_rows(request, primary, compare))
-    # Append each AEE pillar's objective to its heading (e.g. "ATTRACT: Increase
-    # Shopper Volume"), so the lever card names the objective it drives.
+    # Name the objective each AEE pillar drives, as a separate (contextual) field
+    # so the template can style it lighter than the prominent AEE label.
     yr = date.today().year
     for card_key, aee in (('attract', 'attract_traffic'), ('engage', 'engage_customers'), ('expand', 'expand_purchase')):
         obj = (Objective.objects.filter(aee_alignment=aee, year=yr).first()
                or Objective.objects.filter(aee_alignment=aee).first())
         if obj and card_key in cards:
-            cards[card_key]['title'] = f"{cards[card_key]['title']}: {obj.name}"
+            cards[card_key]['objective'] = obj.name
     ctx.update({'cards': cards, 'charts_json': json.dumps(charts)})
     return render(request, 'app/analytics/grow_sales.html', ctx)
 

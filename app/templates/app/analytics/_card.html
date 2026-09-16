@@ -3,7 +3,7 @@
   {% if card.band %}
     {# Elevated pillar band — solid group color makes the Attract/Engage/Expand identity unmistakable #}
     <div class="ac-band">
-      <span class="ac-band-label">{{ card.title }}</span>
+      <span class="ac-band-label">{{ card.title }}{% if card.objective %}<span class="ac-band-objective">{{ card.objective }}</span>{% endif %}</span>
       {% if card.link %}<a href="{{ card.link }}" class="ac-goto ac-goto-band" title="Go to {{ card.header }} details"><i class="fa fa-angle-right"></i></a>{% endif %}
     </div>
   {% endif %}
