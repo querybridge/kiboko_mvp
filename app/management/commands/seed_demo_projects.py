@@ -114,13 +114,25 @@ class Command(BaseCommand):
                 Action.objects.filter(pk=act.pk).update(**flds)
                 return act
 
-            base = name
+            # Steps toward completing the project, as a dependency chain. Named
+            # for the work (not the project). Variety across projects.
+            step_set = rng.choice([
+                ['Discovery & specs', 'Design', 'Build', 'QA & launch'],
+                ['Requirements', 'Build', 'Test & QA', 'Rollout'],
+                ['Design mockups', 'Implementation', 'Launch'],
+                ['Data model', 'Build integration', 'QA', 'Go live'],
+            ])
+            n = len(step_set)
             if status == 'WIP' and go_live:
-                d = _mk_action(f'{base} — Design & specs', go_live - timedelta(days=60), 100)
-                b = _mk_action(f'{base} — Build', go_live - timedelta(days=25), rng.choice([45, 60, 75]), dep=d)
-                _mk_action(f'{base} — QA & launch', go_live, rng.choice([0, 15, 30]), dep=b)
+                # Earlier steps done, later ones in progress / upcoming.
+                spans = [go_live - timedelta(days=int(25 * (n - 1 - i))) for i in range(n)]
+                progs = [100] * (n - 2) + [rng.choice([45, 60, 75]), rng.choice([0, 15, 30])]
             else:
-                _mk_action(f'{name[:40]} — build', go_live, 0)
+                spans = [None] * n
+                progs = [0] * n
+            prev = None
+            for step_name, launch_d, prog in zip(step_set, spans, progs):
+                prev = _mk_action(step_name, launch_d, prog, dep=prev)
             created += 1
 
         self.stdout.write(self.style.SUCCESS(

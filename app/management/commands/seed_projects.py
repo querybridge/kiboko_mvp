@@ -83,19 +83,33 @@ class Command(BaseCommand):
             )
             p.save()
 
-            a = Action(
-                project=p, owner=p.owner, business_unit=p.department or departments[0],
-                vertical=p.vertical, objective=p.objective, name=f'{name[:40]} — build',
-                why=why, impact=why[:75], launch=go_live, progress=progress,
-                team=rng.choice(teams) if teams else None,
-                measure=rng.choice(measures) if measures else None,
-            )
-            a.save()
-            created_dt = _rand_date(rng, date(year, 1, 1), go_live if (go_live and go_live < today) else today)
-            Action.objects.filter(pk=a.pk).update(date_created=created_dt)
-            if status == 'WIP':
-                Action.objects.filter(pk=a.pk).update(
-                    active_date=_rand_date(rng, created_dt, min(go_live or today, today)))
+            # Steps toward completing the project (named for the work), chained.
+            step_set = rng.choice([
+                ['Discovery & specs', 'Build', 'QA & launch'],
+                ['Design', 'Implementation', 'Rollout'],
+                ['Requirements', 'Build integration', 'Go live'],
+            ])
+            spans = ([go_live - timedelta(days=int(25 * (len(step_set) - 1 - i))) for i in range(len(step_set))]
+                     if go_live else [None] * len(step_set))
+            progs = [100, progress, 0] if status == 'WIP' else [0] * len(step_set)
+            prev = None
+            for step_name, launch_d, prog in zip(step_set, spans, progs):
+                a = Action(
+                    project=p, owner=p.owner, business_unit=p.department or departments[0],
+                    vertical=p.vertical, objective=p.objective, name=step_name,
+                    why=why, impact=why[:75], launch=launch_d, progress=prog,
+                    team=rng.choice(teams) if teams else None,
+                    measure=rng.choice(measures) if measures else None,
+                )
+                a.save()
+                if prev is not None:
+                    a.depends_on.add(prev)
+                created_dt = _rand_date(rng, date(year, 1, 1), launch_d if (launch_d and launch_d < today) else today)
+                Action.objects.filter(pk=a.pk).update(date_created=created_dt)
+                if status == 'WIP' and launch_d:
+                    Action.objects.filter(pk=a.pk).update(
+                        active_date=_rand_date(rng, created_dt, min(launch_d, today)))
+                prev = a
             created += 1
             self.stdout.write(f'  [{status:18s}] {name} (score={p.normalized_score}, ${revenue:,})')
 
