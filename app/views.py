@@ -2149,9 +2149,11 @@ def insights_add_project(request):
     # story (correct format) and real acceptance criteria when completing the entry
     # (it lands in Incomplete Entries either way). The insight's context is kept as
     # a comment below.
+    from project.views import _quarter_end
     p = Project(
         name=name, owner=request.user, vertical=bu, department=dept,
         objective=objective, year=date.today().year, approved=False,
+        target_completion=_quarter_end(date.today()),   # default go-live: end of quarter
         why='', definition_of_done='')
     p.save()   # derive_status -> 'Incomplete Entry' (intake); approved=False
     impact.recompute_scores(company=p._company())
