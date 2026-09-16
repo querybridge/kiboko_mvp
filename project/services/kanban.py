@@ -41,7 +41,12 @@ REQUIRED_FOR_SCORING = [
 # Fields a business-unit lead reviews before approving a project into the
 # pipeline. AEE is inherited from the objective, so requiring the objective (with
 # an AEE) covers it. Revenue and LOE are set later (Analyst, then Developer).
-REQUIRED_FOR_REVIEW = ['name', 'owner_id', 'objective_id', 'definition_of_done']
+# Ready for a BU lead to approve: identity + objective + a completed impact
+# estimate (lever it moves, current/target level, sales baseline). An idea with no
+# estimate (e.g. a raw Insights recommendation) stays an Incomplete Entry until the
+# estimator is filled in via Edit.
+REQUIRED_FOR_REVIEW = ['name', 'owner_id', 'objective_id', 'definition_of_done',
+                       'lever', 'target_from', 'target_to', 's0_annual']
 
 
 def _has_score(project):

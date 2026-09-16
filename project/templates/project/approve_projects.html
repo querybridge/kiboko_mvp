@@ -96,7 +96,7 @@
             <tr>
               <td><a href="{% url 'project:project_detail' p.id %}">{{ p.name|default:"(unnamed)" }}</a></td>
               <td>{{ p.owner|default:"—" }}</td>
-              <td><a href="{% url 'project:project_edit' p.id %}" class="btn btn-default btn-xs"><i class="fa fa-pencil"></i> Edit</a></td>
+              <td><a href="{% url 'project:project_edit' p.id %}?next={{ request.path|urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-pencil"></i> Complete</a></td>
             </tr>
             {% empty %}<tr><td colspan="3" class="text-center text-muted">No incomplete entries.</td></tr>
             {% endfor %}

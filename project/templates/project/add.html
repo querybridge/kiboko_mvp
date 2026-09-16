@@ -163,13 +163,15 @@
   <div class="">
     <div class="page-title">
       <div class="title_left">
-        <h3>Project Intake Form <small class="intake-sub">Propose a project by the lever it moves</small></h3>
+        <h3>{% if is_edit %}Edit Project{% else %}Project Intake Form{% endif %}
+          <small class="intake-sub">{% if is_edit %}Complete the details &amp; impact estimate{% else %}Propose a project by the lever it moves{% endif %}</small></h3>
       </div>
       <div class="clearfix"></div>
     </div>
 
     <form method="post" name="Project">
       {% csrf_token %}
+      {% if is_edit %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
       <div class="row">
 
         <!-- ================= Project details ================= -->
@@ -366,8 +368,9 @@
 
       <div class="row intake-actions">
         <div class="col-md-12">
-          <button type="submit" class="btn btn-success"><i class="fa fa-check"></i> Submit for approval</button>
-          <a href="{% url 'project:kanban' %}" class="btn btn-default">Cancel</a>
+          <button type="submit" class="btn btn-success"><i class="fa fa-check"></i>
+            {% if is_edit %}Save changes{% else %}Submit for approval{% endif %}</button>
+          <a href="{% if is_edit %}{{ next }}{% else %}{% url 'project:kanban' %}{% endif %}" class="btn btn-default">Cancel</a>
         </div>
       </div>
     </form>

@@ -170,23 +170,28 @@ def project(request):
         if default_dept:
             initial['department'] = default_dept.pk
         form = ProjectForm(initial=initial)
+    ctx = _project_form_context(form, title='Add Project')
+    return render(request, 'project/add.html', ctx)
+
+
+def _project_form_context(form, title, is_edit=False, next_url=''):
+    """Shared context for the rich Project form template (used by Add + Edit) so
+    an incomplete entry can be completed — estimator included — from either."""
     from project.services import impact
     aee_color = {'attract_traffic': '#3FC9E0', 'engage_customers': '#ECB752',
                  'expand_purchase': '#55C892'}
     lever_aee = {k: {'aee': aee, 'color': aee_color.get(aee, '#9B7FE0'),
                      'label': lbl} for k, (lbl, aee) in impact.LEVERS.items()}
-    # objective -> AEE element, so the lever dropdown can be scoped to it.
-    objective_aee = {str(o.pk): o.aee_alignment
+    objective_aee = {str(o.pk): o.aee_alignment      # objective -> AEE (scopes the lever)
                      for o in form.fields['objective'].queryset}
-    return render(request, 'project/add.html', {
-        'form': form, 'title': 'Add Project', 'lever_aee': lever_aee,
-        'objective_aee': objective_aee,
-        # Baselines are fetched from GA4 client-side (per selected Business Unit).
+    return {
+        'form': form, 'title': title, 'is_edit': is_edit, 'next': next_url,
+        'lever_aee': lever_aee, 'objective_aee': objective_aee,
         'baseline_url': reverse('project:estimator_baseline'),
         'baseline_windows': BASELINE_WINDOWS,
         'default_baseline_window': DEFAULT_BASELINE_WINDOW,
         'plaus_min_weeks': impact.PLAUSIBILITY_MIN_WEEKS,
-        'plaus_min_days': impact.PLAUSIBILITY_MIN_WEEKS * 7})
+        'plaus_min_days': impact.PLAUSIBILITY_MIN_WEEKS * 7}
 
 
 # Baseline / plausibility window options (days). Default is 52 weeks so the
@@ -270,15 +275,29 @@ def add_action(request, project_id):
 @login_required
 def project_edit(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    next = request.POST.get('next', '/')
+    next_url = (request.POST.get('next') or request.GET.get('next')
+                or reverse('project:project_detail', kwargs={'project_id': project.id}))
     if request.method == 'POST':
         form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
-            form.save()
-            return HttpResponseRedirect(next)
+            p = form.save()
+            from project.services import impact
+            impact.recompute_scores(company=p._company())
+            messages.success(request, f'Saved “{p.name}”.')
+            return HttpResponseRedirect(next_url)
+        else:
+            problems = []
+            for field, errs in form.errors.items():
+                if field == '__all__':
+                    problems.extend(errs); continue
+                fld = form.fields.get(field)
+                label = (fld.label if fld and fld.label else field.replace('_', ' ').title())
+                problems.append(f'{label}: {errs[0]}')
+            messages.error(request, 'Couldn’t save — ' + ' · '.join(problems[:6]))
     else:
         form = ProjectForm(instance=project)
-    return render(request, 'project/edit.html', {'form': form, 'title': 'Edit Project'})
+    return render(request, 'project/add.html',
+                  _project_form_context(form, title='Edit Project', is_edit=True, next_url=next_url))
 
 
 @login_required
@@ -336,7 +355,8 @@ def approve_action(request, project_id):
     if not can_approve(request.user, project):
         messages.error(request, 'Only a business-unit lead can approve this project.')
     elif not is_ready_for_review(project):
-        messages.error(request, 'This project is missing required fields for approval.')
+        messages.error(request, 'This entry is incomplete — finish the impact estimate (lever, '
+                                'current/target level, sales baseline) via Edit before approving.')
     else:
         project.approved = True
         project.status = 'Pending LOE'
