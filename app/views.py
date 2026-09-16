@@ -632,7 +632,8 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'status': s.status or '',
             'business_unit': s.department.name if s.department_id and s.department else '',
             'project_count': s.project_count or 0,
-            'active_count': 1 if is_wip else 0,
+            # Actions currently in progress (started, not finished).
+            'active_count': sum(1 for t in tasks if 0 < (t['progress'] or 0) < 100),
             'total_value': val,
             'avg_progress': int(round(s.avg_progress)) if s.avg_progress is not None else None,
             'projects': tasks,
