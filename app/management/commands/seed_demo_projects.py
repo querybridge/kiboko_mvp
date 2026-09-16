@@ -114,7 +114,7 @@ class Command(BaseCommand):
                 Action.objects.filter(pk=act.pk).update(**flds)
                 return act
 
-            base = name[:28]
+            base = name
             if status == 'WIP' and go_live:
                 d = _mk_action(f'{base} — Design & specs', go_live - timedelta(days=60), 100)
                 b = _mk_action(f'{base} — Build', go_live - timedelta(days=25), rng.choice([45, 60, 75]), dep=d)

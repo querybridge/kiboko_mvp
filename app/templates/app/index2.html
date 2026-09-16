@@ -580,17 +580,16 @@
                           <thead>
                             <tr>
                               <th>Action</th>
-                              <th>Score</th>
+                              <th>Team</th>
                               <th>Progress</th>
                               <th>Launch Date</th>
-                              <th>Status</th>
                             </tr>
                           </thead>
                           <tbody>
                             {% for p in init.projects %}
                               <tr>
-                                <td><a href="/project/{{ p.id }}">{{ p.name }}</a></td>
-                                <td>{{ p.score }}</td>
+                                <td>{{ p.name }}</td>
+                                <td>{{ p.team|default:"—" }}</td>
                                 <td>
                                   <div class="progress">
                                     <div class="progress-bar" style="width: {{ p.progress }}%"></div>
@@ -598,10 +597,9 @@
                                   <small>{{ p.progress }}%</small>
                                 </td>
                                 <td>{{ p.launch|default:"—" }}</td>
-                                <td><span class="status-pill status-{{ p.status|lower }}">{{ p.status|default:"—" }}</span></td>
                               </tr>
                             {% empty %}
-                              <tr><td class="empty-children" colspan="5">No actions associated with this project.</td></tr>
+                              <tr><td class="empty-children" colspan="4">No actions associated with this project.</td></tr>
                             {% endfor %}
                           </tbody>
                         </table>

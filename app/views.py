@@ -603,18 +603,19 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
 
     project_qs = _scope_to(
         Action.objects.exclude(status__in=PIPELINE_EXCLUDED_STATUSES), vertical_id, company_id)
-    qs = qs.prefetch_related(models.Prefetch('actions', queryset=project_qs.order_by('-normalized_score')))
+    qs = qs.prefetch_related(models.Prefetch(
+        'actions', queryset=project_qs.select_related('team').order_by('launch', 'name')))
 
     rows = []
     for s in qs:
-        # Child execution tasks (Actions) under this project.
+        # Child execution tasks (Actions) under this project -- action-level data
+        # only (projects are scored, not actions).
         tasks = [{
             'id': p.id,
             'name': p.name or f'Task {p.id}',
-            'score': float(s.normalized_score) if s.normalized_score is not None else 0.0,
+            'team': p.team.name if p.team_id and p.team else '',
             'progress': p.progress or 0,
             'launch': p.launch.isoformat() if p.launch else '',
-            'status': s.status or '',
         } for p in s.actions.all()]
 
         is_wip = s.status == 'WIP'
