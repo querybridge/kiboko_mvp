@@ -438,6 +438,7 @@
     var n = parseNum(text); if (isNaN(n)) return NaN;
     return unit === 'percent' ? n / 100 : n;
   }
+  function q4(x) { return isFinite(x) ? Math.round(x * 1e4) / 1e4 : x; }  // match DB precision (4 dp)
 
   // Mirror engine.realized_fraction: average linear-ramp effectiveness across the fiscal year.
   function realizedFraction(launchStr, rampDays) {
@@ -586,7 +587,7 @@
     }
     var lv = lever && lever.value;
     if (lv && GA4.levels && GA4.levels[lv] != null && HID.from && HID.from.dataset.manual !== '1') {
-      HID.from.value = GA4.levels[lv]; DISP.from.classList.add('ga4-auto');
+      HID.from.value = q4(GA4.levels[lv]); DISP.from.classList.add('ga4-auto');
     }
     refreshDisplays();
   }
@@ -648,7 +649,7 @@
     disp.addEventListener('input', function () {
       var unit = leverUnit(lever && lever.value);
       var raw = parseLever(disp.value, unit);
-      hid.value = isNaN(raw) ? '' : raw;
+      hid.value = isNaN(raw) ? '' : q4(raw);
       markManual(hid); disp.classList.remove('ga4-auto');
       updateAccent(); updatePlaus();
       // recompute metrics without reformatting the field being typed in

@@ -5,6 +5,18 @@ from django import forms
 from django.forms import widgets
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
+from decimal import Decimal, ROUND_HALF_UP
+
+
+class RoundedDecimalField(forms.DecimalField):
+    """Quantize to the field's decimal_places before validation, so GA4-derived
+    values with extra precision (e.g. visits/visitor = 1.228734) don't trip the
+    'Ensure that there are no more than N decimal places' error."""
+    def to_python(self, value):
+        value = super().to_python(value)
+        if value is not None and self.decimal_places is not None:
+            value = value.quantize(Decimal(1).scaleb(-self.decimal_places), rounding=ROUND_HALF_UP)
+        return value
 
 
 class ProjectForm(ModelForm):
@@ -17,6 +29,13 @@ class ProjectForm(ModelForm):
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note'):
             self.fields[f].required = False
         self.fields['plausibility_factor'].initial = 1.0
+
+        # Round decimal inputs to their column precision (GA4 levels can carry more).
+        for name in ('target_from', 'target_to', 's0_annual', 'evidence_prior_level'):
+            f = self.fields[name]
+            self.fields[name] = RoundedDecimalField(
+                max_digits=f.max_digits, decimal_places=f.decimal_places,
+                required=False, widget=forms.HiddenInput())
 
         # Owner shown as "First L." for quick scanning (falls back to username).
         def _owner_label(u):
