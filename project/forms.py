@@ -17,6 +17,15 @@ class ProjectForm(ModelForm):
             self.fields[f].required = False
         self.fields['plausibility_factor'].initial = 1.0
 
+        # Owner shown as "First L." for quick scanning (falls back to username).
+        def _owner_label(u):
+            first = (u.first_name or '').strip()
+            last = (u.last_name or '').strip()
+            if first and last:
+                return f'{first} {last[0]}.'
+            return first or u.get_username()
+        self.fields['owner'].label_from_instance = _owner_label
+
     class Meta:
         model = Project
         fields = ['name', 'objective', 'owner', 'vertical', 'department',
@@ -54,11 +63,13 @@ class ProjectForm(ModelForm):
             'why': Textarea(attrs={'rows': 3}),
             'definition_of_done': TextInput(attrs={}),
             'lever': Select(attrs={}),
-            'target_from': NumberInput(attrs={'step': 'any'}),
-            'target_to': NumberInput(attrs={'step': 'any'}),
-            's0_annual': NumberInput(attrs={'step': '1000'}),
+            # Unit-bearing values are kept raw in hidden inputs; the template shows
+            # formatted, per-lever displays (rates as %, counts with commas, $ finance).
+            'target_from': forms.HiddenInput(),
+            'target_to': forms.HiddenInput(),
+            's0_annual': forms.HiddenInput(),
+            'direct_expense': forms.HiddenInput(),
             'ramp_days': NumberInput(attrs={'min': 1}),
-            'direct_expense': NumberInput(attrs={'min': 0}),
             'plausibility_factor': forms.HiddenInput(),
         }
 

@@ -101,6 +101,16 @@ def view(request):
 # ---------------------------------------------------------------------------
 # Add / edit / detail
 # ---------------------------------------------------------------------------
+def _quarter_end(d):
+    """Last calendar day of the quarter containing date `d`."""
+    import datetime
+    q_end_month = ((d.month - 1) // 3) * 3 + 3            # 3, 6, 9, or 12
+    if q_end_month == 12:
+        return datetime.date(d.year, 12, 31)
+    # First day of the month AFTER the quarter, minus one day.
+    return datetime.date(d.year, q_end_month + 1, 1) - datetime.timedelta(days=1)
+
+
 @login_required
 def project(request):
     """Add a new Project. It enters the intake pipeline (Incomplete -> BU-lead
@@ -115,15 +125,23 @@ def project(request):
             messages.success(request, f'Added "{p.name}" — pending business-unit approval.')
             return redirect('project:project_detail', project_id=p.id)
     else:
+        # Convenience defaults (all still editable on the form).
+        initial = {
+            'owner': request.user.pk,                        # default to the creator
+            'target_completion': _quarter_end(timezone.localdate()),
+            'plausibility_factor': 1.0,
+        }
         # Pre-select the Business Unit from the active top-bar scope so the
         # estimator can auto-fill GA4 baselines on load (the form's Business Unit,
         # not the scope, is what drives the fetch).
-        initial = {}
         sv = request.session.get('scope_vertical')
         if sv and sv != 'all' and str(sv).isdigit():
             from business_unit.models import BusinessUnit
             if BusinessUnit.objects.filter(pk=sv).exists():
                 initial['vertical'] = sv
+        default_dept = Department.objects.first()
+        if default_dept:
+            initial['department'] = default_dept.pk
         form = ProjectForm(initial=initial)
     from project.services import impact
     aee_color = {'attract_traffic': '#3FC9E0', 'engage_customers': '#ECB752',
@@ -134,30 +152,43 @@ def project(request):
         'form': form, 'title': 'Add Project', 'lever_aee': lever_aee,
         # Baselines are fetched from GA4 client-side (per selected Business Unit).
         'baseline_url': reverse('project:estimator_baseline'),
+        'baseline_windows': BASELINE_WINDOWS,
+        'default_baseline_window': DEFAULT_BASELINE_WINDOW,
         'plaus_min_weeks': impact.PLAUSIBILITY_MIN_WEEKS,
         'plaus_min_days': impact.PLAUSIBILITY_MIN_WEEKS * 7})
+
+
+# Baseline / plausibility window options (days). Default is 52 weeks so the
+# baseline levels are computed over the same span as the plausibility history.
+BASELINE_WINDOWS = (90, 180, 365)
+DEFAULT_BASELINE_WINDOW = 365
 
 
 @login_required
 def estimator_baseline(request):
     """JSON: GA4-derived estimator baselines for the intake form's chosen Business
-    Unit. {connected, levels{lever:level}, s0_annual, weekly{lever:[...]},
-    window_days, min_weeks} or {connected: False, reason}."""
+    Unit, over the requested window (?window=90|180|365, default 365 = 52 weeks).
+    Both the baseline levels and the plausibility weekly history use this span.
+    {connected, levels{lever:level}, s0_annual, weekly{lever:[...]}, window_days,
+    min_weeks} or {connected: False, reason}."""
     from app.integrations import ga4_dashboard
     from project.services import impact
-    from project.models import EstimatorSettings
     from business_unit.models import BusinessUnit
     bu_id = request.GET.get('vertical')
     bu = (BusinessUnit.objects.filter(pk=bu_id).select_related('company').first()
           if bu_id else None)
     if not bu:
         return JsonResponse({'connected': False, 'reason': 'no-business-unit'})
-    settings = EstimatorSettings.current(bu.company)
-    window = (settings.baseline_window_days if settings else 90) or 90
+    try:
+        window = int(request.GET.get('window', DEFAULT_BASELINE_WINDOW))
+    except (TypeError, ValueError):
+        window = DEFAULT_BASELINE_WINDOW
+    if window not in BASELINE_WINDOWS:
+        window = DEFAULT_BASELINE_WINDOW
     status = ga4_dashboard.baseline_status(request, bu)
     if status not in ('premium', 'standard'):
         return JsonResponse({'connected': False, 'reason': status})
-    daily = ga4_dashboard.baseline_daily_for_bu(request, bu, max(window, 364))
+    daily = ga4_dashboard.baseline_daily_for_bu(request, bu, window)
     if daily is None:
         return JsonResponse({'connected': False, 'reason': 'fetch-failed'})
     b = impact.baselines_from_daily(daily, window)

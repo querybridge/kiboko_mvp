@@ -76,6 +76,31 @@
   .baseline-src.warn { color: var(--status-warning); }
   input.ga4-auto { border-color: rgba(85,200,146,.55) !important; }
 
+  /* Window toggle (baseline + plausibility scope) */
+  .win-toggle { display: flex; align-items: center; gap: 6px; margin: 2px 0 12px; }
+  .win-toggle-label {
+    text-transform: uppercase; letter-spacing: 1px; font-size: 10px; font-weight: 700;
+    color: var(--text-muted); margin-right: 2px;
+  }
+  .win-btn {
+    background: var(--bg-surface-muted); color: var(--text-secondary);
+    border: 1px solid var(--border-subtle); border-radius: 999px;
+    padding: 3px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .win-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .win-btn.active {
+    background: var(--purple-600); border-color: var(--purple-400);
+    color: var(--text-primary);
+  }
+
+  /* Dark-theme input-group addons ($ / %) */
+  .est-ig .input-group-addon {
+    background: var(--bg-surface-muted) !important; border-color: var(--border-subtle) !important;
+    color: var(--text-secondary) !important; font-weight: 600;
+  }
+  .est-ig .form-control.ga4-auto { border-color: rgba(85,200,146,.55) !important; }
+
   .est-footnote { color: var(--text-muted); font-size: 11.5px; margin-top: 14px; line-height: 1.5; }
   .est-panel .form-group { margin-bottom: 12px; }
   .intake-actions { margin-top: 8px; }
@@ -135,17 +160,65 @@
               <div class="est-section-label">Baseline &amp; target
                 <span id="baseline_src" class="baseline-src" style="display:none;"></span>
               </div>
-              <div class="row">
-                <div class="col-half col-sm-6">{{ form.target_from|as_crispy_field }}</div>
-                <div class="col-half col-sm-6">{{ form.target_to|as_crispy_field }}</div>
+
+              <!-- Window toggle: scopes BOTH the baseline levels and the
+                   plausibility history (default 52 weeks so they match). -->
+              <div class="win-toggle" id="win_toggle" role="group" aria-label="Baseline window">
+                <span class="win-toggle-label">Window</span>
+                {% for w in baseline_windows %}
+                <button type="button" class="win-btn{% if w == default_baseline_window %} active{% endif %}"
+                        data-window="{{ w }}">{{ w }}d{% if w == 365 %} · 52wk{% endif %}</button>
+                {% endfor %}
               </div>
-              {{ form.s0_annual|as_crispy_field }}
+
+              <div class="row">
+                <div class="col-half col-sm-6">
+                  <div class="form-group">
+                    <label for="disp_from">Current level (baseline)</label>
+                    <div class="input-group est-ig">
+                      <span class="input-group-addon ig-pre" id="from_pre" style="display:none;">$</span>
+                      <input type="text" class="form-control" id="disp_from" autocomplete="off" inputmode="decimal">
+                      <span class="input-group-addon ig-suf" id="from_suf" style="display:none;">%</span>
+                    </div>
+                    {{ form.target_from }}
+                  </div>
+                </div>
+                <div class="col-half col-sm-6">
+                  <div class="form-group">
+                    <label for="disp_to">Target level</label>
+                    <div class="input-group est-ig">
+                      <span class="input-group-addon ig-pre" id="to_pre" style="display:none;">$</span>
+                      <input type="text" class="form-control" id="disp_to" autocomplete="off" inputmode="decimal">
+                      <span class="input-group-addon ig-suf" id="to_suf" style="display:none;">%</span>
+                    </div>
+                    {{ form.target_to }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="disp_s0">Annual sales baseline</label>
+                <div class="input-group est-ig">
+                  <span class="input-group-addon ig-pre">$</span>
+                  <input type="text" class="form-control" id="disp_s0" autocomplete="off" inputmode="decimal">
+                </div>
+                {{ form.s0_annual }}
+              </div>
               {{ form.plausibility_factor }}
 
               <div class="est-section-label">Timing &amp; cost</div>
               <div class="row">
                 <div class="col-half col-sm-6">{{ form.ramp_days|as_crispy_field }}</div>
-                <div class="col-half col-sm-6">{{ form.direct_expense|as_crispy_field }}</div>
+                <div class="col-half col-sm-6">
+                  <div class="form-group">
+                    <label for="disp_de">Direct expense</label>
+                    <div class="input-group est-ig">
+                      <span class="input-group-addon ig-pre">$</span>
+                      <input type="text" class="form-control" id="disp_de" autocomplete="off" inputmode="decimal">
+                    </div>
+                    {{ form.direct_expense }}
+                  </div>
+                </div>
               </div>
 
               <!-- Live estimate (mirrors the Streamlit metrics row) -->
@@ -223,23 +296,50 @@
   var AEE_NAME = {attract_traffic: 'Attract', engage_customers: 'Engage', expand_purchase: 'Expand'};
 
   var BASELINE_URL = '{{ baseline_url }}', MIN_WEEKS = {{ plaus_min_weeks }};
+  var CUR_WINDOW = {{ default_baseline_window }};
   var GA4 = null;   // {levels{lever:level}, weekly{lever:[...]}, s0_annual, window_days}
 
   var $ = function (id) { return document.getElementById(id); };
-  var lever = $('id_lever'), from = $('id_target_from'), to = $('id_target_to'),
-      s0 = $('id_s0_annual'), ramp = $('id_ramp_days'), launch = $('id_target_completion'),
+  var lever = $('id_lever'), ramp = $('id_ramp_days'), launch = $('id_target_completion'),
       bu = $('id_vertical'), pfactor = $('id_plausibility_factor'), srcBadge = $('baseline_src'),
       chip = $('aee_chip'), panel = $('lever_accent');
+  // Hidden raw fields (engine units) and their visible, formatted displays.
+  var HID = { from: $('id_target_from'), to: $('id_target_to'), s0: $('id_s0_annual'), de: $('id_direct_expense') };
+  var DISP = { from: $('disp_from'), to: $('disp_to'), s0: $('disp_s0'), de: $('disp_de') };
 
-  function fmtMoney(v) {
-    if (!isFinite(v)) return '—';
-    var neg = v < 0; v = Math.abs(Math.round(v));
-    return (neg ? '−$' : '$') + v.toLocaleString('en-US');
-  }
-  function fmtPct(p) { return (p >= 0 ? '+' : '') + (p * 100).toFixed(1) + '%'; }
-  function tidy(x) { return Math.abs(x) >= 100 ? Math.round(x).toLocaleString('en-US')
-                                               : parseFloat(Number(x).toPrecision(4)); }
+  // ---- formatting helpers (rates xx.xx%, comma numbers, US-finance $) ----
+  function comma(v, dec) { dec = dec == null ? 0 : dec;
+    return Number(v).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+  function fmtUSD(v, dec) { if (!isFinite(v)) return '—'; dec = dec == null ? 0 : dec;
+    var neg = v < 0, s = '$' + comma(Math.abs(v), dec); return neg ? '(' + s + ')' : s; }  // finance: negatives in ()
+  function fmtPct(p) { if (!isFinite(p)) return '—'; return (p >= 0 ? '+' : '−') + Math.abs(p * 100).toFixed(2) + '%'; }
+  function parseNum(t) { if (t == null) return NaN; return parseFloat(String(t).replace(/[^0-9.\-]/g, '')); }
   function markManual(el) { if (el) { el.dataset.manual = '1'; el.classList.remove('ga4-auto'); } }
+
+  // Per-lever display unit: rate -> %, price -> $, visitors -> count, else plain number.
+  function leverUnit(lv) {
+    if (lv === 'cart_creation' || lv === 'cart_completion') return 'percent';
+    if (lv === 'avg_unit_price') return 'money';
+    if (lv === 'visitors') return 'count';
+    return 'number';
+  }
+  function fmtLever(raw, unit) {         // raw ratio -> formatted string
+    if (!isFinite(raw)) return '';
+    if (unit === 'percent') return comma(raw * 100, 2) + '%';
+    if (unit === 'money') return fmtUSD(raw, 2);
+    if (unit === 'count') return comma(Math.round(raw), 0);
+    return comma(raw, 2);
+  }
+  function editLever(raw, unit) {        // raw ratio -> bare editable value (no symbols)
+    if (!isFinite(raw)) return '';
+    if (unit === 'percent') return String(+(raw * 100).toFixed(4));
+    if (unit === 'count') return String(Math.round(raw));
+    return String(+Number(raw).toFixed(unit === 'money' ? 2 : 4));
+  }
+  function parseLever(text, unit) {      // display string -> raw ratio
+    var n = parseNum(text); if (isNaN(n)) return NaN;
+    return unit === 'percent' ? n / 100 : n;
+  }
 
   // Mirror engine.realized_fraction: average linear-ramp effectiveness across the fiscal year.
   function realizedFraction(launchStr, rampDays) {
@@ -272,19 +372,44 @@
     }
   }
 
+  // Show/hide the $ / % addons for the lever inputs based on the selected lever.
+  function applyLeverUnitUI() {
+    var unit = leverUnit(lever && lever.value);
+    ['from', 'to'].forEach(function (k) {
+      $(k + '_pre').style.display = (unit === 'money') ? '' : 'none';
+      $(k + '_suf').style.display = (unit === 'percent') ? '' : 'none';
+    });
+  }
+  // Re-render the visible fields from the hidden raw values (skips a field being typed in).
+  function refreshDisplays() {
+    applyLeverUnitUI();
+    var unit = leverUnit(lever && lever.value);
+    [['from', HID.from, DISP.from], ['to', HID.to, DISP.to]].forEach(function (t) {
+      if (document.activeElement === t[2]) return;
+      var raw = parseFloat(t[1].value);
+      t[2].value = isFinite(raw) ? fmtLever(raw, unit) : '';
+    });
+    if (document.activeElement !== DISP.s0) {
+      var v = parseFloat(HID.s0.value); DISP.s0.value = isFinite(v) ? comma(Math.round(v), 0) : '';
+    }
+    if (document.activeElement !== DISP.de) {
+      var d = parseFloat(HID.de.value); DISP.de.value = isFinite(d) ? comma(Math.round(d), 0) : '';
+    }
+  }
+
   function recalc() {
     updateAccent();
     updatePlaus();
-    var f = parseFloat(from && from.value), t = parseFloat(to && to.value),
-        base = parseFloat(s0 && s0.value);
+    refreshDisplays();
+    var f = parseFloat(HID.from.value), t = parseFloat(HID.to.value), base = parseFloat(HID.s0.value);
     if (!(f > 0) || isNaN(t)) { $('m_pct').textContent = '—'; $('m_gross').textContent = '—';
       $('m_realized').textContent = '—'; $('m_rf').textContent = '—'; return; }
     var pct = (t - f) / f;
     var gross = (base > 0 ? base : 0) * pct;
     var rf = realizedFraction(launch && launch.value, ramp && ramp.value);
     $('m_pct').textContent = fmtPct(pct);
-    $('m_gross').textContent = base > 0 ? fmtMoney(gross) : '—';
-    $('m_realized').textContent = base > 0 ? fmtMoney(gross * rf) : '—';
+    $('m_gross').textContent = base > 0 ? fmtUSD(gross, 0) : '—';
+    $('m_realized').textContent = base > 0 ? fmtUSD(gross * rf, 0) : '—';
     $('m_rf').textContent = Math.round(rf * 100) + '%';
   }
 
@@ -312,7 +437,7 @@
   function setEmptyNote(html) { var n = $('plaus_empty_note'); if (n) n.innerHTML = html; }
 
   function updatePlaus() {
-    var lv = lever && lever.value, t = parseFloat(to && to.value);
+    var lv = lever && lever.value, t = parseFloat(HID.to.value), unit = leverUnit(lv);
     var levels = (GA4 && GA4.weekly) ? GA4.weekly[lv] : null;
     var pl = (levels && isFinite(t)) ? plausibility(t, levels) : null;
     if (pl) {
@@ -323,7 +448,7 @@
       band.textContent = pl.band + ' · ' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ';
       band.style.color = pl.color;
       $('plaus_caption').innerHTML = 'Target reached <strong>' + pl.reached + ' of the last ' + pl.n +
-        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ vs a ' + tidy(pl.mean) +
+        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ vs a ' + fmtLever(pl.mean, unit) +
         ' mean). ' + (pl.factor < 1
           ? 'Impact auto-discounted ×' + pl.factor.toFixed(2) + ' for the stretch.'
           : 'Within recent range — no discount.');
@@ -345,18 +470,17 @@
     }
   }
 
-  // Auto-fill baseline inputs from GA4 (only where the user hasn't typed a value).
+  // Auto-fill baseline raw values from GA4 (only where the user hasn't typed a value).
   function autofill() {
     if (!GA4) return;
-    if (GA4.s0_annual && s0 && s0.dataset.manual !== '1') {
-      s0.value = Math.round(GA4.s0_annual); s0.classList.add('ga4-auto');
+    if (GA4.s0_annual && HID.s0 && HID.s0.dataset.manual !== '1') {
+      HID.s0.value = Math.round(GA4.s0_annual); DISP.s0.classList.add('ga4-auto');
     }
     var lv = lever && lever.value;
-    if (lv && GA4.levels && GA4.levels[lv] != null && from && from.dataset.manual !== '1') {
-      var x = GA4.levels[lv];
-      from.value = Math.abs(x) >= 100 ? Math.round(x) : parseFloat(Number(x).toPrecision(6));
-      from.classList.add('ga4-auto');
+    if (lv && GA4.levels && GA4.levels[lv] != null && HID.from && HID.from.dataset.manual !== '1') {
+      HID.from.value = GA4.levels[lv]; DISP.from.classList.add('ga4-auto');
     }
+    refreshDisplays();
   }
 
   function fetchBaseline() {
@@ -374,14 +498,14 @@
       srcBadge.style.display = ''; srcBadge.className = 'baseline-src loading';
       srcBadge.innerHTML = '<i class="fa fa-spinner fa-spin"></i>checking GA4…';
     }
-    fetch(BASELINE_URL + '?vertical=' + encodeURIComponent(v),
+    fetch(BASELINE_URL + '?vertical=' + encodeURIComponent(v) + '&window=' + CUR_WINDOW,
           { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (d && d.connected) {
           GA4 = d;
           if (srcBadge) { srcBadge.className = 'baseline-src';
-            srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from GA4 (' + d.window_days + '-day baseline)'; }
+            srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from GA4 (' + d.window_days + '-day window)'; }
           autofill();
         } else {
           GA4 = null;
@@ -408,21 +532,71 @@
     srcBadge.innerHTML = '<i class="fa fa-exclamation-triangle"></i>' + msg;
   }
 
-  // Treat server-rendered values (e.g. after a POST error) as manual so we don't clobber them.
-  if (from && from.value) from.dataset.manual = '1';
-  if (s0 && s0.value) s0.dataset.manual = '1';
+  // ---- wire the visible (display) fields to their hidden raw fields ----
+  // Lever inputs: parse on type, show bare value on focus, format on blur.
+  [['from', HID.from, DISP.from], ['to', HID.to, DISP.to]].forEach(function (t) {
+    var hid = t[1], disp = t[2];
+    if (!disp) return;
+    disp.addEventListener('input', function () {
+      var unit = leverUnit(lever && lever.value);
+      var raw = parseLever(disp.value, unit);
+      hid.value = isNaN(raw) ? '' : raw;
+      markManual(hid); disp.classList.remove('ga4-auto');
+      updateAccent(); updatePlaus();
+      // recompute metrics without reformatting the field being typed in
+      var f = parseFloat(HID.from.value), tt = parseFloat(HID.to.value), base = parseFloat(HID.s0.value);
+      if (f > 0 && !isNaN(tt)) {
+        var pct = (tt - f) / f, rf = realizedFraction(launch && launch.value, ramp && ramp.value);
+        $('m_pct').textContent = fmtPct(pct);
+        $('m_gross').textContent = base > 0 ? fmtUSD(base * pct, 0) : '—';
+        $('m_realized').textContent = base > 0 ? fmtUSD(base * pct * rf, 0) : '—';
+        $('m_rf').textContent = Math.round(rf * 100) + '%';
+      }
+    });
+    disp.addEventListener('focus', function () {
+      var unit = leverUnit(lever && lever.value), raw = parseFloat(hid.value);
+      if (isFinite(raw)) disp.value = editLever(raw, unit);
+    });
+    disp.addEventListener('blur', refreshDisplays);
+  });
+  // Money displays (s0, direct expense): comma-format, $ from the addon.
+  [['s0', HID.s0, DISP.s0], ['de', HID.de, DISP.de]].forEach(function (t) {
+    var hid = t[1], disp = t[2];
+    if (!disp) return;
+    disp.addEventListener('input', function () {
+      var n = parseNum(disp.value); hid.value = isNaN(n) ? '' : n;
+      markManual(hid); disp.classList.remove('ga4-auto'); recalc();
+    });
+    disp.addEventListener('focus', function () {
+      var raw = parseFloat(hid.value); if (isFinite(raw)) disp.value = String(Math.round(raw));
+    });
+    disp.addEventListener('blur', refreshDisplays);
+  });
+
+  // Treat server-rendered raw values (e.g. after a POST error) as manual.
+  if (HID.from && HID.from.value) HID.from.dataset.manual = '1';
+  if (HID.s0 && HID.s0.value) HID.s0.dataset.manual = '1';
 
   if (lever) lever.addEventListener('change', function () {
     if (GA4) autofill(); else if (!(bu && bu.value)) fetchBaseline();   // refresh the nudge
     recalc();
   });
-  [to, ramp, launch].forEach(function (el) {
+  [ramp, launch].forEach(function (el) {
     if (el) { el.addEventListener('input', recalc); el.addEventListener('change', recalc); }
   });
-  if (from) from.addEventListener('input', function () { markManual(from); recalc(); });
-  if (s0) s0.addEventListener('input', function () { markManual(s0); recalc(); });
   if (bu) bu.addEventListener('change', fetchBaseline);
 
+  // Window toggle (90 / 180 / 365) re-scopes both baseline + plausibility.
+  var winBtns = document.querySelectorAll('#win_toggle .win-btn');
+  Array.prototype.forEach.call(winBtns, function (b) {
+    b.addEventListener('click', function () {
+      CUR_WINDOW = parseInt(b.dataset.window, 10);
+      Array.prototype.forEach.call(winBtns, function (x) { x.classList.toggle('active', x === b); });
+      if (bu && bu.value) fetchBaseline();
+    });
+  });
+
+  refreshDisplays();                       // format any pre-rendered raw values
   if (bu && bu.value) fetchBaseline(); else recalc();
 })();
 </script>
