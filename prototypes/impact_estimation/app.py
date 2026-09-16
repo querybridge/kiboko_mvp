@@ -41,7 +41,8 @@ margin = st.sidebar.slider('Contribution margin (direct-expense revenue factor)'
 base = D.baselines(df, window_days)
 st.sidebar.metric('Baseline annual sales (S0)', f'${base["s0_annual"]:,.0f}')
 
-est_tab, back_tab = st.tabs(['🎯 Estimator (UX)', '🔬 Backtest'])
+est_tab, back_tab, real_tab = st.tabs(
+    ['🎯 Estimator (UX)', '🔬 Backtest', '📈 Realized Performance'])
 
 # ==========================================================================
 # ESTIMATOR
@@ -230,3 +231,131 @@ with back_tab:
                    f'grey band/dashed = historical (prior {n} days, avg {hist_avg:,.4g}).')
     else:
         st.caption('Not enough data for a trend on this lever.')
+
+# ==========================================================================
+# REALIZED PERFORMANCE  (in Kiboko: the completed-project detail view)
+# ==========================================================================
+with real_tab:
+    from datetime import timedelta
+    st.subheader('Realized Performance — did the project move the needle, and was it this project?')
+    st.caption("In Kiboko this lives on a COMPLETED project's detail. The window "
+               "runs from launch through the ramp plus a steady-state measurement "
+               "(>= 7 days of post-ramp data), so we only judge once the effect is "
+               "fully in and observed.")
+
+    data_min, data_max = df['date'].min(), df['date'].max()
+    c = st.columns(4)
+    rp_lever = c[0].selectbox('Project lever', E.LEVER_KEYS,
+                              index=E.LEVER_KEYS.index(lever),
+                              format_func=lambda k: E.LEVERS[k][0], key='rp_lever2')
+    default_launch = data_max - timedelta(days=int(ramp) + 45)
+    rp_launch = c[1].date_input('Launch date', default_launch,
+                                min_value=data_min, max_value=data_max, key='rp_launch2')
+    rp_ramp = int(c[2].number_input('Ramp days', 1, 365, int(ramp), key='rp_ramp2'))
+    measure_days = int(c[3].slider('Steady-state window (days, ≥7)', 7, 60, 30, key='rp_meas'))
+
+    basis = st.radio('Compare against', ['This year — period-over-period (pre-launch)',
+                                         'Year-over-year (same period last year)'], horizontal=True)
+    planned_pct = (to / frm - 1) if rp_lever == lever else None
+
+    ramp_end = rp_launch + timedelta(days=rp_ramp)
+    post = (ramp_end, ramp_end + timedelta(days=measure_days - 1))
+    pop = basis.startswith('This year')
+    base = ((rp_launch - timedelta(days=measure_days), rp_launch - timedelta(days=1)) if pop
+            else (post[0] - timedelta(days=365), post[1] - timedelta(days=365)))
+    base_label = 'pre-launch (this year)' if pop else 'same period last year'
+
+    st.caption(f'Measured window: **{post[0]} → {post[1]}** (post-ramp) vs **{base[0]} → {base[1]}** ({base_label}).')
+
+    if post[1] > data_max:
+        st.warning(f'Not enough post-launch data yet — need through {post[1]} (data ends {data_max}). '
+                   'In Kiboko this tab unlocks once the window has elapsed.')
+    elif base[0] < data_min:
+        st.warning(f'Not enough history for the {base_label} baseline (need back to {base[0]}).')
+    else:
+        before = D.window_metrics(df, *base)
+        after = D.window_metrics(df, *post)
+        dec = E.lmdi_decompose(before, after)
+        base_sales = E.levers_from_metrics(before)['sales']
+        perf_pct = dec['delta'] / base_sales if base_sales else 0
+        lever_contrib = dec['contrib'][rp_lever]
+        share = (lever_contrib / dec['delta']) if abs(dec['delta']) > 1e-9 else 0
+        base_lv = D._levels_per_day(before, measure_days)[rp_lever]
+        post_lv = D._levels_per_day(after, measure_days)[rp_lever]
+        actual_lever_pct = (post_lv / base_lv - 1) if base_lv else 0
+
+        # --- Two headline questions ---
+        q1, q2 = st.columns(2)
+        with q1:
+            st.markdown('**1) Did performance improve or decline?**')
+            st.metric('Sales change (post vs baseline)', f'${dec["delta"]:,.0f}',
+                      f'{perf_pct:+.1%}')
+        with q2:
+            st.markdown('**2) Was this project meaningful in the change?**')
+            st.metric(f'{E.LEVERS[rp_lever][0]} contribution',
+                      f'${lever_contrib:,.0f}', f'{share:+.0%} of the total change')
+
+        # Verdict heuristic.
+        moved = (planned_pct is None) or (actual_lever_pct > 0.3 * planned_pct) if planned_pct else actual_lever_pct > 0
+        if dec['delta'] > 0 and share > 0.40 and (actual_lever_pct > 0):
+            st.success(f'✅ Meaningful — {E.LEVERS[rp_lever][0]} drove {share:.0%} of a '
+                       f'{perf_pct:+.1%} sales move, and the lever rose {actual_lever_pct:+.1%}.')
+        elif dec['delta'] > 0 and share < 0.15:
+            st.warning('⚠️ Performance improved, but NOT mainly from this project — the gain '
+                       'came from other levers (see decomposition).')
+        elif dec['delta'] <= 0 and actual_lever_pct > 0:
+            st.info('↔️ The targeted lever moved, but performance was flat/down — its gain was '
+                    'offset by other levers.')
+        else:
+            st.info('❔ Mixed signal — read the decomposition below.')
+
+        st.caption(f'Reconstructed residual (should be ~$0): ${dec["residual"]:,.2f}  ·  '
+                   f'{E.LEVERS[rp_lever][0]} moved {actual_lever_pct:+.1%}'
+                   + (f' vs planned {planned_pct:+.1%}.' if planned_pct is not None else '.'))
+
+        left, right = st.columns([1, 1])
+        with left:
+            # Estimate vs actual for the targeted lever.
+            if planned_pct is not None:
+                predicted = base_sales * planned_pct
+                st.markdown('**Estimate vs. actual** (targeted lever, over the window)')
+                ec = st.columns(2)
+                ec[0].metric('Estimator predicted', f'${predicted:,.0f}')
+                ec[1].metric('Actual (LMDI)', f'${lever_contrib:,.0f}',
+                             f'{(lever_contrib - predicted):+,.0f}')
+            contrib = pd.Series({E.LEVERS[k][0]: dec['contrib'][k] for k in E.LEVER_KEYS})
+            st.bar_chart(contrib.sort_values())
+        with right:
+            metric_key = st.selectbox('Graph metric', ['sales', rp_lever],
+                                      format_func=lambda k: 'Sales' if k == 'sales' else E.LEVERS[k][0],
+                                      key='rp_metric')
+            mlabel = 'Sales' if metric_key == 'sales' else E.LEVERS[metric_key][0]
+            gstart = min(base[0] if pop else rp_launch - timedelta(days=max(14, measure_days)), rp_launch)
+            gdays = (post[1] - gstart).days + 1
+            ser = D.rolling_lever_series(df, metric_key, window=7, days=gdays, ref=post[1])
+            layers = []
+            layers.append(alt.Chart(ser).mark_line(color='#4a1f8a').encode(
+                x=alt.X('date:T', title=None),
+                y=alt.Y('level:Q', title=mlabel, scale=alt.Scale(zero=False)),
+                tooltip=['date:T', alt.Tooltip('level:Q', format=',.4g')]))
+            # post window shading + launch/ramp markers
+            layers.append(alt.Chart(pd.DataFrame({'s': [pd.Timestamp(post[0])], 'e': [pd.Timestamp(post[1])]}))
+                          .mark_rect(color='#26b99a', opacity=0.12).encode(x='s:T', x2='e:T'))
+            for xd, col in [(rp_launch, '#337ab7'), (ramp_end, '#888')]:
+                layers.append(alt.Chart(pd.DataFrame({'x': [pd.Timestamp(xd)]}))
+                              .mark_rule(color=col, strokeDash=[4, 3]).encode(x='x:T'))
+            if pop:
+                base_avg = D._levels_per_day(before, measure_days)[metric_key] if metric_key != 'sales' \
+                    else base_sales / measure_days
+                layers.append(alt.Chart(pd.DataFrame({'y': [base_avg]}))
+                              .mark_rule(color='#888', strokeDash=[5, 4]).encode(y='y'))
+            else:
+                ly = D.rolling_lever_series(df, metric_key, window=7, days=gdays,
+                                            ref=post[1] - timedelta(days=365))
+                ly['date'] = pd.to_datetime(ly['date']) + pd.Timedelta(days=365)
+                layers.append(alt.Chart(ly).mark_line(color='#c0392b', strokeDash=[4, 3]).encode(
+                    x='date:T', y='level:Q'))
+            st.altair_chart(alt.layer(*layers), use_container_width=True)
+            st.caption('Purple = this year (actual) · shaded = post-ramp window · blue/grey dashes '
+                       '= launch/ramp-end · ' + ('grey dash = pre-launch avg.' if pop else 'red dash = last year.'))
+

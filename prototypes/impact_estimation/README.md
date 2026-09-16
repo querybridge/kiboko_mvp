@@ -39,6 +39,15 @@ Opens in the browser with **sample history** by default. Two tabs:
   the change). Plus an "estimator vs. actual" confounding check for any lever,
   and a **trend chart** of that lever's 7-day-rolling level over time with the
   actual (recent) window vs. its historical average highlighted.
+- **Realized Performance** — the post-mortem for a *completed* project (in Kiboko
+  this lives on the completed-project detail view). Measures the window from
+  **launch → ramp + a steady-state period (≥7 days)** and answers two questions:
+  **"did performance improve or decline?"** (sales change vs baseline) and
+  **"was this project meaningful in the change?"** (the targeted lever's LMDI
+  share of the change + estimate-vs-actual). Toggle the baseline between **this
+  year period-over-period** (pre-launch) and **year-over-year**; the historical-
+  vs-actual chart marks launch/ramp-end and shades the measured window. Shows the
+  reconstructed residual (~$0) so you can trust the attribution.
 
 ## Data
 
