@@ -104,7 +104,8 @@ def view(request):
 @login_required
 def project(request):
     """Add a new Project. It enters the intake pipeline (Incomplete -> BU-lead
-    approval -> Analyst revenue -> Developer LOE -> Ready to Score)."""
+    approval -> Developer effort + capability -> Ready to Score -> team vote).
+    Revenue is auto-estimated from the impact estimator, not entered by hand."""
     if request.method == 'POST':
         form = ProjectForm(request.POST)
         if form.is_valid():
@@ -115,7 +116,13 @@ def project(request):
             return redirect('project:project_detail', project_id=p.id)
     else:
         form = ProjectForm()
-    return render(request, 'project/add.html', {'form': form, 'title': 'Add Project'})
+    from project.services import impact
+    aee_color = {'attract_traffic': '#3FC9E0', 'engage_customers': '#ECB752',
+                 'expand_purchase': '#55C892'}
+    lever_aee = {k: {'aee': aee, 'color': aee_color.get(aee, '#9B7FE0'),
+                     'label': lbl} for k, (lbl, aee) in impact.LEVERS.items()}
+    return render(request, 'project/add.html', {
+        'form': form, 'title': 'Add Project', 'lever_aee': lever_aee})
 
 
 @login_required
