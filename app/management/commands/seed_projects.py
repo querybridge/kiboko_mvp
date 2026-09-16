@@ -86,7 +86,7 @@ class Command(BaseCommand):
             a = Action(
                 project=p, owner=p.owner, business_unit=p.department or departments[0],
                 vertical=p.vertical, objective=p.objective, name=f'{name[:40]} — build',
-                why=why, impact=why[:75], launch=go_live, progress=progress,
+                why=why, impact=why[:75], launch=go_live, progress=progress, value=revenue,
                 team=rng.choice(teams) if teams else None,
                 measure=rng.choice(measures) if measures else None,
             )

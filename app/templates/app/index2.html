@@ -402,7 +402,7 @@
       <!-- Period selector: governs the Revenue chart + Performance scorecards.
            The objective cards below are the pending-pipeline snapshot (potential),
            independent of the period. -->
-      <div class="row"><div class="col-md-12" style="text-align:right; margin-bottom:2px;">
+      <div class="row"><div class="col-md-12" style="text-align:left; margin-bottom:2px;">
         <span style="font-size:12px; opacity:0.75; margin-right:8px;">Period</span>
         <button class="btn btn-sm btn-info active" data-period="mtd">MTD</button>
         <button class="btn btn-sm btn-default" data-period="qtd">QTD</button>
@@ -518,8 +518,9 @@
                     <th>AEE</th>
                     <th>Objective</th>
                     <th>Avg Progress</th>
-                    <th class="text-right">Active Value</th>
-                    <th class="text-right">Inactive Value</th>
+                    <th class="text-right">WIP Value</th>
+                    <th class="text-right">On Deck Value</th>
+                    <th class="text-right">Total Project Value</th>
                     <th>Level</th>
                     <th>Business Unit</th>
                   </tr>
@@ -561,17 +562,20 @@
                           <span class="zero">—</span>
                         {% endif %}
                       </td>
-                      <td class="currency{% if not init.active_value %} zero{% endif %}">
-                        {% if init.active_value %}${{ init.active_value|intcomma }}{% else %}$ —{% endif %}
+                      <td class="currency{% if not init.wip_value %} zero{% endif %}">
+                        {% if init.wip_value %}${{ init.wip_value|intcomma }}{% else %}$ —{% endif %}
                       </td>
-                      <td class="currency{% if not init.inactive_value %} zero{% endif %}">
-                        {% if init.inactive_value %}${{ init.inactive_value|intcomma }}{% else %}$ —{% endif %}
+                      <td class="currency{% if not init.ondeck_value %} zero{% endif %}">
+                        {% if init.ondeck_value %}${{ init.ondeck_value|intcomma }}{% else %}$ —{% endif %}
+                      </td>
+                      <td class="currency{% if not init.total_value %} zero{% endif %}">
+                        {% if init.total_value %}${{ init.total_value|intcomma }}{% else %}$ —{% endif %}
                       </td>
                       <td>{{ init.level|default:"—" }}</td>
                       <td>{{ init.business_unit|default:"—" }}</td>
                     </tr>
                     <tr class="children-row is-hidden" data-init-id="{{ init.id }}">
-                      <td colspan="8">
+                      <td colspan="9">
                         <table class="children-table">
                           <thead>
                             <tr>
