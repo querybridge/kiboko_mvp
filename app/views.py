@@ -2140,7 +2140,7 @@ def insights_add_project(request):
     existing = existing.filter(vertical__company=bu.company) if bu is not None else existing.filter(vertical__isnull=True)
     dup = existing.first()
     if dup is not None:
-        messages.info(request, format_html(
+        messages.warning(request, format_html(
             '“{}” is already in <a href="{}">Project Prioritization</a> — not added again.',
             dup.name, reverse('project:approve_projects')))
         return redirect(request.POST.get('next') or 'app:insights')
