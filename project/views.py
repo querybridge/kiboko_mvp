@@ -115,7 +115,16 @@ def project(request):
             messages.success(request, f'Added "{p.name}" — pending business-unit approval.')
             return redirect('project:project_detail', project_id=p.id)
     else:
-        form = ProjectForm()
+        # Pre-select the Business Unit from the active top-bar scope so the
+        # estimator can auto-fill GA4 baselines on load (the form's Business Unit,
+        # not the scope, is what drives the fetch).
+        initial = {}
+        sv = request.session.get('scope_vertical')
+        if sv and sv != 'all' and str(sv).isdigit():
+            from business_unit.models import BusinessUnit
+            if BusinessUnit.objects.filter(pk=sv).exists():
+                initial['vertical'] = sv
+        form = ProjectForm(initial=initial)
     from project.services import impact
     aee_color = {'attract_traffic': '#3FC9E0', 'engage_customers': '#ECB752',
                  'expand_purchase': '#55C892'}
