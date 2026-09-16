@@ -2145,22 +2145,14 @@ def insights_add_project(request):
             dup.name, reverse('project:approve_projects')))
         return redirect(request.POST.get('next') or 'app:insights')
 
-    # Draft a user story in the standard format ("As a…, I want…, so that…").
-    # Definition of Done is left blank — real acceptance criteria are written when
-    # the entry is completed (it lands in Incomplete Entries either way).
-    benefit = {
-        'shopper': 'more shoppers discover and visit the store',
-        'close': 'more shoppers complete their purchase',
-        'order value': 'shoppers get more value from each order',
-    }.get(kw, f'we improve {metric_label.lower()}')
-    goal = rec.text.strip().rstrip('.')
-    goal = (goal[0].lower() + goal[1:]) if goal else goal
-    why = f'As a shopper, I want to {goal}, so that {benefit}.'[:400]
-
+    # User Story and Definition of Done are left blank — the owner writes a proper
+    # story (correct format) and real acceptance criteria when completing the entry
+    # (it lands in Incomplete Entries either way). The insight's context is kept as
+    # a comment below.
     p = Project(
         name=name, owner=request.user, vertical=bu, department=dept,
         objective=objective, year=date.today().year, approved=False,
-        why=why, definition_of_done='')
+        why='', definition_of_done='')
     p.save()   # derive_status -> 'Incomplete Entry' (intake); approved=False
     impact.recompute_scores(company=p._company())
     # Keep the insight's context (not in the user story) as an audit comment.
