@@ -113,6 +113,9 @@ class ProjectForm(ModelForm):
             'lever': 'Which of the six sales levers this project improves.',
             'target_from': 'Auto-filled from GA4 when available; enter manually otherwise.',
             's0_annual': 'The business unit’s annual sales run-rate (auto from GA4 when available).',
+            'why': 'Format: As a [user persona], I want [goal/action], so that [benefit/value].',
+            'definition_of_done': 'The criteria the project must meet for the team to call it '
+                                  'complete and ready for customers.',
         }
         widgets = {
             'name': TextInput(attrs={}),
@@ -121,8 +124,10 @@ class ProjectForm(ModelForm):
             'vertical': Select(attrs={}),
             'department': Select(attrs={}),
             'target_completion': DateInput(attrs={'class': 'datepicker', 'type': 'date'}),
-            'why': Textarea(attrs={'rows': 3}),
-            'definition_of_done': TextInput(attrs={}),
+            'why': Textarea(attrs={'rows': 3, 'maxlength': 400,
+                                   'placeholder': 'As a shopper, I want …, so that …'}),
+            'definition_of_done': Textarea(attrs={'rows': 3, 'maxlength': 350,
+                                                  'placeholder': 'e.g. Live for all users; success metric tracked; no P1 bugs; …'}),
             'lever': Select(attrs={}),
             # Unit-bearing values are kept raw in hidden inputs; the template shows
             # formatted, per-lever displays (rates as %, counts with commas, $ finance).

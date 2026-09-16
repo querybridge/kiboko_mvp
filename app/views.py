@@ -2145,13 +2145,29 @@ def insights_add_project(request):
             dup.name, reverse('project:approve_projects')))
         return redirect(request.POST.get('next') or 'app:insights')
 
+    # Draft a user story in the standard format ("As a…, I want…, so that…").
+    # Definition of Done is left blank — real acceptance criteria are written when
+    # the entry is completed (it lands in Incomplete Entries either way).
+    benefit = {
+        'shopper': 'more shoppers discover and visit the store',
+        'close': 'more shoppers complete their purchase',
+        'order value': 'shoppers get more value from each order',
+    }.get(kw, f'we improve {metric_label.lower()}')
+    goal = rec.text.strip().rstrip('.')
+    goal = (goal[0].lower() + goal[1:]) if goal else goal
+    why = f'As a shopper, I want to {goal}, so that {benefit}.'[:400]
+
     p = Project(
         name=name, owner=request.user, vertical=bu, department=dept,
         objective=objective, year=date.today().year, approved=False,
-        why=f'From Insights: {metric_label} is {moving}. {rec.text}'[:1000],
-        definition_of_done=rec.text[:350])
+        why=why, definition_of_done='')
     p.save()   # derive_status -> 'Incomplete Entry' (intake); approved=False
     impact.recompute_scores(company=p._company())
+    # Keep the insight's context (not in the user story) as an audit comment.
+    from strategy.models import ProjectComment
+    ProjectComment.objects.create(
+        project=p, author=request.user, approved_comment=True,
+        text=f'From Insights: {metric_label} is {moving}. {rec.text}')
 
     messages.success(request, format_html(
         'Added to Project Prioritization: “{}” is in <a href="{}">intake</a> awaiting '
