@@ -144,8 +144,11 @@ def realized_fraction(launch, ramp_days, today=None, year_end=None):
     return total / DAYS_IN_YEAR
 
 
-def plausibility(target, levels):
+def plausibility(target, levels, center=None):
     """How plausible is `target` given the lever's recent weekly `levels`?
+    Distance is measured from `center` (the current level / baseline, a volume-
+    weighted rate) in units of weekly volatility, so the gauge references the same
+    number the baseline shows; `center` falls back to the weekly mean when None.
     Returns z-score, weeks reached, band, gauge position, and a risk factor P
     (used to auto-discount the algorithmic score). Empty history -> neutral P=1."""
     vals = [float(x) for x in (levels or []) if x == x]
@@ -153,8 +156,9 @@ def plausibility(target, levels):
         return {'ok': False, 'factor': 1.0}
     import statistics as _s
     mean = _s.fmean(vals)
-    std = (_s.stdev(vals) if len(vals) > 1 else 0.0) or 1e-9
-    z = (target - mean) / std
+    ref = float(center) if center is not None else mean       # reference = current level
+    std = (_s.stdev(vals) if len(vals) > 1 else 0.0) or 1e-9   # weekly volatility
+    z = (target - ref) / std
     reached = sum(1 for v in vals if v >= target)
     if z <= 1.0:
         band, color = 'Plausible', '#2b83ba'
@@ -165,7 +169,7 @@ def plausibility(target, levels):
     else:
         band, color = 'Implausible', '#d7191c'
     P = 1.0 if z <= 1.0 else max(0.15, 1.0 - (z - 1.0) / 3.0)
-    return {'ok': True, 'z': z, 'mean': mean, 'std': std, 'n': len(vals),
+    return {'ok': True, 'z': z, 'ref': ref, 'mean': mean, 'std': std, 'n': len(vals),
             'reached': reached, 'hist_max': max(vals), 'hist_min': min(vals),
             'band': band, 'color': color, 'position': min(1.0, max(0.0, (z + 1) / 5)),
             'factor': P}

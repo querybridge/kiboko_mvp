@@ -413,23 +413,26 @@
     $('m_rf').textContent = Math.round(rf * 100) + '%';
   }
 
-  // Mirror impact.plausibility: sample z-score of the target vs the lever's weekly
-  // history, mapped to a band + colour + risk factor P (auto-discount).
-  function plausibility(target, levels) {
+  // Mirror impact.plausibility. The target's distance is measured from the
+  // CURRENT LEVEL (baseline `center`, the volume-weighted rate shown in the form)
+  // in units of weekly volatility, so the gauge references the same number as the
+  // baseline field. `center` falls back to the weekly mean when not supplied.
+  function plausibility(target, levels, center) {
     var vals = (levels || []).filter(function (x) { return x === x && isFinite(x); });
     if (vals.length < MIN_WEEKS) return null;
     var mean = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+    var ref = (center != null && isFinite(center)) ? center : mean;   // reference = current level
     var v = vals.length > 1 ? vals.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0)
                               / (vals.length - 1) : 0;
-    var std = Math.sqrt(v) || 1e-9;
-    var z = (target - mean) / std;
+    var std = Math.sqrt(v) || 1e-9;                                    // weekly volatility
+    var z = (target - ref) / std;
     var reached = vals.filter(function (x) { return x >= target; }).length;
     var band, color;
     if (z <= 1) { band = 'Plausible'; color = '#2b83ba'; }
     else if (z <= 2) { band = 'A stretch'; color = '#7fbf7b'; }
     else if (z <= 3) { band = 'Aggressive'; color = '#fdae61'; }
     else { band = 'Implausible'; color = '#d7191c'; }
-    return { z: z, mean: mean, n: vals.length, reached: reached, band: band, color: color,
+    return { z: z, ref: ref, mean: mean, n: vals.length, reached: reached, band: band, color: color,
              factor: z <= 1 ? 1 : Math.max(0.15, 1 - (z - 1) / 3),
              position: Math.min(1, Math.max(0, (z + 1) / 5)) };
   }
@@ -438,8 +441,9 @@
 
   function updatePlaus() {
     var lv = lever && lever.value, t = parseFloat(HID.to.value), unit = leverUnit(lv);
+    var center = parseFloat(HID.from.value);                 // the current level (baseline)
     var levels = (GA4 && GA4.weekly) ? GA4.weekly[lv] : null;
-    var pl = (levels && isFinite(t)) ? plausibility(t, levels) : null;
+    var pl = (levels && isFinite(t)) ? plausibility(t, levels, center) : null;
     if (pl) {
       $('plaus_live').style.display = '';
       $('plaus_empty').style.display = 'none';
@@ -448,8 +452,8 @@
       band.textContent = pl.band + ' · ' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ';
       band.style.color = pl.color;
       $('plaus_caption').innerHTML = 'Target reached <strong>' + pl.reached + ' of the last ' + pl.n +
-        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ vs a ' + fmtLever(pl.mean, unit) +
-        ' mean). ' + (pl.factor < 1
+        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ above your ' +
+        fmtLever(pl.ref, unit) + ' current level). ' + (pl.factor < 1
           ? 'Impact auto-discounted ×' + pl.factor.toFixed(2) + ' for the stretch.'
           : 'Within recent range — no discount.');
       if (pfactor) pfactor.value = pl.factor.toFixed(4);
