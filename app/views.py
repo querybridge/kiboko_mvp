@@ -593,7 +593,7 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
     # Executive view: only in-flight (WIP) and up-next (On Deck) projects.
     qs = _scope_to(
         Project.objects
-        .select_related('objective', 'department')
+        .select_related('objective', 'department', 'vertical')
         .annotate(
             project_count=Count('actions', distinct=True, filter=pipeline_filter),
             avg_progress=Avg('actions__progress', filter=pipeline_filter),
@@ -630,7 +630,8 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'objective': s.objective.name if s.objective_id and s.objective else '',
             'score': float(s.normalized_score) if s.normalized_score is not None else 0.0,
             'status': s.status or '',
-            'business_unit': s.department.name if s.department_id and s.department else '',
+            # The BusinessUnit (GA4 property) -- matches the top-bar selector.
+            'business_unit': s.vertical.name if s.vertical_id and s.vertical else '',
             'project_count': s.project_count or 0,
             # Actions currently in progress (started, not finished).
             'active_count': sum(1 for t in tasks if 0 < (t['progress'] or 0) < 100),
