@@ -781,10 +781,11 @@
       $('#summary-end-total').text(fmtDollar(s.end_total));
       $('#summary-budget').text(fmtDollar(s.budget_total));
       var deltaEl = $('#summary-delta');
-      deltaEl.text('$' + Math.abs(s.delta).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-      deltaEl.removeClass('green red');
-      // Green when Forecast + WIP Value meets/exceeds Budget; red when it falls short.
-      deltaEl.addClass((s.forecast + s.project_value) >= s.budget_total ? 'green' : 'red');
+      var met = (s.forecast + s.project_value) >= s.budget_total;
+      var amt = '$' + Math.abs(s.delta).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      // Shortfall (miss) shown in parentheses + red; surplus in green.
+      deltaEl.text(met ? amt : '(' + amt + ')');
+      deltaEl.removeClass('green red').css({color: met ? '#26b99a' : '#d9534f', 'font-weight': 700});
     }
 
     // Set initial summary
