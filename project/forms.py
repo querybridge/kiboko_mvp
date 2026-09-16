@@ -12,14 +12,17 @@ class ProjectForm(ModelForm):
     objective, so it isn't set here."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense', 'ramp_days'):
+        for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense',
+                  'ramp_days', 'plausibility_factor'):
             self.fields[f].required = False
+        self.fields['plausibility_factor'].initial = 1.0
 
     class Meta:
         model = Project
         fields = ['name', 'objective', 'owner', 'vertical', 'department',
                   'target_completion', 'why', 'definition_of_done',
-                  'lever', 'target_from', 'target_to', 's0_annual', 'ramp_days', 'direct_expense']
+                  'lever', 'target_from', 'target_to', 's0_annual', 'ramp_days',
+                  'direct_expense', 'plausibility_factor']
         labels = {
             'vertical': 'Business Unit',
             'department': 'Department',
@@ -56,6 +59,7 @@ class ProjectForm(ModelForm):
             's0_annual': NumberInput(attrs={'step': '1000'}),
             'ramp_days': NumberInput(attrs={'min': 1}),
             'direct_expense': NumberInput(attrs={'min': 0}),
+            'plausibility_factor': forms.HiddenInput(),
         }
 
 

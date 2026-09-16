@@ -65,6 +65,67 @@ def levers_from_metrics(m):
     }
 
 
+_FUND_KEYS = ('visits', 'visitors', 'new_visitors', 'carts', 'orders', 'units', 'sales')
+
+
+def _metrics_from_fund(f):
+    """Adapt a GA4 'fundamentals' dict to levers_from_metrics' expected keys."""
+    return {'users': f.get('visitors', 0), 'sessions': f.get('visits', 0),
+            'add_to_carts': f.get('carts', 0), 'transactions': f.get('orders', 0),
+            'items': f.get('units', 0), 'revenue': f.get('sales', 0)}
+
+
+def _sum_fund(recs):
+    tot = {k: 0.0 for k in _FUND_KEYS}
+    for r in recs:
+        for k in _FUND_KEYS:
+            tot[k] += float(r.get(k, 0) or 0)
+    return tot
+
+
+def _perday_levers(recs):
+    """Per-day lever levels for a set of daily fundamentals. Counts/flows are
+    averaged per day so flow levers (visitors, visits) are window-invariant and
+    comparable across a 90-day baseline vs 7-day weekly buckets; ratio levers are
+    unchanged (per-day cancels in the ratio)."""
+    n = len(recs) or 1
+    agg = _sum_fund(recs)
+    perday = {k: v / n for k, v in agg.items()}
+    return levers_from_metrics(_metrics_from_fund(perday))
+
+
+def baselines_from_daily(daily, window_days):
+    """Turn {'YYYY-MM-DD': fundamentals} into estimator baselines:
+      levels     -- {lever: current level} over the last `window_days`
+      s0_annual  -- annualized sales from that window
+      weekly     -- {lever: [weekly levels, oldest->newest]} for plausibility
+      window_days-- actual days used
+    Returns None if there's no data."""
+    items = sorted(daily.items())                 # (iso, fund) oldest -> newest
+    if not items:
+        return None
+    recs = [r for _iso, r in items]
+    win = recs[-window_days:] if window_days else recs
+    ndays = len(win) or 1
+    levers = _perday_levers(win)                          # per-day baseline levels
+    s0_annual = (_sum_fund(win)['sales'] / ndays) * DAYS_IN_YEAR
+
+    # 7-day buckets aligned to the most recent day, up to 52 weeks, oldest->newest.
+    weeks, i = [], len(recs)
+    while i > 0 and len(weeks) < 52:
+        weeks.append(recs[max(0, i - 7):i])
+        i -= 7
+    weeks.reverse()
+    weekly = {k: [] for k in LEVER_KEYS}
+    for chunk in weeks:
+        lv = _perday_levers(chunk)                        # per-day -> same scale as baseline
+        for k in LEVER_KEYS:
+            weekly[k].append(lv[k])
+
+    return {'levels': {k: levers[k] for k in LEVER_KEYS},
+            's0_annual': s0_annual, 'weekly': weekly, 'window_days': ndays}
+
+
 def realized_fraction(launch, ramp_days, today=None, year_end=None):
     """Average effectiveness across the fiscal year with a linear ramp."""
     today = today or date.today()

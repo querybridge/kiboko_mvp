@@ -7,6 +7,7 @@ app_name = 'project'
 urlpatterns = [
     path('view.html', views.view, name='all'),
     path('add.html', views.project, name='project'),
+    path('estimator-baseline/', views.estimator_baseline, name='estimator_baseline'),
     path('archive/', views.archive, name='archive'),
     # Intake pipeline
     path('approve/', views.approve_projects, name='approve_projects'),

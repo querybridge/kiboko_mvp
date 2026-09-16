@@ -123,10 +123,41 @@ def project(request):
                      'label': lbl} for k, (lbl, aee) in impact.LEVERS.items()}
     return render(request, 'project/add.html', {
         'form': form, 'title': 'Add Project', 'lever_aee': lever_aee,
-        # GA4 history isn't wired into intake yet -> gauge shown greyed out.
-        'has_ga4_history': False,
+        # Baselines are fetched from GA4 client-side (per selected Business Unit).
+        'baseline_url': reverse('project:estimator_baseline'),
         'plaus_min_weeks': impact.PLAUSIBILITY_MIN_WEEKS,
         'plaus_min_days': impact.PLAUSIBILITY_MIN_WEEKS * 7})
+
+
+@login_required
+def estimator_baseline(request):
+    """JSON: GA4-derived estimator baselines for the intake form's chosen Business
+    Unit. {connected, levels{lever:level}, s0_annual, weekly{lever:[...]},
+    window_days, min_weeks} or {connected: False, reason}."""
+    from app.integrations import ga4_dashboard
+    from project.services import impact
+    from project.models import EstimatorSettings
+    from business_unit.models import BusinessUnit
+    bu_id = request.GET.get('vertical')
+    bu = (BusinessUnit.objects.filter(pk=bu_id).select_related('company').first()
+          if bu_id else None)
+    if not bu:
+        return JsonResponse({'connected': False, 'reason': 'no-business-unit'})
+    settings = EstimatorSettings.current(bu.company)
+    window = (settings.baseline_window_days if settings else 90) or 90
+    daily = ga4_dashboard.baseline_daily_for_bu(request, bu, max(window, 364))
+    if not daily:
+        return JsonResponse({'connected': False, 'reason': 'not-connected'})
+    b = impact.baselines_from_daily(daily, window)
+    if not b:
+        return JsonResponse({'connected': False, 'reason': 'no-data'})
+    return JsonResponse({
+        'connected': True,
+        'window_days': b['window_days'],
+        's0_annual': round(b['s0_annual']),
+        'levels': {k: round(v, 6) for k, v in b['levels'].items()},
+        'weekly': {k: [round(x, 6) for x in v] for k, v in b['weekly'].items()},
+        'min_weeks': impact.PLAUSIBILITY_MIN_WEEKS})
 
 
 @login_required

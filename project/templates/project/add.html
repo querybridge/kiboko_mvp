@@ -59,6 +59,21 @@
   .plaus-ends { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted); }
   .plaus-ends.plaus-empty span { color: var(--text-disabled); }
   .plaus-note i { margin-right: 5px; opacity: .8; }
+  #plaus_marker {
+    position: absolute; top: -5px; width: 0; height: 0;
+    border-left: 6px solid transparent; border-right: 6px solid transparent;
+    border-top: 10px solid var(--text-primary); transform: translateX(-6px);
+    transition: left .18s ease; left: 0;
+  }
+
+  /* "from GA4" baseline-source badge + auto-filled input tint */
+  .baseline-src {
+    text-transform: none; letter-spacing: .3px; font-weight: 600; font-size: 10.5px;
+    color: #55C892; margin-left: 8px;
+  }
+  .baseline-src i { margin-right: 4px; }
+  .baseline-src.loading { color: var(--text-muted); }
+  input.ga4-auto { border-color: rgba(85,200,146,.55) !important; }
 
   .est-footnote { color: var(--text-muted); font-size: 11.5px; margin-top: 14px; line-height: 1.5; }
   .est-panel .form-group { margin-bottom: 12px; }
@@ -116,12 +131,15 @@
               <div class="est-section-label">The lever it moves</div>
               {{ form.lever|as_crispy_field }}
 
-              <div class="est-section-label">Baseline &amp; target</div>
+              <div class="est-section-label">Baseline &amp; target
+                <span id="baseline_src" class="baseline-src" style="display:none;"></span>
+              </div>
               <div class="row">
                 <div class="col-half col-sm-6">{{ form.target_from|as_crispy_field }}</div>
                 <div class="col-half col-sm-6">{{ form.target_to|as_crispy_field }}</div>
               </div>
               {{ form.s0_annual|as_crispy_field }}
+              {{ form.plausibility_factor }}
 
               <div class="est-section-label">Timing &amp; cost</div>
               <div class="row">
@@ -150,18 +168,26 @@
               </div>
 
               <div class="est-section-label" style="margin-top:16px;">Plausibility</div>
-              {% if has_ga4_history %}
-              <div class="plaus-bar"></div>
-              <div class="plaus-ends"><span>Plausible</span><span>Implausible</span></div>
-              <p class="est-hint" style="margin-top:6px;">Assessed against the lever's own GA4 history —
-                an over-aggressive target auto-discounts the score.</p>
-              {% else %}
-              <div class="plaus-bar plaus-empty"></div>
-              <div class="plaus-ends plaus-empty"><span>Plausible</span><span>Implausible</span></div>
-              <p class="est-hint plaus-note" style="margin-top:6px;"><i class="fa fa-lock"></i>Available with at least
-                {{ plaus_min_weeks }} weeks (~{{ plaus_min_days }} days) of connected GA4 history for this lever —
-                then an over-aggressive target auto-discounts the score.</p>
-              {% endif %}
+
+              <!-- Live gauge: shown when the scoped Business Unit has GA4 history -->
+              <div id="plaus_live" style="display:none;">
+                <div id="plaus_band" style="font-weight:700;font-size:12px;margin-bottom:3px;">&nbsp;</div>
+                <div class="plaus-bar" style="position:relative;">
+                  <div id="plaus_marker"></div>
+                </div>
+                <div class="plaus-ends"><span>Plausible</span><span>Implausible</span></div>
+                <p id="plaus_caption" class="est-hint" style="margin-top:6px;"></p>
+              </div>
+
+              <!-- Greyed-out placeholder until enough GA4 history exists -->
+              <div id="plaus_empty">
+                <div class="plaus-bar plaus-empty"></div>
+                <div class="plaus-ends plaus-empty"><span>Plausible</span><span>Implausible</span></div>
+                <p id="plaus_empty_note" class="est-hint plaus-note" style="margin-top:6px;">
+                  <i class="fa fa-lock"></i>Available with at least {{ plaus_min_weeks }} weeks
+                  (~{{ plaus_min_days }} days) of connected GA4 history for this lever — then an
+                  over-aggressive target auto-discounts the score.</p>
+              </div>
 
               <p class="est-footnote">
                 The <strong>Kiboko Effect</strong> rewards the heaviest impact, delivered fastest and most
@@ -195,9 +221,13 @@
   };
   var AEE_NAME = {attract_traffic: 'Attract', engage_customers: 'Engage', expand_purchase: 'Expand'};
 
+  var BASELINE_URL = '{{ baseline_url }}', MIN_WEEKS = {{ plaus_min_weeks }};
+  var GA4 = null;   // {levels{lever:level}, weekly{lever:[...]}, s0_annual, window_days}
+
   var $ = function (id) { return document.getElementById(id); };
   var lever = $('id_lever'), from = $('id_target_from'), to = $('id_target_to'),
       s0 = $('id_s0_annual'), ramp = $('id_ramp_days'), launch = $('id_target_completion'),
+      bu = $('id_vertical'), pfactor = $('id_plausibility_factor'), srcBadge = $('baseline_src'),
       chip = $('aee_chip'), panel = $('lever_accent');
 
   function fmtMoney(v) {
@@ -206,6 +236,9 @@
     return (neg ? '−$' : '$') + v.toLocaleString('en-US');
   }
   function fmtPct(p) { return (p >= 0 ? '+' : '') + (p * 100).toFixed(1) + '%'; }
+  function tidy(x) { return Math.abs(x) >= 100 ? Math.round(x).toLocaleString('en-US')
+                                               : parseFloat(Number(x).toPrecision(4)); }
+  function markManual(el) { if (el) { el.dataset.manual = '1'; el.classList.remove('ga4-auto'); } }
 
   // Mirror engine.realized_fraction: average linear-ramp effectiveness across the fiscal year.
   function realizedFraction(launchStr, rampDays) {
@@ -240,6 +273,7 @@
 
   function recalc() {
     updateAccent();
+    updatePlaus();
     var f = parseFloat(from && from.value), t = parseFloat(to && to.value),
         base = parseFloat(s0 && s0.value);
     if (!(f > 0) || isNaN(t)) { $('m_pct').textContent = '—'; $('m_gross').textContent = '—';
@@ -253,10 +287,114 @@
     $('m_rf').textContent = Math.round(rf * 100) + '%';
   }
 
-  [lever, from, to, s0, ramp, launch].forEach(function (el) {
+  // Mirror impact.plausibility: sample z-score of the target vs the lever's weekly
+  // history, mapped to a band + colour + risk factor P (auto-discount).
+  function plausibility(target, levels) {
+    var vals = (levels || []).filter(function (x) { return x === x && isFinite(x); });
+    if (vals.length < MIN_WEEKS) return null;
+    var mean = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+    var v = vals.length > 1 ? vals.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0)
+                              / (vals.length - 1) : 0;
+    var std = Math.sqrt(v) || 1e-9;
+    var z = (target - mean) / std;
+    var reached = vals.filter(function (x) { return x >= target; }).length;
+    var band, color;
+    if (z <= 1) { band = 'Plausible'; color = '#2b83ba'; }
+    else if (z <= 2) { band = 'A stretch'; color = '#7fbf7b'; }
+    else if (z <= 3) { band = 'Aggressive'; color = '#fdae61'; }
+    else { band = 'Implausible'; color = '#d7191c'; }
+    return { z: z, mean: mean, n: vals.length, reached: reached, band: band, color: color,
+             factor: z <= 1 ? 1 : Math.max(0.15, 1 - (z - 1) / 3),
+             position: Math.min(1, Math.max(0, (z + 1) / 5)) };
+  }
+
+  function setEmptyNote(html) { var n = $('plaus_empty_note'); if (n) n.innerHTML = html; }
+
+  function updatePlaus() {
+    var lv = lever && lever.value, t = parseFloat(to && to.value);
+    var levels = (GA4 && GA4.weekly) ? GA4.weekly[lv] : null;
+    var pl = (levels && isFinite(t)) ? plausibility(t, levels) : null;
+    if (pl) {
+      $('plaus_live').style.display = '';
+      $('plaus_empty').style.display = 'none';
+      $('plaus_marker').style.left = (pl.position * 100).toFixed(1) + '%';
+      var band = $('plaus_band');
+      band.textContent = pl.band + ' · ' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ';
+      band.style.color = pl.color;
+      $('plaus_caption').innerHTML = 'Target reached <strong>' + pl.reached + ' of the last ' + pl.n +
+        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ vs a ' + tidy(pl.mean) +
+        ' mean). ' + (pl.factor < 1
+          ? 'Impact auto-discounted ×' + pl.factor.toFixed(2) + ' for the stretch.'
+          : 'Within recent range — no discount.');
+      if (pfactor) pfactor.value = pl.factor.toFixed(4);
+      return;
+    }
+    // No live gauge -> show the greyed placeholder, with context-aware copy.
+    $('plaus_live').style.display = 'none';
+    $('plaus_empty').style.display = '';
+    if (pfactor) pfactor.value = '1.0';
+    if (GA4 && GA4.weekly && lv && (GA4.weekly[lv] || []).length >= MIN_WEEKS) {
+      setEmptyNote('<i class="fa fa-arrow-up"></i>Enter a target level to assess plausibility against this lever’s GA4 history.');
+    } else if (GA4) {
+      setEmptyNote('<i class="fa fa-lock"></i>Not enough GA4 history for this lever yet (need at least ' +
+        MIN_WEEKS + ' weeks).');
+    } else {
+      setEmptyNote('<i class="fa fa-lock"></i>Available with at least ' + MIN_WEEKS +
+        ' weeks of connected GA4 history for the selected Business Unit — then an over-aggressive target auto-discounts the score.');
+    }
+  }
+
+  // Auto-fill baseline inputs from GA4 (only where the user hasn't typed a value).
+  function autofill() {
+    if (!GA4) return;
+    if (GA4.s0_annual && s0 && s0.dataset.manual !== '1') {
+      s0.value = Math.round(GA4.s0_annual); s0.classList.add('ga4-auto');
+    }
+    var lv = lever && lever.value;
+    if (lv && GA4.levels && GA4.levels[lv] != null && from && from.dataset.manual !== '1') {
+      var x = GA4.levels[lv];
+      from.value = Math.abs(x) >= 100 ? Math.round(x) : parseFloat(Number(x).toPrecision(6));
+      from.classList.add('ga4-auto');
+    }
+  }
+
+  function fetchBaseline() {
+    var v = bu && bu.value;
+    if (!v) { GA4 = null; if (srcBadge) srcBadge.style.display = 'none'; recalc(); return; }
+    if (srcBadge) {
+      srcBadge.style.display = ''; srcBadge.className = 'baseline-src loading';
+      srcBadge.innerHTML = '<i class="fa fa-spinner fa-spin"></i>checking GA4…';
+    }
+    fetch(BASELINE_URL + '?vertical=' + encodeURIComponent(v),
+          { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.connected) {
+          GA4 = d;
+          if (srcBadge) { srcBadge.className = 'baseline-src';
+            srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from GA4 (' + d.window_days + '-day baseline)'; }
+          autofill();
+        } else {
+          GA4 = null; if (srcBadge) srcBadge.style.display = 'none';
+        }
+        recalc();
+      })
+      .catch(function () { GA4 = null; if (srcBadge) srcBadge.style.display = 'none'; recalc(); });
+  }
+
+  // Treat server-rendered values (e.g. after a POST error) as manual so we don't clobber them.
+  if (from && from.value) from.dataset.manual = '1';
+  if (s0 && s0.value) s0.dataset.manual = '1';
+
+  if (lever) lever.addEventListener('change', function () { autofill(); recalc(); });
+  [to, ramp, launch].forEach(function (el) {
     if (el) { el.addEventListener('input', recalc); el.addEventListener('change', recalc); }
   });
-  recalc();
+  if (from) from.addEventListener('input', function () { markManual(from); recalc(); });
+  if (s0) s0.addEventListener('input', function () { markManual(s0); recalc(); });
+  if (bu) bu.addEventListener('change', fetchBaseline);
+
+  if (bu && bu.value) fetchBaseline(); else recalc();
 })();
 </script>
 {% endblock javascripts %}

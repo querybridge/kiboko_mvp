@@ -884,6 +884,59 @@ def _bq_daily_actuals(bqp, start, end):
         return None
 
 
+def baseline_daily_for_bu(request, business_unit, days, end=None):
+    """{'YYYY-MM-DD': fundamentals} summed for ONE business unit over the last
+    `days` (through `end`, default yesterday), or None when it isn't connected /
+    the user can't read it. Unlike the dashboards this is driven by the intake
+    form's chosen Business Unit, not the top-bar scope. Fundamentals keys:
+    visits, visitors, new_visitors, carts, orders, units, sales."""
+    from business_unit.models import BigQueryConnection
+    from business_unit.access import can_access_company, allowed_bu_ids
+    user = getattr(request, 'user', None)
+    pid = getattr(business_unit, 'ga4_property_id', '')
+    if not user or not user.is_authenticated or not pid:
+        return None
+    company = business_unit.company
+    if not can_access_company(user, company):
+        return None
+    allowed = allowed_bu_ids(user, company)            # None = all
+    if allowed is not None and business_unit.id not in allowed:
+        return None
+
+    end = end or (datetime.date.today() - datetime.timedelta(days=1))
+    start = end - datetime.timedelta(days=days - 1)
+
+    # Premium (BigQuery / rollup) takes precedence over Standard (GA4 Data API).
+    bq = BigQueryConnection.objects.filter(company=company).first()
+    if bq and bq.service_account_json:
+        try:
+            out = {}
+            for day, rec in _daily_fundamentals(bq, [pid], start, end).items():
+                out[f'{day[:4]}-{day[4:6]}-{day[6:8]}'] = rec
+            return out
+        except Exception as e:
+            logger.warning('estimator baseline: Premium fundamentals unavailable (%s: %s)',
+                           type(e).__name__, e)
+            return None
+
+    if not google_oauth.is_enabled():
+        return None
+    identity = getattr(user, 'google_identity', None)
+    if not identity:
+        return None
+    try:
+        creds = google_oauth.credentials_from_identity(identity)
+        out = {}
+        for day, rec in ga4_data.fetch_daily_fundamentals(
+                creds, pid, start.isoformat(), end.isoformat()).items():
+            out[f'{day[:4]}-{day[4:6]}-{day[6:8]}'] = rec
+        return out
+    except Exception as e:
+        logger.warning('estimator baseline: GA4 fundamentals unavailable (%s: %s)',
+                       type(e).__name__, e)
+        return None
+
+
 def ga4_item_metrics(request, primary_code, compare_code, today=None):
     """Premium-only item/order-level + per-category metrics for Expand Purchases.
 
