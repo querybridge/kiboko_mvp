@@ -137,6 +137,7 @@
     animation: kb-toast-in .28s ease; }
   .kb-toast.error, .kb-toast.danger { border-left-color: var(--status-danger); }
   .kb-toast > .fa { color: var(--status-success); font-size: 16px; margin-top: 1px; }
+  .kb-toast.error > .fa, .kb-toast.danger > .fa { color: var(--status-danger); }
   .kb-toast-body a { color: var(--purple-200); text-decoration: underline; white-space: nowrap; }
   .kb-toast-x { background: none; border: 0; color: var(--text-muted); font-size: 18px; line-height: 1;
     cursor: pointer; padding: 0 2px; margin-left: auto; }
@@ -151,7 +152,7 @@
 <div class="kb-toast-wrap" id="kb_toasts">
   {% for message in messages %}
   <div class="kb-toast {{ message.tags }}">
-    <i class="fa fa-check-circle"></i>
+    <i class="fa {% if 'error' in message.tags or 'danger' in message.tags %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
     <div class="kb-toast-body">{{ message }}</div>
     <button type="button" class="kb-toast-x" aria-label="Dismiss">&times;</button>
   </div>
@@ -748,12 +749,12 @@
   refreshDisplays();                       // format any pre-rendered raw values
   if (bu && bu.value) fetchBaseline(); else recalc();
 
-  // ---- Success toasts: dismiss on click, auto-dismiss after 8s ----
+  // ---- Toasts: dismiss on click; success auto-dismisses, errors persist ----
   Array.prototype.forEach.call(document.querySelectorAll('#kb_toasts .kb-toast'), function (toast) {
     function dismiss() { toast.classList.add('hide'); setTimeout(function () { toast.remove(); }, 300); }
     var x = toast.querySelector('.kb-toast-x');
     if (x) x.addEventListener('click', dismiss);
-    setTimeout(dismiss, 8000);
+    if (!toast.classList.contains('error') && !toast.classList.contains('danger')) setTimeout(dismiss, 8000);
   });
 })();
 </script>

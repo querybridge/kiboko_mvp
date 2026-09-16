@@ -137,6 +137,18 @@ def project(request):
                 p.name, reverse('project:project_detail', kwargs={'project_id': p.id})))
             # Back to a fresh Add form so the fields reset for the next project.
             return redirect('project:project')
+        else:
+            # Surface why it didn't submit (a blank required field, an AEE mismatch)
+            # as an error toast, so the failure is never silent.
+            problems = []
+            for field, errs in form.errors.items():
+                if field == '__all__':
+                    problems.extend(errs)
+                    continue
+                fld = form.fields.get(field)
+                label = (fld.label if fld and fld.label else field.replace('_', ' ').title())
+                problems.append(f'{label}: {errs[0]}')
+            messages.error(request, 'Couldn’t submit — ' + ' · '.join(problems[:6]))
     else:
         # Convenience defaults (all still editable on the form).
         initial = {
