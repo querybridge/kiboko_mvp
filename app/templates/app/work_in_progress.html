@@ -21,6 +21,7 @@
     #gantt-panel .gantt-label:hover { color: var(--purple-300, #1a7a5c); text-decoration: underline; }
     #gantt-panel .gantt-track { position: relative; flex: 1; height: 100%; }
     #gantt-panel .gantt-bar { position: absolute; top: 6px; bottom: 6px; background: #c5f0e0; border-radius: 3px; min-width: 4px; overflow: visible; }
+    #gantt-panel .gantt-bar.gantt-dep { border-left: 3px solid #E0A65A; }
     #gantt-panel .gantt-bar.no-end { background: repeating-linear-gradient(45deg, #c5f0e0, #c5f0e0 6px, #d8f3e8 6px, #d8f3e8 12px); }
     #gantt-panel .gantt-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #1a7a5c; border-radius: 3px; max-width: 100%; }
     #gantt-panel .gantt-bar-pct { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--text-primary, #333); white-space: nowrap; }
@@ -164,9 +165,10 @@
           var $label = $('<a class="gantt-label"></a>')
             .attr({href: '/project/' + proj.id, 'data-project-id': proj.id});
           if (isFocus) $label.append('<i class="fa fa-angle-right gantt-focus-chevron"></i> ');
+          if (proj.has_deps) $label.append('<i class="fa fa-link" style="color:#E0A65A; margin-right:5px;" title="Starts after its dependencies"></i>');
           $label.append(document.createTextNode(proj.name));
           var $track = $('<div class="gantt-track"></div>');
-          var $bar = $('<div class="gantt-bar' + (entry.end ? '' : ' no-end') + '"></div>')
+          var $bar = $('<div class="gantt-bar' + (entry.end ? '' : ' no-end') + (proj.has_deps ? ' gantt-dep' : '') + '"></div>')
             .css({left: leftPct + '%', width: widthPct + '%'});
 
           var track = proj.objective_track || '#e2e2e2';
@@ -193,6 +195,7 @@
             var html = '<div class="tt-name">' + proj.name + '</div>'
               + '<div class="tt-row"><span class="tt-key">Task progress</span><span>' + pct2 + '%</span></div>'
               + '<div class="tt-row"><span class="tt-key">Team</span><span>' + (proj.team || '—') + '</span></div>'
+              + (proj.depends_on && proj.depends_on.length ? '<div class="tt-row"><span class="tt-key">Depends on</span><span>' + proj.depends_on.join(', ') + '</span></div>' : '')
               + '<div style="border-top:1px solid rgba(255,255,255,0.2); margin:5px 0 4px; padding-top:4px; color:#ccc;">Project</div>'
               + '<div class="tt-row"><span class="tt-key">Name</span><span>' + (proj.project_name || proj.quarterly_rock || '—') + '</span></div>'
               + '<div class="tt-row"><span class="tt-key">Value</span><span>' + fmtCurrency(proj.project_value != null ? proj.project_value : proj.value) + '</span></div>'

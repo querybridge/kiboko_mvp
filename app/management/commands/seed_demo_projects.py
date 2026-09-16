@@ -93,23 +93,34 @@ class Command(BaseCommand):
             )
             p.save()   # derive_status honors the explicit status; score computed from criteria
 
-            # One child execution task (Action) for the gantt / project detail.
-            launch = go_live
-            progress = rng.choice([20, 40, 65, 80]) if status == 'WIP' else 0
-            a = Action(
-                project=p, owner=p.owner, business_unit=dept, vertical=bu,
-                name=f'{name[:40]} — build', why=why, impact=dod,
-                objective=p.objective, launch=launch, progress=progress,
-                team=(rng.choice(teams) if teams else None),
-                measure=(rng.choice(measures) if measures else None),
-            )
-            a.save()
-            created_dt = date(year, 1, 1) + timedelta(days=rng.randint(0, 90))
-            fields = {'date_created': created_dt}
-            if status == 'WIP':
-                span_end = min(launch or today, today)
-                fields['active_date'] = created_dt + timedelta(days=rng.randint(0, max(0, (span_end - created_dt).days)))
-            Action.objects.filter(pk=a.pk).update(**fields)
+            # Execution tasks (Actions). WIP projects get a short dependency chain
+            # (Design -> Build -> QA & launch) so the gantt shows start guardrails;
+            # other projects get a single task.
+            def _mk_action(nm, launch_d, prog, dep=None):
+                act = Action(
+                    project=p, owner=p.owner, business_unit=dept, vertical=bu,
+                    name=nm[:350], why=why, impact=dod, objective=p.objective,
+                    launch=launch_d, progress=prog,
+                    team=(rng.choice(teams) if teams else None),
+                    measure=(rng.choice(measures) if measures else None))
+                act.save()
+                if dep is not None:
+                    act.depends_on.add(dep)
+                cdt = date(year, 1, 1) + timedelta(days=rng.randint(0, 45))
+                flds = {'date_created': cdt}
+                if status == 'WIP' and launch_d:
+                    span_end = min(launch_d, today)
+                    flds['active_date'] = cdt + timedelta(days=rng.randint(0, max(0, (span_end - cdt).days)))
+                Action.objects.filter(pk=act.pk).update(**flds)
+                return act
+
+            base = name[:28]
+            if status == 'WIP' and go_live:
+                d = _mk_action(f'{base} — Design & specs', go_live - timedelta(days=60), 100)
+                b = _mk_action(f'{base} — Build', go_live - timedelta(days=25), rng.choice([45, 60, 75]), dep=d)
+                _mk_action(f'{base} — QA & launch', go_live, rng.choice([0, 15, 30]), dep=b)
+            else:
+                _mk_action(f'{name[:40]} — build', go_live, 0)
             created += 1
 
         self.stdout.write(self.style.SUCCESS(

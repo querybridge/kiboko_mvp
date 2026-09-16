@@ -796,6 +796,11 @@ def _build_gantt_data(active_projects):
     items = []
     for p in active_projects:
         start = p.active_date or p.date_created
+        # Dependency guardrail: can't start before its dependencies' end dates.
+        guardrail = p.start_guardrail()
+        if guardrail and (start is None or guardrail > start):
+            start = guardrail
+        deps = list(p.depends_on.all())
         objective_name = str(p.objective) if p.objective_id and p.objective else ''
         colors = _objective_bar_colors(objective_name)
         proj = p.project if p.project_id else None   # parent Project (scored unit)
@@ -813,6 +818,8 @@ def _build_gantt_data(active_projects):
             'project_value': float(proj.value or 0) if proj else 0,
             'project_score': float(proj.normalized_score or 0) if proj else 0,
             'project_status': proj.status if proj else '',
+            'depends_on': [d.name for d in deps],
+            'has_deps': bool(deps),
             'objective_track': colors['track'],
             'objective_stripe': colors['stripe'],
             'objective_fill': colors['fill'],
@@ -1481,7 +1488,8 @@ def work_in_progress(request):
     # Kanban status now, so filter by it (not the vestigial Action.status).
     projects = _scope_to(
         Action.objects.filter(project__status='WIP', project__archived=False)
-        .select_related('project', 'objective', 'team').order_by('-project__normalized_score'),
+        .select_related('project', 'objective', 'team').prefetch_related('depends_on')
+        .order_by('-project__normalized_score'),
         vertical_id, company_id)
 
     gantt = _build_gantt_data(projects)

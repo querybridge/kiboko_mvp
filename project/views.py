@@ -120,11 +120,12 @@ def project(request):
 def project_detail(request, project_id):
     """A Project with its execution tasks (Actions) and an add-task form."""
     project = get_object_or_404(Project, pk=project_id)
-    actions = project.actions.select_related('owner', 'team', 'measure').order_by('launch', 'name')
+    actions = (project.actions.select_related('owner', 'team', 'measure')
+               .prefetch_related('depends_on').order_by('launch', 'name'))
     return render(request, 'project/detail.html', {
         'project': project,
         'actions': actions,
-        'action_form': ActionTaskForm(),
+        'action_form': ActionTaskForm(project=project),
     })
 
 
@@ -133,7 +134,7 @@ def project_detail(request, project_id):
 def add_action(request, project_id):
     """Add an execution task (Action) to a Project."""
     project = get_object_or_404(Project, pk=project_id)
-    form = ActionTaskForm(request.POST)
+    form = ActionTaskForm(request.POST, project=project)
     if form.is_valid():
         action = form.save(commit=False)
         action.project = project
@@ -141,6 +142,7 @@ def add_action(request, project_id):
         action.vertical = project.vertical
         action.objective = project.objective
         action.save()
+        form.save_m2m()   # persist depends_on
         messages.success(request, f'Added task "{action.name}".')
     else:
         messages.error(request, 'Could not add the task — check the fields.')

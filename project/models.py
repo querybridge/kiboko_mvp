@@ -67,9 +67,18 @@ class Action(models.Model):
 	impact_close_rate_value = models.IntegerField(default=0, null=True, blank=True)
 	impact_aov_value = models.IntegerField(default=0, null=True, blank=True)
 
+	# Actions this one depends on (they must finish first). Same-project only.
+	depends_on = models.ManyToManyField('self', symmetrical=False, related_name='dependents', blank=True)
+
 	@property
 	def project_value_total(self):
 		return (self.impact_visits_value or 0) + (self.impact_close_rate_value or 0) + (self.impact_aov_value or 0)
+
+	def start_guardrail(self):
+		"""Earliest start allowed by dependencies: the latest end (launch) date
+		among the actions this one depends on, or None if unconstrained."""
+		ends = [d.launch for d in self.depends_on.all() if d.launch]
+		return max(ends) if ends else None
 
 	@classmethod
 	def from_db(cls, db, field_names, values):

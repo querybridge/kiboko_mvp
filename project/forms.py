@@ -1,4 +1,4 @@
-from django.forms import ModelForm, Textarea, TextInput, CheckboxSelectMultiple, RadioSelect, Select, DateField, DateInput, NumberInput
+from django.forms import ModelForm, Textarea, TextInput, CheckboxSelectMultiple, RadioSelect, Select, SelectMultiple, DateField, DateInput, NumberInput
 from .models import Action, ActionComment
 from strategy.models import Measure, Project
 from django import forms
@@ -43,17 +43,28 @@ class ProjectForm(ModelForm):
 
 
 class ActionTaskForm(ModelForm):
-    """Add / edit an execution task (Action) under a Project."""
-    def __init__(self, *args, **kwargs):
+    """Add / edit an execution task (Action) under a Project. Dependencies can
+    only reference other actions in the same project; a dependent action can't
+    start before its dependencies' end (launch) dates."""
+    def __init__(self, *args, project=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['measure'].queryset = Measure.objects.filter(active=True)
-        for f in ('team', 'measure', 'launch', 'progress'):
+        for f in ('team', 'measure', 'launch', 'progress', 'depends_on'):
             self.fields[f].required = False
+        if project is not None:
+            qs = project.actions.all()
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            self.fields['depends_on'].queryset = qs
+        else:
+            self.fields['depends_on'].queryset = Action.objects.none()
 
     class Meta:
         model = Action
-        fields = ['name', 'owner', 'launch', 'progress', 'team', 'measure']
-        labels = {'team': 'Team', 'measure': 'Measure', 'launch': 'Target date'}
+        fields = ['name', 'owner', 'launch', 'progress', 'team', 'measure', 'depends_on']
+        labels = {'team': 'Team', 'measure': 'Measure', 'launch': 'Target date',
+                  'depends_on': 'Depends on'}
+        help_texts = {'depends_on': "Other tasks that must finish first; this task can't start until they end."}
         widgets = {
             'name': TextInput(attrs={}),
             'owner': Select(attrs={}),
@@ -61,6 +72,7 @@ class ActionTaskForm(ModelForm):
             'progress': NumberInput(attrs={'min': 0, 'max': 100}),
             'team': Select(attrs={}),
             'measure': Select(attrs={}),
+            'depends_on': SelectMultiple(attrs={'size': 4}),
         }
 
 
