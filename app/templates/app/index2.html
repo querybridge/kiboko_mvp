@@ -464,11 +464,10 @@
                       <td class="text-right" id="summary-forecast"></td>
                     </tr>
                     <tr>
-                      <td><strong>WIP Value</strong></td>
-                      <td class="text-right" id="summary-project-value"></td>
-                    </tr>
-                    <tr>
-                      <td><strong>Forecast + WIP Value</strong></td>
+                      <td><strong>Prorated Projected Value</strong>
+                        <i class="fa fa-info-circle" style="color:#888; cursor:help; margin-left:4px;"
+                           title="Prorated for the selected period: the share of each in-flight (WIP) project's value expected within this period, based on the projects that launch in it — not the full project value."></i>
+                      </td>
                       <td class="text-right" id="summary-end-total" style="font-weight:700"></td>
                     </tr>
                     <tr>
@@ -603,6 +602,33 @@
                     </tr>
                   {% endfor %}
                 </tbody>
+                <tfoot>
+                  <tr class="initiatives-total-row" style="font-weight:700; border-top:2px solid var(--border-strong, #cbb8ea);">
+                    <td class="initiative-cell">
+                      <div class="initiative-row">
+                        <span class="initiative-name">Total</span>
+                        <div class="mini-stat"><span class="label">Actions</span><span class="value">{{ initiatives_totals.actions }}</span></div>
+                        <div class="mini-stat active"><span class="label">Active</span><span class="value">{{ initiatives_totals.active }}</span></div>
+                      </div>
+                    </td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="avg-progress-cell">
+                      {% if initiatives_totals.avg_progress is not None %}
+                      <div class="avg-progress">
+                        <div class="avg-progress-track"><div class="avg-progress-fill" style="width: {{ initiatives_totals.avg_progress }}%;"></div></div>
+                        <span class="avg-progress-label">{{ initiatives_totals.avg_progress }}%</span>
+                      </div>
+                      {% else %}<span class="zero">—</span>{% endif %}
+                    </td>
+                    <td class="currency{% if not initiatives_totals.total_value %} zero{% endif %}">
+                      {% if initiatives_totals.total_value %}${{ initiatives_totals.total_value|intcomma }}{% else %}$ —{% endif %}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -777,7 +803,6 @@
       var s = d.summary;
       $('#summary-actual').text(fmtDollar(s.actual));
       $('#summary-forecast').text(fmtDollar(s.forecast));
-      $('#summary-project-value').text(fmtDollar(s.project_value));
       $('#summary-end-total').text(fmtDollar(s.end_total));
       $('#summary-budget').text(fmtDollar(s.budget_total));
       var deltaEl = $('#summary-delta');

@@ -156,7 +156,14 @@
 
       teamNames.forEach(function(team) {
         var entries = groups[team];
-        var totalValue = entries.reduce(function(s, e) { return s + (e.proj.value || 0); }, 0);
+        // Value lives on the Project (the scored unit), not the Actions — sum each
+        // distinct parent project once so this matches the Kanban / pipeline WIP value.
+        var seenProj = {}, totalValue = entries.reduce(function(s, e) {
+          var pid = e.proj.project_id;
+          if (pid == null || seenProj[pid]) return s;
+          seenProj[pid] = true;
+          return s + (e.proj.project_value || 0);
+        }, 0);
         var $header = $('<div class="gantt-team-header"></div>')
           .append($('<span></span>').text(team))
           .append($('<span class="team-count"></span>').text(entries.length + (entries.length === 1 ? ' action' : ' actions')))

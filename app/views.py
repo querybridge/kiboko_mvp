@@ -537,8 +537,15 @@ def index(request):
     # Build performance scorecard data
     performance_data = _build_performance_data(_t, vertical_id=vertical_id, actuals=ga4_actuals, company_id=company_id)
 
-    # Build initiatives summary
+    # Build initiatives summary + a totals row for the table footer.
     initiatives = _build_initiatives_summary(vertical_id=vertical_id, company_id=company_id)
+    _progs = [i['avg_progress'] for i in initiatives if i.get('avg_progress') is not None]
+    initiatives_totals = {
+        'actions': sum(i.get('project_count') or 0 for i in initiatives),
+        'active': sum(i.get('active_count') or 0 for i in initiatives),
+        'avg_progress': round(sum(_progs) / len(_progs)) if _progs else None,
+        'total_value': sum(i.get('total_value') or 0 for i in initiatives),
+    }
 
     return render(request, 'app/index2.html', {
         'annual_rocks_data': annual_rocks_data,
@@ -547,6 +554,7 @@ def index(request):
         'chart_data_ytd': json.dumps(chart_data['ytd']),
         'performance_data': json.dumps(performance_data),
         'initiatives': initiatives,
+        'initiatives_totals': initiatives_totals,
     })
 
 
