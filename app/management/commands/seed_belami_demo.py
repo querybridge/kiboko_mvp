@@ -119,6 +119,7 @@ class Command(BaseCommand):
 
         self._seed_performance(belami, bus, start, end, rng)
         self._seed_projects(belami, bus, rng)
+        self._seed_actions(belami, rng)
         from project.services import impact
         impact.recompute_scores(company=belami)
         self.stdout.write(self.style.SUCCESS('seed_belami_demo: done.'))
@@ -253,3 +254,42 @@ class Command(BaseCommand):
             p.save()   # explicit status is honored; save computes voted_score
             created += 1
         self.stdout.write(f'  projects: {created} created across statuses / business units.')
+
+    # ---- execution tasks (Actions) for the WIP gantt ------------------------
+    def _seed_actions(self, belami, rng):
+        from datetime import timedelta
+        from project.models import Action
+        from business_unit.models import Team, Department
+        teams = list(Team.objects.all())
+        depts = list(Department.objects.all())
+        today = date.today()
+        # The WIP gantt lists Actions of WIP projects; give each a chained set of
+        # steps ending near-term so bars land in the current MTD/QTD period.
+        STEPS = ['Discovery & specs', 'Design & build', 'QA & launch']
+        made = 0
+        for p in Project.objects.filter(vertical__company=belami, status='WIP'):
+            if Action.objects.filter(project=p).exists():
+                continue
+            go = today + timedelta(days=rng.randint(35, 70))         # near-future go-live
+            Project.objects.filter(pk=p.pk).update(target_completion=go)
+            spans = [go - timedelta(days=55), go - timedelta(days=20), go]
+            progs = [100, rng.choice([55, 65, 75]), rng.choice([0, 15, 30])]
+            prev = None
+            for name, launch_d, prog in zip(STEPS, spans, progs):
+                a = Action(
+                    project=p, owner=p.owner,
+                    business_unit=p.department or (depts[0] if depts else None),
+                    vertical=p.vertical, objective=p.objective, name=name,
+                    why=(p.why or name)[:400], impact=(p.definition_of_done or '')[:75],
+                    launch=launch_d, progress=prog,
+                    team=rng.choice(teams) if teams else None)
+                a.save()
+                if prev is not None:
+                    a.depends_on.add(prev)
+                created_dt = launch_d - timedelta(days=rng.randint(20, 40))
+                Action.objects.filter(pk=a.pk).update(
+                    date_created=created_dt,
+                    active_date=created_dt + timedelta(days=rng.randint(3, 12)))
+                prev = a
+            made += 1
+        self.stdout.write(f'  actions: seeded step chains for {made} WIP projects.')
