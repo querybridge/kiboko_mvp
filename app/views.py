@@ -1735,6 +1735,23 @@ def manage_users(request):
             company=company, role='admin').values_list('user_id', flat=True))
         return admin_ids == {member.id}
 
+    def _flash_starter_creds(member, company):
+        """Flash the starter-login popup for a user who still has a pending starter
+        password (kept from account creation) and hasn't set their own yet. Called
+        after both 'add' and 'save roles' so the popup reflects the final role(s)."""
+        pw = request.session.get('starter_pw_by_uid', {}).get(str(member.id))
+        prof = getattr(member, 'profile', None)
+        if not (pw and prof and prof.must_change_password):
+            return False
+        request.session['new_user_creds'] = {
+            'name': member.get_full_name() or member.email or member.username,
+            'username': member.username, 'password': pw,
+            'roles': [ROLE_KEYS.get(r, r) for r in (prof.roles or [])],
+            'company': company.name,
+            'login_url': request.build_absolute_uri(reverse('users:login')),
+        }
+        return True
+
     if request.method == 'POST':
         action = request.POST.get('action', '')
         company = companies.filter(pk=request.POST.get('company', '')).first()
@@ -1763,6 +1780,11 @@ def manage_users(request):
                     member.save(update_fields=['password'])
                     member.profile.must_change_password = True
                     member.profile.save(update_fields=['must_change_password'])
+                    # Keep the starter password for this session so the popup can be
+                    # re-shown (with final roles) after "Save roles".
+                    by_uid = request.session.get('starter_pw_by_uid', {})
+                    by_uid[str(member.id)] = starter_pw
+                    request.session['starter_pw_by_uid'] = by_uid
                 elif first or last:
                     member.first_name = first or member.first_name
                     member.last_name = last or member.last_name
@@ -1772,15 +1794,9 @@ def manage_users(request):
                 if not member.profile.roles:
                     _set_roles(member, ['business_unit_user'])
                 if starter_pw:
-                    # Flash the starter login so it shows once in a copy-paste popup.
-                    request.session['new_user_creds'] = {
-                        'name': (f'{first} {last}'.strip() or email),
-                        'username': member.username, 'password': starter_pw,
-                        'roles': [ROLE_KEYS.get(r, r) for r in (member.profile.roles or [])],
-                        'company': company.name,
-                        'login_url': request.build_absolute_uri(reverse('users:login')),
-                    }
-                    messages.success(request, f'Added {email} — copy their starter login from the popup.')
+                    _flash_starter_creds(member, company)
+                    messages.success(request, f'Added {email} — assign roles, then copy their starter '
+                                              'login from the popup.')
                 else:
                     messages.success(request, f'Added {email} to {company.name}.')
 
@@ -1794,7 +1810,11 @@ def manage_users(request):
                                             '(Executive or Business Unit Leader).')
                 else:
                     _set_roles(member, roles_list)
-                    messages.success(request, f'Updated roles for {member.email or member.username}.')
+                    if _flash_starter_creds(member, company):
+                        messages.success(request, f'Roles saved for {member.email or member.username} — '
+                                                  'copy their starter login from the popup.')
+                    else:
+                        messages.success(request, f'Updated roles for {member.email or member.username}.')
 
         elif action == 'remove_member' and company:
             m = CompanyMembership.objects.filter(
