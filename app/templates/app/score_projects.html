@@ -20,8 +20,10 @@
   .sc-evidence .evidence-flag { display:inline-block; font-weight:700; color:#55C892; margin-right:6px; }
   .sc-evidence .evidence-flag i { margin-right:3px; }
   .sc-value { text-align:right; white-space:nowrap; }
-  .sc-value .amt { font-size:20px; font-weight:700; color:var(--status-success); }
+  .sc-value .amt { font-size:20px; font-weight:700; color:var(--status-success); line-height:1.1; }
   .sc-value .lbl { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
+  .sc-value .amt.amt-expected { font-size:16px; color:var(--text-primary); margin-top:8px; }
+  .sc-value .amt-realized { font-size:12px; color:var(--text-secondary); margin-top:6px; }
   /* AEE pill — colors mirror the value pipeline's Attract/Engage/Expand palette. */
   .aee-badge { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px;
                background:var(--bg-elevated); color:var(--accent-secondary); border:1px solid var(--border-subtle); }
@@ -111,8 +113,13 @@
           </div>
           <div class="sc-value">
             {% if p.has_voted %}<div style="margin-bottom:6px;"><span class="voted-badge"><i class="fa fa-check"></i> You voted</span></div>{% endif %}
-            <div class="amt">${{ p.value|default:0|floatformat:0|intcomma }}</div>
-            <div class="lbl">Projected value</div>
+            <div class="amt" title="Gross impact / yr = annual sales baseline × % lever change">${{ p.est_gross|default:0|floatformat:0|intcomma }}</div>
+            <div class="lbl">Gross impact / yr</div>
+            {% if p.est_expected is not None %}
+            <div class="amt amt-expected" title="Risk-adjusted expected return: realized × capability × plausibility">${{ p.est_expected|floatformat:0|intcomma }}</div>
+            <div class="lbl">Expected (risk-adjusted)</div>
+            <div class="amt-realized" title="Realized in year one, after ramp-up and go-live timing">${{ p.est_realized|floatformat:0|intcomma }} realized this year</div>
+            {% endif %}
             {% if p.effort_size %}<div style="margin-top:6px;"><span class="size-badge" title="Lead developer's effort sizing — weigh it in your Level of Effort score">Lead dev size: {{ p.effort_size }}</span></div>{% endif %}
           </div>
         </div>

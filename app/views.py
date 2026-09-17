@@ -2035,6 +2035,11 @@ def score_projects(request):
         p.progress = voting.vote_progress(p, eligible=eligible)
         p.my_vote = my_votes.get(p.id)
         p.has_voted = p.my_vote is not None
+        # Estimator context for voters: gross + risk-adjusted expected + realized-this-year.
+        est = p._estimate()
+        p.est_gross = int(round(est['gross_annual'])) if est else (p.value or 0)
+        p.est_expected = int(round(est['expected_realized'])) if est else None
+        p.est_realized = int(round(est['realized_annual'])) if est else None
         # Only the five voted criteria have sliders (LOE is the developer's input).
         crit = [c for c in _scoring_criteria(ScoringWeights.for_company(p._company()))
                 if c['field'] in VOTED_CRITERIA]
