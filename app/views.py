@@ -1816,6 +1816,27 @@ def manage_users(request):
                     else:
                         messages.success(request, f'Updated roles for {member.email or member.username}.')
 
+        elif action == 'show_login' and company:
+            # On-demand: pop the starter-login popup for a user who hasn't set their
+            # own password yet. Reissues a fresh starter password if this session no
+            # longer holds it (e.g. the account was added earlier).
+            member = User.objects.filter(pk=request.POST.get('user_id', '')).first()
+            if member and CompanyMembership.objects.filter(company=company, user=member).exists():
+                if not member.profile.must_change_password:
+                    messages.info(request, f'{member.email or member.username} has already set their own password.')
+                else:
+                    by_uid = request.session.get('starter_pw_by_uid', {})
+                    if str(member.id) not in by_uid:
+                        import secrets
+                        alphabet = ''.join(c for c in
+                                           'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789')
+                        pw = ''.join(secrets.choice(alphabet) for _ in range(8))
+                        member.set_password(pw); member.save(update_fields=['password'])
+                        by_uid[str(member.id)] = pw
+                        request.session['starter_pw_by_uid'] = by_uid
+                    _flash_starter_creds(member, company)
+                    messages.success(request, 'Starter login ready — copy it from the popup.')
+
         elif action == 'remove_member' and company:
             m = CompanyMembership.objects.filter(
                 pk=request.POST.get('membership_id', ''), company=company).first()

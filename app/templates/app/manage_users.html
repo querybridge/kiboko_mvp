@@ -71,6 +71,16 @@
                     </form>
                   </td>
                   <td>
+                    {% if m.user.profile.must_change_password %}
+                    <form method="post" style="display:inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="show_login">
+                      <input type="hidden" name="company" value="{{ entry.company.id }}">
+                      <input type="hidden" name="user_id" value="{{ m.user.id }}">
+                      <button type="submit" class="btn btn-default btn-xs" title="Show the starter login to email">
+                        <i class="fa fa-key"></i> Login</button>
+                    </form>
+                    {% endif %}
                     <form method="post" style="display:inline">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="remove_member">
@@ -152,9 +162,9 @@ You’ll be asked to set your own password the first time you sign in.</textarea
 {{ block.super }}
 {% if new_user_creds %}
 <script>
-  (function () {
-    var $m = window.jQuery && jQuery('#newUserModal');
-    if ($m && $m.modal) { $m.modal('show'); }
+  jQuery(function () {
+    var $m = jQuery('#newUserModal');
+    if ($m.length && $m.modal) { $m.modal('show'); }
     var ta = document.getElementById('newUserEmail'), btn = document.getElementById('copyNewUser');
     if (btn && ta) btn.addEventListener('click', function () {
       ta.select(); ta.setSelectionRange(0, 99999);
@@ -163,7 +173,7 @@ You’ll be asked to set your own password the first time you sign in.</textarea
       if (navigator.clipboard) { navigator.clipboard.writeText(ta.value); ok = true; }
       btn.innerHTML = ok ? '<i class="fa fa-check"></i> Copied' : 'Press Ctrl/Cmd-C';
     });
-  })();
+  });
 </script>
 {% endif %}
 {% endblock javascripts %}
