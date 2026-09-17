@@ -152,12 +152,16 @@ class Command(BaseCommand):
             # distribute each month's budget across its days, weighted by DOW x event.
             for (yy, mm) in months:
                 dim = calendar.monthrange(yy, mm)[1]
-                days = [date(yy, mm, dd) for dd in range(1, dim + 1)
-                        if start <= date(yy, mm, dd) <= end]
+                # Weight denominator spans the WHOLE month so a partial (current)
+                # month only lands its elapsed share — not the full month's revenue
+                # crammed into the days seen so far (which would ~2x the daily rate
+                # and blow up the current-month forecast).
+                all_days = [date(yy, mm, dd) for dd in range(1, dim + 1)]
+                wsum = sum(DOW_MULT[d.weekday()] * retail_event_mult(d) for d in all_days)
+                days = [d for d in all_days if start <= d <= end]
                 if not days:
                     continue
                 weights = [DOW_MULT[d.weekday()] * retail_event_mult(d) for d in days]
-                wsum = sum(weights)
                 # actuals land ~97% of budget with mild noise
                 month_actual = float(budgets[(bu.id, yy, mm)]) * 0.97
                 for d, w in zip(days, weights):

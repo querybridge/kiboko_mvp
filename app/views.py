@@ -92,20 +92,26 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
 
     actuals_total = sum((r for _, r in daily), Decimal('0'))
 
-    # Group actuals by day-of-week and compute averages
-    dow_totals = defaultdict(Decimal)
-    dow_counts = defaultdict(int)
+    # Group actuals by day-of-week. Use the MEDIAN (not the mean) per weekday so a
+    # single seasonal spike in the days seen so far — e.g. a Labor Day or a
+    # back-to-school promo landing early in the month — can't drag the projected
+    # remainder up and inflate the whole-month forecast. Median needs >=3 samples
+    # to shrug off one outlier; with fewer we fall back to the mean.
+    dow_values = defaultdict(list)
     for d_, r in daily:
-        dow = d_.weekday()  # 0=Mon ... 6=Sun
-        dow_totals[dow] += r
-        dow_counts[dow] += 1
+        dow_values[d_.weekday()].append(r)  # 0=Mon ... 6=Sun
 
-    dow_avg = {}
-    for dow in range(7):
-        if dow_counts[dow] > 0:
-            dow_avg[dow] = dow_totals[dow] / dow_counts[dow]
-        else:
-            dow_avg[dow] = Decimal('0')
+    def _dow_typical(vals):
+        n = len(vals)
+        if n == 0:
+            return Decimal('0')
+        if n < 3:
+            return sum(vals, Decimal('0')) / n
+        s = sorted(vals)
+        mid = n // 2
+        return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2
+
+    dow_avg = {dow: _dow_typical(dow_values[dow]) for dow in range(7)}
 
     # Count remaining days in month by day-of-week
     if last_of_month < today:
