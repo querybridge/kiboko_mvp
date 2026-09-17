@@ -2,12 +2,14 @@ from django.urls import path
 from django.contrib.auth.views import LoginView
 
 from . import views
+from .forms import TrimmedAuthenticationForm
 
 app_name = 'users'
 
 urlpatterns = [
-	#Login Page
-	path('login/', LoginView.as_view(template_name='users/login.html'), name='login'),
+	#Login Page (trims whitespace so a copy-pasted temporary password still works)
+	path('login/', LoginView.as_view(template_name='users/login.html',
+	                                  authentication_form=TrimmedAuthenticationForm), name='login'),
 
 	#Logout Function
 	path('logout/', views.logout_view, name='logout'),

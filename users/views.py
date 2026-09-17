@@ -32,17 +32,17 @@ def profile(request):
     temporary-password account must set its own password on first login."""
     from django.contrib import messages
     from django.contrib.auth import update_session_auth_hash
-    from django.contrib.auth.forms import PasswordChangeForm
     from django.contrib.auth.models import User
+    from users.forms import TrimmedPasswordChangeForm as PwForm
 
     prof = getattr(request.user, 'profile', None)
     must_change = bool(prof and prof.must_change_password)
-    pw_form = PasswordChangeForm(request.user)
+    pw_form = PwForm(request.user)
 
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'change_password':
-            pw_form = PasswordChangeForm(request.user, request.POST)
+            pw_form = PwForm(request.user, request.POST)
             if pw_form.is_valid():
                 user = pw_form.save()
                 update_session_auth_hash(request, user)          # stay logged in

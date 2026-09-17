@@ -137,6 +137,16 @@
       <div class="modal-body">
         <p class="text-muted">Copy this and email it to <strong>{{ c.name }}</strong>. The temporary password
           is shown only once; they’ll set their own on first sign-in.</p>
+        <div class="form-group">
+          <label style="font-weight:600;">Temporary password</label>
+          <div class="input-group">
+            <input type="text" id="newUserPw" class="form-control" readonly value="{{ c.password }}"
+                   style="font-family:monospace; font-size:15px; letter-spacing:1px;">
+            <span class="input-group-btn"><button type="button" class="btn btn-success" id="copyNewUserPw"><i class="fa fa-clipboard"></i> Copy</button></span>
+          </div>
+          <small class="text-muted">Copies exactly — no extra spaces.</small>
+        </div>
+        <label style="font-weight:600; margin-top:4px;">Full email</label>
         <textarea id="newUserEmail" class="form-control" rows="9" readonly style="font-family:monospace;">Hi {{ c.name }},
 
 Your Kiboko account for {{ c.company }} is ready.
@@ -165,14 +175,19 @@ You’ll be asked to set your own password the first time you sign in.</textarea
   jQuery(function () {
     var $m = jQuery('#newUserModal');
     if ($m.length && $m.modal) { $m.modal('show'); }
-    var ta = document.getElementById('newUserEmail'), btn = document.getElementById('copyNewUser');
-    if (btn && ta) btn.addEventListener('click', function () {
-      ta.select(); ta.setSelectionRange(0, 99999);
-      var ok = false;
-      try { ok = document.execCommand('copy'); } catch (e) {}
-      if (navigator.clipboard) { navigator.clipboard.writeText(ta.value); ok = true; }
-      btn.innerHTML = ok ? '<i class="fa fa-check"></i> Copied' : 'Press Ctrl/Cmd-C';
-    });
+    function wireCopy(fieldId, btnId, trim) {
+      var el = document.getElementById(fieldId), b = document.getElementById(btnId);
+      if (!el || !b) return;
+      b.addEventListener('click', function () {
+        el.select(); el.setSelectionRange(0, 99999);
+        var val = trim ? el.value.trim() : el.value, ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        if (navigator.clipboard) { navigator.clipboard.writeText(val); ok = true; }
+        b.innerHTML = ok ? '<i class="fa fa-check"></i> Copied' : 'Press Ctrl/Cmd-C';
+      });
+    }
+    wireCopy('newUserPw', 'copyNewUserPw', true);      // password only — trimmed
+    wireCopy('newUserEmail', 'copyNewUser', false);    // full email
   });
 </script>
 {% endif %}
