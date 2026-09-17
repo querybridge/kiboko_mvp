@@ -30,6 +30,33 @@ and isn't reachable).
        kiboko@ssh.pythonanywhere.com:/home/kiboko/kiboko_mvp/db.sqlite3
    ```
 
+## One-paste deploy + seed (PythonAnywhere Bash console)
+
+Pull code, apply migrations, (re)seed, collect static, and reload — in one paste.
+Edit `PY` if the virtualenv path differs (Web tab → *Virtualenv*), and the WSGI
+path if you use a custom domain (Web tab → *WSGI configuration file*).
+
+```bash
+cd /home/kiboko/kiboko_mvp && PY=/home/kiboko/.virtualenvs/kiboko/bin/python && \
+git pull && \
+$PY manage.py migrate --noinput && \
+$PY manage.py seed_organizations && \
+$PY manage.py seed_metric_recommendations && \
+$PY manage.py seed_belami_demo && \
+$PY manage.py collectstatic --noinput && \
+touch /var/www/kiboko_pythonanywhere_com_wsgi.py && \
+echo "✅ Deployed, seeded, and reloaded."
+```
+
+- `seed_belami_demo` rebuilds the Belami demo — projects across every status, WIP
+  gantt tasks, completed projects with Realized Performance, and retail-calendar
+  actuals (Labor Day / Black Friday spikes). It **reseeds Belami's DailyActual +
+  budgets** each run (demo data only) but leaves other companies untouched.
+- All three seed commands are safe to re-run. `git pull` + `migrate` keep server
+  data; they never reset the DB.
+- If a seed errors (e.g. Belami not provisioned), the reload won't run — fix it
+  and re-paste, or reload via the **Web tab → Reload** button.
+
 ## Routine deploy (code + schema, keeps server data)
 ```bash
 cd /home/kiboko/kiboko_mvp
