@@ -29,7 +29,7 @@ def register(request):
 @login_required
 def profile(request):
     """User Settings — change password and username. Also the landing page when a
-    starter-password account must set its own password on first login."""
+    temporary-password account must set its own password on first login."""
     from django.contrib import messages
     from django.contrib.auth import update_session_auth_hash
     from django.contrib.auth.forms import PasswordChangeForm

@@ -1,9 +1,8 @@
-"""Force a password change on first login for admin-created (starter-password)
+"""Force a password change on first login for admin-created (temporary-password)
 accounts. Until the user changes their password, every page redirects to User
 Settings. Google accounts never set the flag, so they're unaffected."""
 from django.shortcuts import redirect
 from django.urls import reverse
-from django.contrib import messages
 
 
 class ForcePasswordChangeMiddleware:
@@ -25,6 +24,7 @@ class ForcePasswordChangeMiddleware:
                     or path.startswith('/admin/')
                 )
                 if not allowed:
-                    messages.info(request, 'Set your own password to continue.')
+                    # The profile page shows an amber "temporary password" alert;
+                    # no toast here (it would be redundant).
                     return redirect('users:profile')
         return self.get_response(request)

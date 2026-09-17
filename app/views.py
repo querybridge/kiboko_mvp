@@ -1769,7 +1769,7 @@ def manage_users(request):
                 if member is None:
                     member = User.objects.create_user(
                         username=email[:150], email=email, first_name=first, last_name=last)
-                    # Give a random 8-char starter password + force a change on first
+                    # Give a random 8-char temporary password + force a change on first
                     # login, so non-Google users can sign in. (Google users log in
                     # without a password and never see this.)
                     import secrets
@@ -1780,7 +1780,7 @@ def manage_users(request):
                     member.save(update_fields=['password'])
                     member.profile.must_change_password = True
                     member.profile.save(update_fields=['must_change_password'])
-                    # Keep the starter password for this session so the popup can be
+                    # Keep the temporary password for this session so the popup can be
                     # re-shown (with final roles) after "Save roles".
                     by_uid = request.session.get('starter_pw_by_uid', {})
                     by_uid[str(member.id)] = starter_pw
@@ -1795,7 +1795,7 @@ def manage_users(request):
                     _set_roles(member, ['business_unit_user'])
                 if starter_pw:
                     _flash_starter_creds(member, company)
-                    messages.success(request, f'Added {email} — assign roles, then copy their starter '
+                    messages.success(request, f'Added {email} — assign roles, then copy their temporary '
                                               'login from the popup.')
                 else:
                     messages.success(request, f'Added {email} to {company.name}.')
@@ -1812,13 +1812,13 @@ def manage_users(request):
                     _set_roles(member, roles_list)
                     if _flash_starter_creds(member, company):
                         messages.success(request, f'Roles saved for {member.email or member.username} — '
-                                                  'copy their starter login from the popup.')
+                                                  'copy their temporary login from the popup.')
                     else:
                         messages.success(request, f'Updated roles for {member.email or member.username}.')
 
         elif action == 'show_login' and company:
             # On-demand: pop the starter-login popup for a user who hasn't set their
-            # own password yet. Reissues a fresh starter password if this session no
+            # own password yet. Reissues a fresh temporary password if this session no
             # longer holds it (e.g. the account was added earlier).
             member = User.objects.filter(pk=request.POST.get('user_id', '')).first()
             if member and CompanyMembership.objects.filter(company=company, user=member).exists():
@@ -1835,7 +1835,7 @@ def manage_users(request):
                         by_uid[str(member.id)] = pw
                         request.session['starter_pw_by_uid'] = by_uid
                     _flash_starter_creds(member, company)
-                    messages.success(request, 'Starter login ready — copy it from the popup.')
+                    messages.success(request, 'Temporary login ready — copy it from the popup.')
 
         elif action == 'remove_member' and company:
             m = CompanyMembership.objects.filter(
