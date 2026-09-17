@@ -10,6 +10,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template import loader
+from django.urls import reverse
 from django.utils.html import format_html
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db import models
@@ -1771,10 +1772,15 @@ def manage_users(request):
                 if not member.profile.roles:
                     _set_roles(member, ['business_unit_user'])
                 if starter_pw:
-                    messages.success(request, format_html(
-                        'Added <strong>{}</strong> to {}. Email them their starter login (shown once): '
-                        'username <code>{}</code> · password <code>{}</code>. They’ll set their own '
-                        'password on first sign-in.', email, company.name, member.username, starter_pw))
+                    # Flash the starter login so it shows once in a copy-paste popup.
+                    request.session['new_user_creds'] = {
+                        'name': (f'{first} {last}'.strip() or email),
+                        'username': member.username, 'password': starter_pw,
+                        'roles': [ROLE_KEYS.get(r, r) for r in (member.profile.roles or [])],
+                        'company': company.name,
+                        'login_url': request.build_absolute_uri(reverse('users:login')),
+                    }
+                    messages.success(request, f'Added {email} — copy their starter login from the popup.')
                 else:
                     messages.success(request, f'Added {email} to {company.name}.')
 
@@ -1826,6 +1832,7 @@ def manage_users(request):
     return render(request, 'app/manage_users.html', {
         'companies_ctx': companies_ctx,
         'kiboko_roles': KIBOKO_ROLES,
+        'new_user_creds': request.session.pop('new_user_creds', None),   # -> starter-login popup
     })
 
 

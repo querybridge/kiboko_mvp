@@ -114,7 +114,56 @@
 
   </div>
 </div>
+
+{% if new_user_creds %}
+{% with c=new_user_creds %}
+<div class="modal fade" id="newUserModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title"><i class="fa fa-check-circle" style="color:var(--status-success);"></i> Account created</h4>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">Copy this and email it to <strong>{{ c.name }}</strong>. The starter password
+          is shown only once; they’ll set their own on first sign-in.</p>
+        <textarea id="newUserEmail" class="form-control" rows="9" readonly style="font-family:monospace;">Hi {{ c.name }},
+
+Your Kiboko account for {{ c.company }} is ready.
+
+Sign in:  {{ c.login_url }}
+Username: {{ c.username }}
+Temporary password: {{ c.password }}
+Role(s): {% for r in c.roles %}{{ r }}{% if not forloop.last %}, {% endif %}{% empty %}Business Unit User{% endfor %}
+
+You’ll be asked to set your own password the first time you sign in.</textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" id="copyNewUser"><i class="fa fa-clipboard"></i> Copy to clipboard</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endwith %}
+{% endif %}
 {% endblock content %}
 {% block javascripts %}
 {{ block.super }}
+{% if new_user_creds %}
+<script>
+  (function () {
+    var $m = window.jQuery && jQuery('#newUserModal');
+    if ($m && $m.modal) { $m.modal('show'); }
+    var ta = document.getElementById('newUserEmail'), btn = document.getElementById('copyNewUser');
+    if (btn && ta) btn.addEventListener('click', function () {
+      ta.select(); ta.setSelectionRange(0, 99999);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      if (navigator.clipboard) { navigator.clipboard.writeText(ta.value); ok = true; }
+      btn.innerHTML = ok ? '<i class="fa fa-check"></i> Copied' : 'Press Ctrl/Cmd-C';
+    });
+  })();
+</script>
+{% endif %}
 {% endblock javascripts %}
