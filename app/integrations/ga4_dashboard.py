@@ -120,9 +120,11 @@ def _premium_connection(request):
 
 
 def is_connected(request):
-    """True when the current scope is backed by real data (a GA4 property the user
-    can read, or a Premium BigQuery company). Dashboards show real-or-zeros then."""
-    return _premium_connection(request) is not None or _connected_scope(request) is not None
+    """True when the current scope is backed by real data: a Premium BigQuery
+    company, a GA4 property the user can read, or seeded/uploaded DailyActual.
+    Dashboards show real-or-zeros (never dummy) then."""
+    return (_premium_connection(request) is not None or _connected_scope(request) is not None
+            or _scope_has_actuals(request))
 
 
 def signin_prompt(request):
@@ -482,6 +484,103 @@ def _zero_rows(n):
 
 
 # --------------------------------------------------------------------------
+# DailyActual fallback — used when a company has neither a Premium (BigQuery)
+# nor Standard (GA4) connection but DOES have DailyActual rows (seeded/uploaded).
+# DailyActual carries only revenue / visits / orders, so the remaining GA4
+# "fundamentals" are best-effort estimates from fixed retail ratios. Dummy data
+# is reserved for a scope with no actuals at all.
+# --------------------------------------------------------------------------
+DA_SESSIONS_PER_VISITOR = 1.3      # sessions (visits) per visitor (user)
+DA_NEW_VISITOR_SHARE = 0.40
+DA_CART_COMPLETION = 0.35          # orders / carts
+DA_UNITS_PER_ORDER = 1.8
+# Best-effort device / channel mix for split cards (must sum ~1 per split).
+DA_DEVICE_MIX = {'desktop': 0.42, 'mobile': 0.50, 'tablet': 0.05, 'others': 0.03}
+DA_CHANNEL_MIX = {'direct': 0.26, 'organic': 0.34, 'paid': 0.18, 'social': 0.10,
+                  'referral': 0.08, 'others': 0.04}
+
+
+def _fund_from_actual(revenue, visits, orders):
+    visits = float(visits or 0); orders = float(orders or 0); revenue = float(revenue or 0)
+    visitors = visits / DA_SESSIONS_PER_VISITOR if visits else 0.0
+    carts = orders / DA_CART_COMPLETION if orders else 0.0
+    return {'visits': visits, 'visitors': visitors, 'new_visitors': visitors * DA_NEW_VISITOR_SHARE,
+            'carts': carts, 'orders': orders, 'units': orders * DA_UNITS_PER_ORDER, 'sales': revenue}
+
+
+def _scoped_verticals(request):
+    """BusinessUnits for the current top-bar scope (company + optional vertical),
+    access-checked, WITHOUT requiring a GA4 property (for the DailyActual tier)."""
+    from business_unit.models import BusinessUnit, Company
+    from business_unit.access import can_access_company, allowed_bu_ids
+    user = getattr(request, 'user', None)
+    company_id, vertical_sel, _ = _scope_ids(request)
+    if not company_id:
+        return []
+    company = Company.objects.filter(pk=company_id).first()
+    if not company or not can_access_company(user, company):
+        return []
+    allowed = allowed_bu_ids(user, company)
+    qs = BusinessUnit.objects.filter(company_id=company_id)
+    if allowed is not None:
+        qs = qs.filter(id__in=allowed)
+    if vertical_sel and vertical_sel != 'all':
+        qs = qs.filter(pk=vertical_sel)
+    return list(qs)
+
+
+def _actual_by_day(verticals, start, end):
+    """{'YYYYMMDD': fundamentals} from DailyActual summed over verticals, or None
+    when there are no rows in range."""
+    from app.models import DailyActual
+    if not verticals:
+        return None
+    agg = {}
+    for a in DailyActual.objects.filter(vertical__in=verticals, date__range=(start, end)):
+        acc = agg.setdefault(a.date.strftime('%Y%m%d'), {'r': 0.0, 'v': 0, 'o': 0})
+        acc['r'] += float(a.revenue or 0); acc['v'] += int(a.visits or 0); acc['o'] += int(a.orders or 0)
+    if not agg:
+        return None
+    return {k: _fund_from_actual(v['r'], v['v'], v['o']) for k, v in agg.items()}
+
+
+def _scope_has_actuals(request):
+    from app.models import DailyActual
+    verts = _scoped_verticals(request)
+    return bool(verts) and DailyActual.objects.filter(vertical__in=verts).exists()
+
+
+def _period_totals(by_day):
+    """Sum a {day: fundamentals} dict into one fundamentals total."""
+    t = {k: 0.0 for k in _FUND_KEYS}
+    for rec in (by_day or {}).values():
+        for k in _FUND_KEYS:
+            t[k] += rec.get(k, 0.0)
+    return t
+
+
+def _actual_split(verts, p_start, p_end, s_start, s_end, split):
+    """Best-effort device/channel split of DailyActual, in the shape _split_metrics
+    expects: (prim{bucket:fund}, sec{bucket:fund}, by_day{bucket:{YYYYMMDD:visits}})."""
+    mix = DA_DEVICE_MIX if split == 'device' else DA_CHANNEL_MIX
+    by_p = _actual_by_day(verts, p_start, p_end) or {}
+    tp, ts = _period_totals(by_p), _period_totals(_actual_by_day(verts, s_start, s_end) or {})
+    prim = {b: {k: tp[k] * frac for k in _FUND_KEYS} for b, frac in mix.items()}
+    sec = {b: {k: ts[k] * frac for k in _FUND_KEYS} for b, frac in mix.items()}
+    by_day = {b: {d: rec['visits'] * frac for d, rec in by_p.items()} for b, frac in mix.items()}
+    return prim, sec, by_day
+
+
+def _actual_engage_raw(t):
+    """Best-effort Engage raw counts from a DailyActual fundamentals total."""
+    v, o, carts = t['visits'], t['orders'], t['carts']
+    return {'sessions': v, 'engagedSessions': v * 0.58, 'userEngagementDuration': v * 95.0,
+            'screenPageViews': v * 4.6, 'addToCarts': carts, 'ecommercePurchases': o,
+            'view_item': v * 1.15, 'view_item_list': v * 0.85, 'view_cart': carts * 0.85,
+            'begin_checkout': carts * 0.55, 'add_shipping_info': o * 1.2}
+
+
+# --------------------------------------------------------------------------
 # Providers  (return real-or-zeros when connected, None when not connected)
 # --------------------------------------------------------------------------
 
@@ -501,7 +600,16 @@ def ga4_rows(request, primary_code, compare_code, today=None):
         return _bq_rows(bqp[0], bqp[1], primary_code, compare_code, _bq_today(bqp[0], today), custom)
     sc = _connected_scope(request)
     if sc is None:
-        return None
+        # DailyActual fallback (seeded/uploaded actuals) before dummy.
+        verts = _scoped_verticals(request)
+        p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
+        by_p = _actual_by_day(verts, p_start, p_end)
+        if by_p is None:
+            return None
+        rows_p, labels = _bucketize(*_order_days(by_p, p_start, p_end), MAX_POINTS)
+        by_s = _actual_by_day(verts, s_start, s_end) or {}
+        rows_s = _bucketize_to(_order_days(by_s, s_start, s_end)[0], len(rows_p))
+        return rows_p, rows_s, labels
     identity, property_ids, stream_id = sc
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
     try:
@@ -545,7 +653,14 @@ def ga4_splits(request, primary_code, compare_code, today=None):
         return _bq_splits(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
-        return None
+        # DailyActual fallback (best-effort device/channel mix) before dummy.
+        verts = _scoped_verticals(request)
+        p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
+        if _actual_by_day(verts, p_start, p_end) is None:
+            return None
+        dates_p = _range_dates(p_start, p_end)
+        return {split: _split_metrics(*_actual_split(verts, p_start, p_end, s_start, s_end, split),
+                                      dates_p, split) for split in ('device', 'channel')}
     identity, property_ids, stream_id = sc
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
     dates_p = _range_dates(p_start, p_end)
@@ -636,7 +751,16 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
         return _bq_engage_metrics(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
-        return None
+        # DailyActual fallback (best-effort funnel) before dummy.
+        verts = _scoped_verticals(request)
+        today = today or datetime.date.today()
+        p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
+        by_p = _actual_by_day(verts, p_start, p_end)
+        if by_p is None:
+            return None
+        by_s = _actual_by_day(verts, s_start, s_end) or {}
+        return _engage_payload(_engage_compute(_actual_engage_raw(_period_totals(by_p))),
+                               _engage_compute(_actual_engage_raw(_period_totals(by_s))))
     identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
@@ -885,16 +1009,15 @@ def _bq_daily_actuals(bqp, start, end):
 
 
 def baseline_status(request, business_unit):
-    """Why a BU can/can't auto-fill baselines, WITHOUT any network call:
-    'premium' / 'standard' (connectable) or 'no-access' / 'no-property' /
-    'no-oauth' / 'not-signed-in' (blocked)."""
+    """Why a BU can/can't auto-fill baselines, WITHOUT any network call. Connectable:
+    'premium' (BigQuery) / 'standard' (GA4) / 'dailyactual' (seeded/uploaded actuals).
+    Blocked: 'no-access' / 'no-property' / 'no-oauth' / 'not-signed-in' / 'no-data'."""
     from business_unit.models import BigQueryConnection
     from business_unit.access import can_access_company, allowed_bu_ids
+    from app.models import DailyActual
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
         return 'no-access'
-    if not getattr(business_unit, 'ga4_property_id', ''):
-        return 'no-property'
     company = business_unit.company
     if not can_access_company(user, company):
         return 'no-access'
@@ -904,11 +1027,16 @@ def baseline_status(request, business_unit):
     bq = BigQueryConnection.objects.filter(company=company).first()
     if bq and bq.service_account_json:
         return 'premium'
+    pid = getattr(business_unit, 'ga4_property_id', '')
+    if pid and google_oauth.is_enabled() and getattr(user, 'google_identity', None):
+        return 'standard'
+    if DailyActual.objects.filter(vertical=business_unit).exists():
+        return 'dailyactual'                           # seeded/uploaded actuals
+    if not pid:
+        return 'no-property'
     if not google_oauth.is_enabled():
         return 'no-oauth'
-    if not getattr(user, 'google_identity', None):
-        return 'not-signed-in'
-    return 'standard'
+    return 'not-signed-in'
 
 
 def baseline_daily_for_bu(request, business_unit, days, end=None):
@@ -918,12 +1046,18 @@ def baseline_daily_for_bu(request, business_unit, days, end=None):
     Business Unit, not the top-bar scope. Fundamentals keys: visits, visitors,
     new_visitors, carts, orders, units, sales."""
     status = baseline_status(request, business_unit)
-    if status not in ('premium', 'standard'):
+    if status not in ('premium', 'standard', 'dailyactual'):
         return None
-    pid = business_unit.ga4_property_id
+    pid = getattr(business_unit, 'ga4_property_id', '')
     company = business_unit.company
     end = end or (datetime.date.today() - datetime.timedelta(days=1))
     start = end - datetime.timedelta(days=days - 1)
+
+    if status == 'dailyactual':
+        by_day = _actual_by_day([business_unit], start, end)   # {'YYYYMMDD': fund}
+        if not by_day:
+            return None
+        return {f'{k[:4]}-{k[4:6]}-{k[6:8]}': rec for k, rec in by_day.items()}
 
     if status == 'premium':
         from business_unit.models import BigQueryConnection

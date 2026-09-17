@@ -222,7 +222,7 @@ def estimator_baseline(request):
     if window not in BASELINE_WINDOWS:
         window = DEFAULT_BASELINE_WINDOW
     status = ga4_dashboard.baseline_status(request, bu)
-    if status not in ('premium', 'standard'):
+    if status not in ('premium', 'standard', 'dailyactual'):
         return JsonResponse({'connected': False, 'reason': status})
     daily = ga4_dashboard.baseline_daily_for_bu(request, bu, window)
     if daily is None:
@@ -232,6 +232,7 @@ def estimator_baseline(request):
         return JsonResponse({'connected': False, 'reason': 'no-data'})
     return JsonResponse({
         'connected': True,
+        'source': {'premium': 'BigQuery', 'standard': 'GA4', 'dailyactual': 'actuals'}[status],
         'window_days': b['window_days'],
         's0_annual': round(b['s0_annual']),
         'levels': {k: round(v, 6) for k, v in b['levels'].items()},

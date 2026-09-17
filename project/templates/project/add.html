@@ -636,7 +636,7 @@
         if (d && d.connected) {
           GA4 = d;
           if (srcBadge) { srcBadge.className = 'baseline-src';
-            srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from GA4 (' + d.window_days + '-day window)'; }
+            srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from ' + (d.source || 'GA4') + ' (' + d.window_days + '-day window)'; }
           autofill();
         } else {
           GA4 = null;
