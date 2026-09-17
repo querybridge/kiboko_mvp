@@ -105,3 +105,78 @@ describe.
 3. **Ideation depth** (lever/target Recommend-Project flow + auto-narratives) and
    the **project-synergy / compounding** claim.
 4. Minor items (blocker escalation, inbox, Microsoft SSO) as fast-follows.
+
+---
+
+# Re-assessment — 2026-09-17
+
+Same three promise sources. Updated to reflect what has shipped since 2026-09-16
+(the impact estimator, plausibility accountability, evidence-backed targets,
+blended scoring, DailyActual data tier) and the **scaled-down Insights**.
+
+## Updated verdict
+
+The v1 report called the **auto impact-estimation math** the "single biggest
+conceptual gap." **That gap is now closed.** The Kiboko Effect estimator is built
+end-to-end and wired into scoring, so the MVP now delivers its *signature
+algorithmic claim*, not just the experiential loop. Remaining gaps are narrower:
+**project-to-project compounding, commercial plumbing (billing/signup), the
+post-launch Realized-Performance accountability loop, and auto-generated strategy
+narratives.** Insights is intentionally a **rules-based Wins/Losses recommender**,
+not AI ideation.
+
+## Newly MET since v1 ✅
+
+| Promise (source) | Now in the MVP |
+|---|---|
+| **Auto-derived "Kiboko estimated impact"** — size × speed × certainty × effort (was **Gap 1**, "must-ship") | Add Project **Impact Estimator**: pick the **lever**, **Target From → To**, sales baseline (auto from GA4/BigQuery/actuals or manual), **ramp time**, **direct expense**; a developer sets **effort (t-shirt XXS–XXL)** + **Capability to Complete**. Produces **Gross / Realized-this-year / Expected (risk-adjusted) / Net** and a 0–10 algorithmic priority relative to the backlog. |
+| **Score = the estimate, not a typed number** | Final score = **average of the anonymous vote (5 BVM criteria) and the algorithmic 0–10**, shown as **one number** so a HiPPO can't argue the vote up to rescue a vanity project. Revenue is **auto-estimated**, not analyst-typed (the Analyst stage was removed). |
+| **Plausibility / accountability gauge** (the Figma heat gradient — hold over-estimators accountable) | Live **plausibility gauge**: the target is scored against the lever's own weekly history (from the **current level**, in units of weekly volatility); an over-aggressive target **auto-discounts** the algorithmic score. Greys out until enough history exists. |
+| **Justification / intent for a target** | **Evidence-backed target**: anchor plausibility to an evidenced prior level (e.g. restoring a rate lost to a regression) with a required, **audited** note shown to voters — so a genuine recovery isn't unfairly discounted. |
+| **Lever/Target ideation fields** (Charter *Recommend Project*) — partial of **Gap 2** | Intake now captures **Lever, Target From→To, Ramp, baseline, go-live**, with the **lever scoped to the objective's AEE element** (AEE › Objective › Project enforced). |
+| GA4 via BigQuery **and** a graceful demo path | Data tiers now resolve **BigQuery (Premium) → GA4 (Standard) → DailyActual (seeded/uploaded) → dummy**, so a no-GA4 account shows **real seasonal performance** (retail-calendar actuals: Labor Day / Black Friday spikes) on the dashboards + estimator instead of generic sample data. |
+
+## Insights — scaled down (accurate current scope)
+
+Insights is a **"Wins & Losses" bridge**: metrics that moved ≥ 10% vs the
+comparison period, each with **admin-curated recommendations** (`MetricRecommendation`,
+~4 per metric × direction, editable in admin — *not* generated). **"Add project"**
+seeds an intake **draft** (name + objective from the metric; user story / DoD left
+blank; go-live defaults to quarter-end) that lands in **Incomplete Entries** until
+the estimator is completed. It is a curated analytics→prioritization handoff, **not**
+the auto-generating strategic-ideation engine the Charter's ideation screens imply.
+
+## Remaining gaps 🚩
+
+### Material
+1. **Project-to-project compounding / synergy** — still open. Action-level
+   dependencies exist within a project, but the headline "projects that benefit
+   each other" claim has no cross-project synergy detection. *(Unchanged from v1.)*
+2. **Realized Performance loop (post-launch accountability)** — the estimator's
+   back half. Prototyped (LMDI decomposition: did the lever actually move, and was
+   it this project?) but **not yet on the completed-project detail view**. Without
+   it, over-estimation is checked *before* launch (plausibility) but not *after*.
+3. **Billing / self-serve signup** — still a placeholder; no Stripe / trial gate.
+   *(Unchanged from v1.)*
+4. **Auto-generated Strategy/Tactic narratives** — the Charter's generated
+   summaries aren't produced; the user writes the user story / DoD (guided by
+   format hints). Insights recommendations are curated, not generated.
+
+### Minor / polish (unchanged from v1)
+Blocker auto-escalation with opportunity cost · inbox/alerts screen · Microsoft
+SSO · WTD scorecards + 13-week Gantt (MVP uses MTD/QTD/YTD) · user initials color.
+
+### Infra / pre-launch (tracked in `pre_launch_checklist.md`)
+MySQL migration · encrypt stored secrets (service-account JSON, refresh tokens,
+SendGrid key) · rotate committed SECRET_KEY · OAuth consent verification. On
+PythonAnywhere, live GA4/BigQuery need paid outbound; the DailyActual tier covers
+demos without it.
+
+## Recommended sequence (updated)
+
+1. **Realized Performance tab** on completed projects — closes the accountability
+   loop the estimator opened (highest-leverage next build).
+2. **Billing + self-serve signup** (Stripe, trial gate) — the gate to public launch.
+3. **Project synergy / compounding** — the last unbuilt signature differentiator.
+4. Fast-follows: blocker escalation, inbox, Microsoft SSO, WTD/13-week cadence;
+   then the pre-launch infra hardening.
