@@ -1,10 +1,22 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
 {% block title %} Project Intake {% endblock title %}
+{% block stylesheets %}{{ block.super }}
+<style>
+  /* Numbered pipeline steps flow 1 -> 2; the holding area is set apart. */
+  .intake-divider { margin: 40px 0 6px; border: 0; border-top: 1px solid var(--border-subtle); }
+  .intake-holding-label { text-transform: uppercase; letter-spacing: 1.4px; font-size: 11px;
+    font-weight: 700; color: var(--text-muted); margin: 0 0 14px; }
+  .x_panel.intake-holding { border: 1px dashed var(--border-strong) !important;
+    background: rgba(224, 166, 90, 0.05); box-shadow: none; }
+  .x_panel.intake-holding .x_title { border-bottom-color: var(--border-subtle); }
+  .x_panel.intake-holding .x_title h2 small { color: var(--status-warning); font-weight: 600; }
+</style>
+{% endblock stylesheets %}
 {% block content %}
 <div class="right_col" role="main">
   <div class="page-title">
-    <div class="title_left"><h3>Project Intake <small>Approval &rarr; Revenue &rarr; LOE &rarr; Ready to Score</small></h3></div>
+    <div class="title_left"><h3>Project Intake <small>BU Leader Approval &rarr; Effort &amp; Capability &rarr; Ready to Score</small></h3></div>
     <div class="clearfix"></div>
   </div>
 
@@ -19,9 +31,9 @@
   <!-- 1. Pending Approval (business-unit lead) -->
   <div class="row"><div class="col-md-12">
     <div class="x_panel">
-      <div class="x_title"><h2>1. Pending Approval <span class="badge bg-green">{{ pending_projects|length }}</span></h2><div class="clearfix"></div></div>
+      <div class="x_title"><h2>1. Pending Business Unit Leader Approval <span class="badge bg-green">{{ pending_projects|length }}</span></h2><div class="clearfix"></div></div>
       <div class="x_content">
-        <p class="text-muted">Complete projects awaiting a business-unit lead. Approving sends it to the Analyst for revenue.</p>
+        <p class="text-muted">Complete projects awaiting a business-unit leader. Approving sends it to the lead Developer for effort &amp; capability.</p>
         <table class="table table-striped table-bordered">
           <thead><tr><th>Project</th><th>Alignment</th><th>Definition of Done</th><th style="width:130px;">Action</th></tr></thead>
           <tbody>
@@ -83,12 +95,14 @@
     </div>
   </div></div>
 
-  <!-- Incomplete: finish required fields first -->
+  <!-- Holding area (BEFORE the pipeline): drafts that aren't ready to enter step 1 -->
   <div class="row"><div class="col-md-12">
-    <div class="x_panel">
-      <div class="x_title"><h2>Incomplete Entries <span class="badge">{{ incomplete_projects|length }}</span></h2><div class="clearfix"></div></div>
+    <hr class="intake-divider">
+    <p class="intake-holding-label">Not yet in the pipeline</p>
+    <div class="x_panel intake-holding">
+      <div class="x_title"><h2><i class="fa fa-inbox"></i> Incomplete Entries <small>complete before they enter step 1</small> <span class="badge">{{ incomplete_projects|length }}</span></h2><div class="clearfix"></div></div>
       <div class="x_content">
-        <p class="text-muted">Missing required fields (name, owner, objective, or definition of done). Complete these before approval.</p>
+        <p class="text-muted">Drafts missing required fields or a completed impact estimate (e.g. ideas added from Insights). Finish each before it can enter <strong>Pending Business Unit Leader Approval</strong>.</p>
         <table class="table table-striped table-bordered">
           <thead><tr><th>Project</th><th>Owner</th><th style="width:100px;">Edit</th></tr></thead>
           <tbody>
