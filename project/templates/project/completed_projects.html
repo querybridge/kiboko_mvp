@@ -1,0 +1,81 @@
+{% extends "app/base_site.html" %}
+{% load humanize %}
+{% block title %} Completed Projects {% endblock title %}
+{% block stylesheets %}{{ block.super }}
+<style>
+  .cp-filter { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .cp-filter label { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--text-muted); margin-bottom:4px; }
+  .cp-filter input[type=date] { width:auto; }
+  .cp-verdict { font-size:11px; font-weight:700; padding:2px 9px; border-radius:999px; display:inline-block; }
+  .cp-meaningful { color:#0B0616; background:#55C892; }
+  .cp-not_mainly, .cp-offset { color:#0B0616; background:#ECB752; }
+  .cp-mixed { color:var(--text-secondary); background:var(--bg-surface-muted); }
+</style>
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="page-title">
+    <div class="title_left"><h3>Completed Projects <small>Post-launch review — stays here until archived</small></h3></div>
+    <div class="clearfix"></div>
+  </div>
+
+  {% if messages %}
+  <div class="row"><div class="col-md-12">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif 'warning' in message.tags %}alert-warning{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  <div class="row"><div class="col-md-12">
+    <div class="x_panel">
+      <div class="x_content">
+        <form method="get" class="cp-filter">
+          <div><label for="from">Go-live from</label><input type="date" id="from" name="from" value="{{ d_from }}" class="form-control"></div>
+          <div><label for="to">to</label><input type="date" id="to" name="to" value="{{ d_to }}" class="form-control"></div>
+          <button type="submit" class="btn btn-primary">Apply</button>
+        </form>
+
+        <table class="table table-striped table-bordered">
+          <thead><tr>
+            <th>Project</th><th>Business Unit</th><th style="width:110px;">Go-live</th>
+            <th style="width:120px;">Est. value</th><th style="width:90px;">Status</th><th style="width:180px;">Action</th>
+          </tr></thead>
+          <tbody>
+            {% for p in page_obj %}
+            <tr>
+              <td><a href="{% url 'project:project_detail' p.id %}">{{ p.name }}</a></td>
+              <td>{{ p.vertical.name|default:"—" }}</td>
+              <td>{{ p.target_completion|date:"Y-m-d"|default:"—" }}</td>
+              <td>${{ p.value|default:0|intcomma }}</td>
+              <td><span class="cp-verdict cp-mixed">{{ p.status }}</span></td>
+              <td>
+                <a href="{% url 'project:project_detail' p.id %}#realized" class="btn btn-default btn-xs"><i class="fa fa-line-chart"></i> Realized</a>
+                <form method="post" action="{% url 'project:archive_project' p.id %}" style="display:inline"
+                      onsubmit="return confirm('Archive “{{ p.name|escapejs }}”?');">
+                  {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="btn btn-warning btn-xs"><i class="fa fa-archive"></i> Archive</button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted">No completed projects in this date range.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="text-center">
+          <ul class="pagination">
+            {% if page_obj.has_previous %}<li><a href="?from={{ d_from }}&to={{ d_to }}&page={{ page_obj.previous_page_number }}">&laquo;</a></li>{% endif %}
+            <li class="disabled"><span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}<li><a href="?from={{ d_from }}&to={{ d_to }}&page={{ page_obj.next_page_number }}">&raquo;</a></li>{% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+      </div>
+    </div>
+  </div></div>
+</div>
+{% endblock content %}

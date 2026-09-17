@@ -246,10 +246,17 @@ def project_detail(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     actions = (project.actions.select_related('owner', 'team', 'measure')
                .prefetch_related('depends_on').order_by('launch', 'name'))
+    # Post-launch back-half: Realized Performance on completed projects.
+    realized = None
+    if project.status in COMPLETED_STATUSES:
+        from app.integrations import ga4_dashboard
+        realized = ga4_dashboard.realized_perf_for_project(request, project)
     return render(request, 'project/detail.html', {
         'project': project,
         'actions': actions,
         'action_form': ActionTaskForm(project=project),
+        'realized': realized,
+        'completed': project.status in COMPLETED_STATUSES,
     })
 
 
@@ -408,18 +415,62 @@ def delete(request, project_id):
 
 
 # ---------------------------------------------------------------------------
-# Archive
+# Project Review — Completed Projects + Archive
 # ---------------------------------------------------------------------------
+# Completed = terminal statuses; they stay in Completed Projects until archived.
+COMPLETED_STATUSES = ('Complete', 'Launched')
+
+
+def _parse_ymd(s):
+    import datetime
+    try:
+        return datetime.date.fromisoformat(s) if s else None
+    except (ValueError, TypeError):
+        return None
+
+
+@login_required
+def completed_projects(request):
+    """Project Review: completed (non-archived) projects with a go-live date filter,
+    paginated. Each shows its post-launch Realized Performance on the detail page
+    and can be archived from here."""
+    import datetime
+    vertical_id = _get_vertical_id(request)
+    qs = _scope(Project.objects.filter(status__in=COMPLETED_STATUSES, archived=False)
+                .select_related('owner', 'objective', 'vertical', 'vertical__company', 'department'),
+                vertical_id, _get_company_id(request))
+    today = datetime.date.today()
+    d_from = _parse_ymd(request.GET.get('from')) or datetime.date(today.year - 1, 1, 1)
+    d_to = _parse_ymd(request.GET.get('to')) or today
+    qs = qs.filter(target_completion__range=(d_from, d_to)).order_by('-target_completion', '-date_modified')
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    return render(request, 'project/completed_projects.html', {
+        'title': 'Completed Projects', 'page_obj': page_obj,
+        'd_from': d_from.isoformat(), 'd_to': d_to.isoformat()})
+
+
 @login_required
 def archive(request):
+    """Project Review: archived projects (paginated)."""
     vertical_id = _get_vertical_id(request)
-    archived_projects = _scope(Project.objects.filter(
-        Q(archived=True) | Q(status='Complete')
-    ).order_by('-date_modified'), vertical_id, _get_company_id(request))
-    paginator = Paginator(archived_projects, 10)
+    qs = _scope(Project.objects.filter(archived=True)
+                .select_related('owner', 'objective', 'vertical', 'department')
+                .order_by('-date_modified'), vertical_id, _get_company_id(request))
+    paginator = Paginator(qs, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
-    return render(request, 'project/archive.html', {
-        'page_obj': page_obj, 'title': 'Archived Projects'})
+    return render(request, 'project/archive.html', {'page_obj': page_obj, 'title': 'Archive'})
+
+
+@login_required
+@require_POST
+def archive_project(request, project_id):
+    """Archive a completed project. Anyone can archive; it then leaves Completed
+    Projects for the Archive."""
+    p = get_object_or_404(Project, pk=project_id)
+    Project.objects.filter(pk=p.pk).update(archived=True)   # bypass save()/recompute
+    messages.success(request, f'Archived “{p.name}”.')
+    return redirect(request.POST.get('next') or 'project:completed_projects')
 
 
 # ---------------------------------------------------------------------------

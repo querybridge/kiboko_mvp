@@ -126,6 +126,59 @@ def baselines_from_daily(daily, window_days):
             's0_annual': s0_annual, 'weekly': weekly, 'window_days': ndays}
 
 
+def _log_mean(a, b):
+    """Logarithmic mean; L(a,a)=a. Makes LMDI contributions sum exactly."""
+    a, b = float(a), float(b)
+    if a <= 0 or b <= 0:
+        return 0.0
+    return a if a == b else (b - a) / (math.log(b) - math.log(a))
+
+
+def lmdi_decompose(before, after):
+    """Split the ACTUAL sales change (after - before) into exact per-lever dollar
+    contributions (LMDI-I): sum(contrib) == delta. Inputs are GA4 'fundamentals'
+    dicts. Returns {'delta', 'contrib': {lever: $}, 'residual'}."""
+    lb = levers_from_metrics(_metrics_from_fund(before))
+    la = levers_from_metrics(_metrics_from_fund(after))
+    lm = _log_mean(lb['sales'], la['sales'])
+    contrib = {}
+    for k in LEVER_KEYS:
+        a, b = lb[k], la[k]
+        contrib[k] = lm * math.log(b / a) if (a > 0 and b > 0) else 0.0
+    delta = la['sales'] - lb['sales']
+    return {'delta': delta, 'contrib': contrib, 'residual': delta - sum(contrib.values())}
+
+
+def realized_performance(before, after, lever, planned_pct=None):
+    """Post-launch back-half: did performance move, and was it this project's lever?
+    `before`/`after` are fundamentals for the pre-launch baseline vs the post-ramp
+    measurement window. Returns the sales delta, the lever's LMDI contribution +
+    share, its actual % move, estimate-vs-actual, and a verdict."""
+    dec = lmdi_decompose(before, after)
+    lb = levers_from_metrics(_metrics_from_fund(before))
+    la = levers_from_metrics(_metrics_from_fund(after))
+    base_sales = lb['sales']
+    perf_pct = dec['delta'] / base_sales if base_sales else 0.0
+    lever_contrib = dec['contrib'].get(lever, 0.0)
+    share = lever_contrib / dec['delta'] if abs(dec['delta']) > 1e-9 else 0.0
+    actual_lever_pct = (la[lever] / lb[lever] - 1) if lb.get(lever) else 0.0
+    predicted = base_sales * planned_pct if planned_pct is not None else None
+    if dec['delta'] > 0 and share > 0.40 and actual_lever_pct > 0:
+        verdict = 'meaningful'
+    elif dec['delta'] > 0 and share < 0.15:
+        verdict = 'not_mainly'
+    elif dec['delta'] <= 0 and actual_lever_pct > 0:
+        verdict = 'offset'
+    else:
+        verdict = 'mixed'
+    return {
+        'delta': dec['delta'], 'perf_pct': perf_pct, 'lever_contrib': lever_contrib,
+        'share': share, 'actual_lever_pct': actual_lever_pct, 'planned_pct': planned_pct,
+        'predicted': predicted, 'residual': dec['residual'], 'verdict': verdict,
+        'contrib': dec['contrib'], 'base_sales': base_sales,
+    }
+
+
 def realized_fraction(launch, ramp_days, today=None, year_end=None):
     """Average effectiveness across the fiscal year with a linear ramp."""
     today = today or date.today()

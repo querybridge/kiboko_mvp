@@ -1086,6 +1086,53 @@ def baseline_daily_for_bu(request, business_unit, days, end=None):
         return None
 
 
+def realized_perf_for_project(request, project, measure_days=30):
+    """Post-launch realized performance for a completed project, or a status dict.
+    Compares the project's targeted lever + sales over a post-ramp measurement
+    window vs the matching pre-launch window, via the project's data tier
+    (BigQuery / GA4 / DailyActual). Returns None when it can't be computed."""
+    from project.services import impact
+    launch = getattr(project, 'target_completion', None)
+    bu = getattr(project, 'vertical', None)
+    lever = getattr(project, 'lever', '') or ''
+    if not launch or not bu or lever not in impact.LEVER_KEYS:
+        return {'ok': False, 'reason': 'no-estimate'}
+    ramp = int(getattr(project, 'ramp_days', 30) or 30)
+    ramp_end = launch + datetime.timedelta(days=ramp)
+    post = (ramp_end, ramp_end + datetime.timedelta(days=measure_days - 1))
+    base = (launch - datetime.timedelta(days=measure_days), launch - datetime.timedelta(days=1))
+    today = datetime.date.today()
+    if post[1] >= today:
+        return {'ok': False, 'reason': 'pending', 'ready_on': post[1]}   # window not elapsed yet
+
+    span_days = (post[1] - base[0]).days + 1
+    daily = baseline_daily_for_bu(request, bu, span_days, end=post[1])   # {'YYYY-MM-DD': fund}
+    if not daily:
+        return {'ok': False, 'reason': 'no-data'}
+
+    def _sum(s, e):
+        tot = {k: 0.0 for k in _FUND_KEYS}
+        for iso, fund in daily.items():
+            d = datetime.date.fromisoformat(iso)
+            if s <= d <= e:
+                for k in _FUND_KEYS:
+                    tot[k] += fund.get(k, 0.0)
+        return tot
+
+    before, after = _sum(*base), _sum(*post)
+    planned = None
+    if project.target_from and project.target_to and float(project.target_from) != 0:
+        planned = (float(project.target_to) - float(project.target_from)) / float(project.target_from)
+    rp = impact.realized_performance(before, after, lever, planned_pct=planned)
+    rp.update({'ok': True, 'lever': lever, 'lever_label': impact.LEVERS[lever][0],
+               'base_start': base[0], 'base_end': base[1], 'post_start': post[0], 'post_end': post[1],
+               # display percentages (the raw values are fractions)
+               'perf_pct_disp': rp['perf_pct'] * 100, 'share_disp': rp['share'] * 100,
+               'actual_lever_disp': rp['actual_lever_pct'] * 100,
+               'planned_disp': (planned * 100) if planned is not None else None})
+    return rp
+
+
 def ga4_item_metrics(request, primary_code, compare_code, today=None):
     """Premium-only item/order-level + per-category metrics for Expand Purchases.
 

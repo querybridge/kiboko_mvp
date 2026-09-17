@@ -177,6 +177,16 @@ class Command(BaseCommand):
     # ---- projects across all statuses ---------------------------------------
     def _seed_projects(self, belami, bus, rng):
         from project.services import impact
+        today = date.today()
+        # Fix up any pre-existing completed projects: un-archive (they stay in
+        # Completed until archived from the review) and give a past go-live so the
+        # Realized Performance window has elapsed.
+        for p in Project.objects.filter(vertical__company=belami, status__in=('Complete', 'Launched')):
+            upd = {'archived': False}
+            if not p.target_completion or p.target_completion >= today - timedelta(days=100):
+                upd['target_completion'] = today - timedelta(days=rng.randint(120, 220))
+            Project.objects.filter(pk=p.pk).update(**upd)
+
         obj = {o.aee_alignment: o for o in Objective.objects.all() if o.aee_alignment}
         # a couple of engage objectives exist; prefer "Close Rate"/"Shopping Activity"
         depts = list(Department.objects.all())
@@ -209,7 +219,10 @@ class Command(BaseCommand):
             ('AR “see the light in your room”', 'Lighting', 'engage_customers', 'Incomplete Entry', '', '', 0, False),
             ('Same-day-ship badge on eligible SKUs', 'Bailey Street Home', 'engage_customers', 'Blocked', 'L', 'new', 20, False),
             ('Warehouse relight energy retrofit', 'Lighting', 'expand_purchase', 'Complete', 'L', 'fully', 100, False),
-            ('Launched Q2 patio clearance engine', 'Patio', 'expand_purchase', 'Launched', 'XL', 'fully', 100, False),
+            ('Lighting.com nav & search relaunch', 'Lighting', 'attract_traffic', 'Complete', 'XL', 'mostly', 100, False),
+            ('Winter pre-order flow for heaters', 'Heating', 'engage_customers', 'Complete', 'M', 'fully', 100, False),
+            ('Bundle & save on designer shades', 'Bailey Street Home', 'expand_purchase', 'Launched', 'L', 'fully', 100, False),
+            ('Launched Q2 patio clearance engine', 'Patio', 'expand_purchase', 'Launched', 'XL', 'fully', 100, True),
         ]
 
         today = date.today()
@@ -229,15 +242,20 @@ class Command(BaseCommand):
                 (rng.randint(5, 10), rng.randint(5, 10), rng.randint(2, 8),
                  rng.randint(2, 8), rng.randint(1, 6), rng.randint(2, 8)) if scored_now
                 else (0, 0, 0, 0, 0, 0))
-            go = date(today.year, rng.randint(1, 12), rng.randint(1, 28))
+            # Completed projects get a PAST go-live so the post-launch measurement
+            # window has elapsed and Realized Performance can be computed.
+            if status in ('Complete', 'Launched'):
+                go = today - timedelta(days=rng.randint(120, 220))
+            else:
+                go = date(today.year, rng.randint(1, 12), rng.randint(1, 28))
 
             p = Project(
                 name=name, owner=rng.choice(owners), vertical=bu,
                 department=rng.choice(depts) if depts else None, objective=objective,
                 why=f'As a shopper, I want {name.lower()}, so that Belami {bu_name} grows.'[:400],
                 definition_of_done='Shipped to all users; success metric tracked; no P1 defects.',
-                status=status, approved=approved, archived=(status == 'Launched'),
-                target_completion=go, year=today.year,
+                status=status, approved=approved, archived=False,   # stays until archived from the review
+                target_completion=go, year=go.year,
                 effort_size=effort, capability=cap,
                 customer_value=cv, business_value=bv, cost_savings=cs,
                 operational_cost=oc, business_risk=br, level_of_effort=loe,

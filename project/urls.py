@@ -8,7 +8,10 @@ urlpatterns = [
     path('view.html', views.view, name='all'),
     path('add.html', views.project, name='project'),
     path('estimator-baseline/', views.estimator_baseline, name='estimator_baseline'),
+    # Project Review
+    path('completed/', views.completed_projects, name='completed_projects'),
     path('archive/', views.archive, name='archive'),
+    path('<int:project_id>/archive/', views.archive_project, name='archive_project'),
     # Intake pipeline
     path('approve/', views.approve_projects, name='approve_projects'),
     path('<int:project_id>/approve-action/', views.approve_action, name='approve_action'),

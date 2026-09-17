@@ -78,6 +78,62 @@
     </div>
   </div>
 
+  {% if completed %}
+  <!-- Post-launch back-half: Realized Performance -->
+  <div class="row" id="realized"><div class="col-md-12">
+    <div class="x_panel">
+      <div class="x_title"><h2><i class="fa fa-line-chart"></i> Realized Performance <small>did it move the needle — and was it this project?</small></h2><div class="clearfix"></div></div>
+      <div class="x_content">
+        {% if realized.ok %}
+        {% with r=realized %}
+        <p class="text-muted" style="margin-bottom:14px;">Post-ramp window <strong>{{ r.post_start|date:"M j, Y" }} → {{ r.post_end|date:"M j, Y" }}</strong>
+          vs pre-launch <strong>{{ r.base_start|date:"M j, Y" }} → {{ r.base_end|date:"M j, Y" }}</strong>.</p>
+
+        {% if r.verdict == 'meaningful' %}
+        <div class="alert alert-success"><strong>✅ Meaningful.</strong> {{ r.lever_label }} drove {{ r.share_disp|floatformat:0 }}% of a
+          {{ r.perf_pct_disp|floatformat:1 }}% sales move, and the lever rose {{ r.actual_lever_disp|floatformat:1 }}%.</div>
+        {% elif r.verdict == 'not_mainly' %}
+        <div class="alert alert-warning"><strong>⚠️ Performance improved, but not mainly from this project</strong> — the gain came from other levers (see below).</div>
+        {% elif r.verdict == 'offset' %}
+        <div class="alert alert-info"><strong>↔️ The targeted lever moved, but performance was flat/down</strong> — its gain was offset by other levers.</div>
+        {% else %}
+        <div class="alert alert-info"><strong>❔ Mixed signal</strong> — read the decomposition below.</div>
+        {% endif %}
+
+        <div class="row">
+          <div class="col-md-4"><div class="tile_stats_count">
+            <span class="count_top">Sales change (post vs baseline)</span>
+            <div class="count">${{ r.delta|floatformat:0 }}</div>
+            <span class="count_bottom">{{ r.perf_pct_disp|floatformat:1 }}% vs baseline</span></div></div>
+          <div class="col-md-4"><div class="tile_stats_count">
+            <span class="count_top">{{ r.lever_label }} contribution</span>
+            <div class="count">${{ r.lever_contrib|floatformat:0 }}</div>
+            <span class="count_bottom">{{ r.share_disp|floatformat:0 }}% of the total change</span></div></div>
+          <div class="col-md-4"><div class="tile_stats_count">
+            <span class="count_top">{{ r.lever_label }} actual move</span>
+            <div class="count">{{ r.actual_lever_disp|floatformat:1 }}%</div>
+            <span class="count_bottom">{% if r.planned_disp != None %}planned {{ r.planned_disp|floatformat:1 }}%{% else %}vs baseline{% endif %}</span></div></div>
+        </div>
+
+        {% if r.predicted != None %}
+        <p style="margin-top:10px;"><strong>Estimate vs actual:</strong> estimator predicted
+          <strong>${{ r.predicted|floatformat:0 }}</strong> from this lever; LMDI attributes
+          <strong>${{ r.lever_contrib|floatformat:0 }}</strong> to it.</p>
+        {% endif %}
+        <p class="text-muted" style="font-size:11.5px;">Per-lever LMDI decomposition of the actual sales change (sums to the total; residual ${{ r.residual|floatformat:0 }}).</p>
+        {% endwith %}
+        {% elif realized.reason == 'pending' %}
+        <div class="alert alert-info">Not enough post-launch data yet — the measurement window elapses on <strong>{{ realized.ready_on|date:"M j, Y" }}</strong>. Check back then.</div>
+        {% elif realized.reason == 'no-estimate' %}
+        <div class="alert alert-warning">This project has no impact estimate (lever + target + go-live), so realized performance can't be measured against a plan.</div>
+        {% else %}
+        <div class="alert alert-warning">No performance data available for this business unit over the measurement window.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div></div>
+  {% endif %}
+
   <!-- Comments -->
   <div class="row"><div class="col-md-12">
     <div class="x_panel">
