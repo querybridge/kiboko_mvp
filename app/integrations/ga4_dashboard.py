@@ -1152,10 +1152,20 @@ def realized_perf_for_project(request, project, measure_days=30):
         'labels': [d[5:] for d in dates],                        # MM-DD
         'sales': [round(x) for x in roll],
         'baseline': round(before['sales'] / measure_days),       # per-day pre-launch avg
-        'launch_i': _idx(launch), 'ramp_i': _idx(ramp_end),
-        'post_s_i': _idx(post[0]), 'post_e_i': _idx(post[1]),
+        'base_s_i': _idx(base[0]), 'base_e_i': _idx(base[1]),    # baseline (pre-launch) period
+        'launch_i': _idx(launch),                                # go-live
+        'ramp_i': _idx(ramp_end),                                # full-ramp
+        'post_s_i': _idx(post[0]), 'post_e_i': _idx(post[1]),   # post-ramp measurement window
+        'launch_date': launch.strftime('%b %-d'),
         'contrib': contrib,
     }
+
+    def _usd_fin(v):                                             # US finance: negatives in ()
+        v = round(float(v or 0))
+        return f'(${abs(v):,})' if v < 0 else f'${v:,}'
+    rp.update({'delta_disp': _usd_fin(rp['delta']), 'lever_contrib_disp': _usd_fin(rp['lever_contrib']),
+               'predicted_disp': _usd_fin(rp['predicted']) if rp['predicted'] is not None else None,
+               'residual_disp': _usd_fin(rp['residual'])})
     return rp
 
 

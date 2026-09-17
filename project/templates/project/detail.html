@@ -76,12 +76,17 @@
             </tbody>
           </table>
 
+          {% if completed %}
+          <p class="text-muted" style="margin-top:14px;"><i class="fa fa-lock"></i> This project is
+            {{ project.status|lower }} — tasks can’t be added.</p>
+          {% else %}
           <h4 style="margin-top:18px;">Add Action</h4>
           <form method="post" action="{% url 'project:add_action' project.id %}">
             {% csrf_token %}
             {{ action_form.as_p }}
             <button type="submit" class="btn btn-success btn-sm">Add Action</button>
           </form>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -112,11 +117,11 @@
         <div class="row">
           <div class="col-md-4"><div class="tile_stats_count">
             <span class="count_top">Sales change (post vs baseline)</span>
-            <div class="count">${{ r.delta|floatformat:0 }}</div>
+            <div class="count">{{ r.delta_disp }}</div>
             <span class="count_bottom">{{ r.perf_pct_disp|floatformat:1 }}% vs baseline</span></div></div>
           <div class="col-md-4"><div class="tile_stats_count">
             <span class="count_top">{{ r.lever_label }} contribution</span>
-            <div class="count">${{ r.lever_contrib|floatformat:0 }}</div>
+            <div class="count">{{ r.lever_contrib_disp }}</div>
             <span class="count_bottom">{{ r.share_disp|floatformat:0 }}% of the total change</span></div></div>
           <div class="col-md-4"><div class="tile_stats_count">
             <span class="count_top">{{ r.lever_label }} actual move</span>
@@ -126,8 +131,8 @@
 
         {% if r.predicted != None %}
         <p style="margin-top:10px;"><strong>Estimate vs actual:</strong> estimator predicted
-          <strong>${{ r.predicted|floatformat:0 }}</strong> from this lever; LMDI attributes
-          <strong>${{ r.lever_contrib|floatformat:0 }}</strong> to it.</p>
+          <strong>{{ r.predicted_disp }}</strong> from this lever; LMDI attributes
+          <strong>{{ r.lever_contrib_disp }}</strong> to it.</p>
         {% endif %}
 
         <div class="row" style="margin-top:16px;">
@@ -137,7 +142,7 @@
           </div>
           <div class="col-md-7">
             <div class="rp-chart"><canvas id="rpSalesChart" height="240"></canvas></div>
-            <p class="rp-cap">Daily sales (7-day avg) · <span style="color:#55C892;">▮</span> post-ramp window · launch / ramp-end markers · dashed = pre-launch baseline</p>
+            <p class="rp-cap">Daily sales (7-day avg) · <span style="color:#A493C4;">▮</span> Baseline and <span style="color:#55C892;">▮</span> Post-launch periods · <span style="color:#9B7FE0;">▲</span> launch · dashed = full ramp / baseline level</p>
           </div>
         </div>
         {{ r.chart|json_script:"rp-data" }}
@@ -187,7 +192,9 @@
   var d = JSON.parse(el.textContent);
   var TXT = '#C8BCDF', GRID = 'rgba(214,197,247,0.08)', MUTED = '#A493C4';
   Chart.defaults.global.defaultFontColor = TXT;
-  var usd = function (v) { return '$' + Math.round(v).toLocaleString(); };
+  // US finance format — negatives in parentheses.
+  var usd = function (v) { v = Math.round(v);
+    return v < 0 ? '($' + Math.abs(v).toLocaleString() + ')' : '$' + v.toLocaleString(); };
 
   // 1) Per-lever LMDI contribution — horizontal bar, coloured by AEE.
   new Chart(document.getElementById('rpContribChart').getContext('2d'), {
@@ -212,18 +219,34 @@
     }
   });
 
-  // 2) Daily sales over the window + post-ramp shading, launch/ramp markers, baseline.
+  // 2) Daily sales over the window: baseline period + post-ramp window shaded and
+  //    labelled, with a launch marker, so the impact window is obvious at a glance.
   var markers = {
     afterDatasetsDraw: function (chart) {
       var xa = chart.scales['x-axis-0'], ya = chart.scales['y-axis-0'], ctx = chart.ctx;
-      var px = function (i) { return xa.getPixelForTick(Math.max(0, Math.min(i, chart.data.labels.length - 1))); };
+      var n = chart.data.labels.length - 1;
+      var px = function (i) { return xa.getPixelForTick(Math.max(0, Math.min(i, n))); };
+      var top = ya.top, bot = ya.bottom;
       ctx.save();
-      ctx.fillStyle = 'rgba(85,200,146,0.12)';
-      ctx.fillRect(px(d.post_s_i), ya.top, px(d.post_e_i) - px(d.post_s_i), ya.bottom - ya.top);
-      [[d.launch_i, '#9B7FE0'], [d.ramp_i, '#A493C4']].forEach(function (m) {
-        ctx.strokeStyle = m[1]; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(px(m[0]), ya.top); ctx.lineTo(px(m[0]), ya.bottom); ctx.stroke();
-      });
+      // shaded regions
+      function band(a, b, fill) { ctx.fillStyle = fill; ctx.fillRect(px(a), top, px(b) - px(a), bot - top); }
+      function tag(a, b, txt, color) {
+        ctx.fillStyle = color; ctx.font = '600 10px Inter, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(txt, (px(a) + px(b)) / 2, top + 12);
+      }
+      band(d.base_s_i, d.base_e_i, 'rgba(164,147,196,0.14)');   // baseline (pre-launch)
+      band(d.post_s_i, d.post_e_i, 'rgba(85,200,146,0.16)');    // post-ramp window
+      tag(d.base_s_i, d.base_e_i, 'Baseline', MUTED);
+      tag(d.post_s_i, d.post_e_i, 'Post-launch', '#55C892');
+      // ramp-end (full ramp) — dashed
+      ctx.strokeStyle = MUTED; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px(d.ramp_i), top); ctx.lineTo(px(d.ramp_i), bot); ctx.stroke();
+      // launch — solid accent line + label
+      var lx = px(d.launch_i);
+      ctx.setLineDash([]); ctx.strokeStyle = '#9B7FE0'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(lx, top); ctx.lineTo(lx, bot); ctx.stroke();
+      ctx.fillStyle = '#BAA3F0'; ctx.font = '700 10px Inter, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('▲ Launch ' + d.launch_date, lx + 4, bot - 6);
       ctx.restore();
     }
   };

@@ -265,6 +265,9 @@ def project_detail(request, project_id):
 def add_action(request, project_id):
     """Add an execution task (Action) to a Project."""
     project = get_object_or_404(Project, pk=project_id)
+    if project.status in COMPLETED_STATUSES:
+        messages.error(request, 'Tasks can’t be added to a completed project.')
+        return redirect('project:project_detail', project_id=project.id)
     form = ActionTaskForm(request.POST, project=project)
     if form.is_valid():
         action = form.save(commit=False)
