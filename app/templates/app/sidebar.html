@@ -5,7 +5,9 @@
       <span class="site_title_text">RevOps Platform for eCommerce</span>
     </a>
     <style>
-      .site_title { height: auto; margin-top: 15px; margin-bottom: 44px; display: flex; flex-direction: column;
+      /* Let the fixed-height navbar expand so the spacing below the logo actually shows. */
+      .nav_title { height: auto !important; min-height: 0 !important; margin-bottom: 44px !important; }
+      .site_title { height: auto; margin-top: 15px; margin-bottom: 0; display: flex; flex-direction: column;
         align-items: flex-start; line-height: 1.2; }
       .site_logo { max-height: 34px; width: auto; max-width: 160px; }
       .site_title_text { font-size: 11px; letter-spacing: .3px; margin-top: 5px; }
