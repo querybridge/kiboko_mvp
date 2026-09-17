@@ -1130,6 +1130,32 @@ def realized_perf_for_project(request, project, measure_days=30):
                'perf_pct_disp': rp['perf_pct'] * 100, 'share_disp': rp['share'] * 100,
                'actual_lever_disp': rp['actual_lever_pct'] * 100,
                'planned_disp': (planned * 100) if planned is not None else None})
+
+    # ---- chart-ready data (mirrors the prototype's Realized Performance tab) ----
+    aee_color = {'attract_traffic': '#3FC9E0', 'engage_customers': '#ECB752', 'expand_purchase': '#55C892'}
+    items = sorted(daily.items())                                # (iso, fundamentals)
+    dates = [iso for iso, _ in items]
+    sales = [f.get('sales', 0.0) for _, f in items]
+    roll = [sum(sales[max(0, i - 6):i + 1]) / len(sales[max(0, i - 6):i + 1]) for i in range(len(sales))]
+
+    def _idx(d):
+        for i, iso in enumerate(dates):
+            if datetime.date.fromisoformat(iso) >= d:
+                return i
+        return max(0, len(dates) - 1)
+
+    contrib = sorted(
+        ({'label': impact.LEVERS[k][0], 'value': round(rp['contrib'].get(k, 0.0)),
+          'color': aee_color.get(impact.LEVERS[k][1], '#9B7FE0'), 'is_target': (k == lever)}
+         for k in impact.LEVER_KEYS), key=lambda c: c['value'])
+    rp['chart'] = {
+        'labels': [d[5:] for d in dates],                        # MM-DD
+        'sales': [round(x) for x in roll],
+        'baseline': round(before['sales'] / measure_days),       # per-day pre-launch avg
+        'launch_i': _idx(launch), 'ramp_i': _idx(ramp_end),
+        'post_s_i': _idx(post[0]), 'post_e_i': _idx(post[1]),
+        'contrib': contrib,
+    }
     return rp
 
 
