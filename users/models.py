@@ -39,6 +39,9 @@ class UserProfile(models.Model):
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='staff')  # legacy
     roles = MultiSelectField(choices=KIBOKO_ROLES, blank=True, max_length=200)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    # Set when an admin creates the account with a starter password; forces a
+    # password change on first login (Google accounts never need one).
+    must_change_password = models.BooleanField(default=False)
 
     def has_role(self, key):
         """True if the user holds this Kiboko role (falls back to the legacy role)."""

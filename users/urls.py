@@ -14,4 +14,7 @@ urlpatterns = [
 
 	#Registration Page
 	path('register/', views.register, name='register'),
+
+	#User Settings (profile: change password + username)
+	path('profile/', views.profile, name='profile'),
 ]

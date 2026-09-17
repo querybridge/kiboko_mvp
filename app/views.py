@@ -10,6 +10,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template import loader
+from django.utils.html import format_html
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db import models
 from django.db.models import Q, Sum, Count, F, Avg
@@ -1746,9 +1747,21 @@ def manage_users(request):
             else:
                 member = (User.objects.filter(email__iexact=email).first()
                           or User.objects.filter(username__iexact=email).first())
+                starter_pw = None
                 if member is None:
                     member = User.objects.create_user(
                         username=email[:150], email=email, first_name=first, last_name=last)
+                    # Give a random 8-char starter password + force a change on first
+                    # login, so non-Google users can sign in. (Google users log in
+                    # without a password and never see this.)
+                    import secrets
+                    alphabet = ''.join(c for c in
+                                       'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789')  # no I l 1 O 0
+                    starter_pw = ''.join(secrets.choice(alphabet) for _ in range(8))
+                    member.set_password(starter_pw)
+                    member.save(update_fields=['password'])
+                    member.profile.must_change_password = True
+                    member.profile.save(update_fields=['must_change_password'])
                 elif first or last:
                     member.first_name = first or member.first_name
                     member.last_name = last or member.last_name
@@ -1757,7 +1770,13 @@ def manage_users(request):
                     company=company, user=member, defaults={'role': 'member'})
                 if not member.profile.roles:
                     _set_roles(member, ['business_unit_user'])
-                messages.success(request, f'Added {email} to {company.name}.')
+                if starter_pw:
+                    messages.success(request, format_html(
+                        'Added <strong>{}</strong> to {}. Email them their starter login (shown once): '
+                        'username <code>{}</code> · password <code>{}</code>. They’ll set their own '
+                        'password on first sign-in.', email, company.name, member.username, starter_pw))
+                else:
+                    messages.success(request, f'Added {email} to {company.name}.')
 
         elif action == 'set_roles' and company:
             member = User.objects.filter(pk=request.POST.get('user_id', '')).first()

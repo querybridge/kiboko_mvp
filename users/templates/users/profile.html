@@ -1,0 +1,72 @@
+{% extends "app/base_site.html" %}
+{% block title %} User Settings {% endblock title %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="page-title">
+    <div class="title_left"><h3>User Settings <small>{{ user.email|default:user.username }}</small></h3></div>
+    <div class="clearfix"></div>
+  </div>
+
+  {% if messages %}
+  <div class="row"><div class="col-md-8">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif 'warning' in message.tags %}alert-warning{% elif 'info' in message.tags %}alert-info{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  {% if must_change %}
+  <div class="row"><div class="col-md-8">
+    <div class="alert alert-warning"><i class="fa fa-lock"></i>
+      You're signed in with a starter password. <strong>Set your own password below</strong> to continue.</div>
+  </div></div>
+  {% endif %}
+
+  <div class="row">
+    <!-- Change password -->
+    <div class="col-md-6 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title"><h2>Change password</h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="change_password">
+            {% for field in pw_form %}
+            <div class="form-group">
+              <label>{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<small class="text-muted" style="display:block;">{{ field.help_text|safe }}</small>{% endif %}
+              {% for e in field.errors %}<small style="color:var(--status-danger);display:block;">{{ e }}</small>{% endfor %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-success">Update password</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change username -->
+    <div class="col-md-6 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title"><h2>Username</h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          {% if must_change %}
+          <p class="text-muted">Set your password first; then you can change your username.</p>
+          {% else %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="change_username">
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" class="form-control" value="{{ user.username }}" maxlength="150" required>
+              <small class="text-muted">Used to sign in. Your email stays {{ user.email|default:"unset" }}.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Save username</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
