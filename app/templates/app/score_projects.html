@@ -17,6 +17,7 @@
   .score-card .sc-meta { font-size:12px; color:var(--text-muted); }
   .score-card .sc-why { font-size:13px; color:var(--text-secondary); margin:6px 0 0; }
   .sc-evidence { font-size:12px; color:var(--text-secondary); margin:6px 0 0; }
+  .sc-devsize { margin:8px 0 0; }
   .sc-evidence .evidence-flag { display:inline-block; font-weight:700; color:#55C892; margin-right:6px; }
   .sc-evidence .evidence-flag i { margin-right:3px; }
   .sc-value { text-align:right; white-space:nowrap; }
@@ -110,6 +111,7 @@
               <span>{{ p.get_evidence_kind_display }} — {{ p.evidence_note|truncatechars:160 }}</span>
             </p>
             {% endif %}
+            {% if p.effort_size %}<p class="sc-devsize"><span class="size-badge" title="Lead developer's effort sizing — weigh it in your Level of Effort score">Lead dev size: {{ p.effort_size }}</span></p>{% endif %}
           </div>
           <div class="sc-value">
             {% if p.has_voted %}<div style="margin-bottom:6px;"><span class="voted-badge"><i class="fa fa-check"></i> You voted</span></div>{% endif %}
@@ -120,7 +122,6 @@
             <div class="lbl">Expected (risk-adjusted)</div>
             <div class="amt-realized" title="Realized in year one, after ramp-up and go-live timing">${{ p.est_realized|floatformat:0|intcomma }} realized this year</div>
             {% endif %}
-            {% if p.effort_size %}<div style="margin-top:6px;"><span class="size-badge" title="Lead developer's effort sizing — weigh it in your Level of Effort score">Lead dev size: {{ p.effort_size }}</span></div>{% endif %}
           </div>
         </div>
         <div class="sc-body">
