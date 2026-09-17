@@ -40,7 +40,7 @@
         <table class="table table-striped table-bordered">
           <thead><tr>
             <th>Project</th><th>Business Unit</th><th style="width:110px;">Go-live</th>
-            <th style="width:120px;">Est. value</th><th style="width:90px;">Status</th><th style="width:180px;">Action</th>
+            <th style="width:120px;">Est. value</th><th style="width:90px;">Status</th><th style="width:230px;">Action</th>
           </tr></thead>
           <tbody>
             {% for p in page_obj %}
@@ -50,9 +50,9 @@
               <td>{{ p.target_completion|date:"Y-m-d"|default:"—" }}</td>
               <td>${{ p.value|default:0|intcomma }}</td>
               <td><span class="cp-verdict cp-mixed">{{ p.status }}</span></td>
-              <td>
-                <a href="{% url 'project:project_detail' p.id %}#realized" class="btn btn-default btn-xs"><i class="fa fa-line-chart"></i> Analyze Impact</a>
-                <form method="post" action="{% url 'project:archive_project' p.id %}" style="display:inline"
+              <td style="white-space:nowrap;">
+                <a href="{% url 'project:project_detail' p.id %}#realized" class="btn btn-success btn-xs"><i class="fa fa-line-chart"></i> Analyze Impact</a>
+                <form method="post" action="{% url 'project:archive_project' p.id %}" style="display:inline; margin-left:4px;"
                       onsubmit="return confirm('Archive “{{ p.name|escapejs }}”?');">
                   {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
                   <button type="submit" class="btn btn-warning btn-xs"><i class="fa fa-archive"></i> Archive</button>
