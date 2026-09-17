@@ -15,6 +15,14 @@
       body.nav-sm .site_title .site_title_text { display: none !important; }
       body.nav-sm .site_logo { max-height: 26px; max-width: 44px; object-fit: cover; object-position: left center; }
       body.nav-sm .sidebar-collapse-toggle .fa-chevron-left:before { content: "\f054"; }
+      /* Elevated Add Project — a core Kiboko action, made prominent. */
+      .nav.side-menu > li.nav-add-project > a {
+        color: var(--text-primary) !important; font-weight: 700;
+        background: var(--purple-700); border: 1px solid var(--purple-500);
+        border-radius: 10px; margin: 6px 12px; padding: 11px 14px;
+      }
+      .nav.side-menu > li.nav-add-project > a:hover { background: var(--purple-600); }
+      .nav.side-menu > li.nav-add-project > a i { color: var(--accent-secondary); }
     </style>
   </div>
 
@@ -54,7 +62,6 @@
             <li><a href="/app/">Project Value Pipeline</a></li>
             <li><a href="{% url 'project:approve_projects' %}">Approve Projects</a></li>
             <li><a href="{% url 'app:score_projects' %}">Score Projects</a></li>
-            <li><a href="/project/add.html">Add Project</a></li>
           </ul>
         </li>
 
@@ -74,6 +81,9 @@
             <li><a href="{% url 'project:archive' %}">Archive</a></li>
           </ul>
         </li>
+
+        <!-- Add Project (elevated — a core Kiboko action) -->
+        <li class="nav-add-project"><a href="/project/add.html"><i class="fa fa-plus-circle"></i> Add Project</a></li>
 
         <!-- Settings -->
         <li><a><i class="fa fa-cog"></i> Settings <span class="fa fa-chevron-down"></span></a>
