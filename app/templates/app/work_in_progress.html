@@ -8,19 +8,30 @@
     #wip-page .wip-periods .btn { margin-left: 4px; }
     /* Gantt chart */
     #gantt-panel .gantt-axis-row { display: flex; margin-bottom: 6px; }
-    #gantt-panel .gantt-axis-row .gantt-axis-spacer { width: 220px; flex-shrink: 0; }
+    #gantt-panel .gantt-axis-row .gantt-axis-spacer { width: 250px; flex-shrink: 0; }
     #gantt-panel .gantt-axis { position: relative; flex: 1; height: 22px; border-bottom: 1px solid var(--border-subtle, #e5e5e5); font-size: 11px; color: var(--text-muted, #888); }
     #gantt-panel .gantt-axis-tick { position: absolute; top: 0; bottom: -6px; border-left: 1px dashed rgba(255,255,255,0.08); }
     #gantt-panel .gantt-axis-label { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
-    #gantt-panel .gantt-row { display: flex; align-items: center; height: 28px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    #gantt-panel .gantt-row { display: flex; align-items: center; height: 42px; border-bottom: 1px solid rgba(255,255,255,0.05); }
     #gantt-panel .gantt-row:last-child { border-bottom: none; }
     #gantt-panel .gantt-team-header { display: flex; align-items: center; height: 26px; background: var(--bg-surface-muted, #ede4f7); border-top: 1px solid var(--border-subtle, #d6c3ec); border-bottom: 1px solid var(--border-subtle, #d6c3ec); padding-left: 8px; font-weight: 700; font-size: 12px; color: var(--purple-300, #4a1f8a); text-transform: uppercase; letter-spacing: 0.5px; }
     #gantt-panel .gantt-team-header .team-count { margin-left: 8px; background: var(--purple-600, #4a1f8a); color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 600; letter-spacing: normal; }
     #gantt-panel .gantt-team-header .team-value { margin-left: auto; margin-right: 12px; color: var(--text-secondary, #555); font-weight: 600; font-size: 11px; letter-spacing: normal; text-transform: none; }
-    #gantt-panel .gantt-label { width: 220px; flex-shrink: 0; padding-right: 10px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: var(--text-secondary, #333); }
-    #gantt-panel .gantt-label:hover { color: var(--purple-300, #1a7a5c); text-decoration: underline; }
+    /* Two-line, indented label so actions nest clearly under their team and show
+       the parent project (action -> project association at a glance). */
+    #gantt-panel .gantt-label { width: 250px; flex-shrink: 0; padding-right: 10px; padding-left: 26px;
+      display: flex; flex-direction: column; justify-content: center; line-height: 1.25;
+      overflow: hidden; cursor: pointer; position: relative; }
+    #gantt-panel .gantt-label::before { content: ""; position: absolute; left: 12px; top: 8px; bottom: 8px;
+      border-left: 2px solid var(--border-strong, #cbb8ea); }
+    #gantt-panel .gantt-label .gl-action { font-size: 13px; color: var(--text-primary, #222); font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #gantt-panel .gantt-label .gl-project { font-size: 10.5px; color: var(--text-muted, #888);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #gantt-panel .gantt-label .gl-project i { margin-right: 4px; opacity: .8; }
+    #gantt-panel .gantt-label:hover .gl-action { color: var(--purple-300, #1a7a5c); text-decoration: underline; }
     #gantt-panel .gantt-track { position: relative; flex: 1; height: 100%; }
-    #gantt-panel .gantt-bar { position: absolute; top: 6px; bottom: 6px; background: #c5f0e0; border-radius: 3px; min-width: 4px; overflow: visible; }
+    #gantt-panel .gantt-bar { position: absolute; top: 50%; transform: translateY(-50%); height: 16px; background: #c5f0e0; border-radius: 3px; min-width: 4px; overflow: visible; }
     #gantt-panel .gantt-bar.gantt-dep { border-left: 3px solid #E0A65A; }
     #gantt-panel .gantt-bar.no-end { background: repeating-linear-gradient(45deg, #c5f0e0, #c5f0e0 6px, #d8f3e8 6px, #d8f3e8 12px); }
     #gantt-panel .gantt-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #1a7a5c; border-radius: 3px; max-width: 100%; }
@@ -163,10 +174,15 @@
           var isFocus = (FOCUS_ID !== null && proj.id === FOCUS_ID);
           var $row = $('<div class="gantt-row' + (isFocus ? ' gantt-focus' : '') + '"></div>');
           var $label = $('<a class="gantt-label"></a>')
-            .attr({href: '/project/' + proj.id, 'data-project-id': proj.id});
-          if (isFocus) $label.append('<i class="fa fa-angle-right gantt-focus-chevron"></i> ');
-          if (proj.has_deps) $label.append('<i class="fa fa-link" style="color:#E0A65A; margin-right:5px;" title="Starts after its dependencies"></i>');
-          $label.append(document.createTextNode(proj.name));
+            .attr({href: '/project/' + (proj.project_id || proj.id), 'data-project-id': proj.project_id || proj.id});
+          var $action = $('<span class="gl-action"></span>');
+          if (isFocus) $action.append('<i class="fa fa-angle-right gantt-focus-chevron"></i> ');
+          if (proj.has_deps) $action.append('<i class="fa fa-link" style="color:#E0A65A; margin-right:5px;" title="Starts after its dependencies"></i>');
+          $action.append(document.createTextNode(proj.name));
+          var $project = $('<span class="gl-project" title="Parent project"></span>')
+            .append('<i class="fa fa-folder-o"></i>')
+            .append(document.createTextNode(proj.project_name || '—'));
+          $label.append($action).append($project);
           var $track = $('<div class="gantt-track"></div>');
           var $bar = $('<div class="gantt-bar' + (entry.end ? '' : ' no-end') + (proj.has_deps ? ' gantt-dep' : '') + '"></div>')
             .css({left: leftPct + '%', width: widthPct + '%'});

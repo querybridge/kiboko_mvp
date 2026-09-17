@@ -51,7 +51,7 @@
               <td>${{ p.value|default:0|intcomma }}</td>
               <td><span class="cp-verdict cp-mixed">{{ p.status }}</span></td>
               <td>
-                <a href="{% url 'project:project_detail' p.id %}#realized" class="btn btn-default btn-xs"><i class="fa fa-line-chart"></i> Realized</a>
+                <a href="{% url 'project:project_detail' p.id %}#realized" class="btn btn-default btn-xs"><i class="fa fa-line-chart"></i> Analyze Impact</a>
                 <form method="post" action="{% url 'project:archive_project' p.id %}" style="display:inline"
                       onsubmit="return confirm('Archive “{{ p.name|escapejs }}”?');">
                   {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
