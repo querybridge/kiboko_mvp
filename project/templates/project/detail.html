@@ -142,7 +142,7 @@
           </div>
           <div class="col-md-7">
             <div class="rp-chart"><canvas id="rpSalesChart" height="240"></canvas></div>
-            <p class="rp-cap">Daily sales (7-day avg) · <span style="color:#A493C4;">▮</span> Baseline and <span style="color:#55C892;">▮</span> Post-launch periods · <span style="color:#9B7FE0;">▲</span> launch · dashed = full ramp / baseline level</p>
+            <p class="rp-cap">Daily sales (7-day avg) · <span style="color:#A493C4;">▮</span> Baseline and <span style="color:#55C892;">▮</span> Post-launch periods · <span style="color:#55C892;">▲</span> launch · dashed = full ramp / baseline level</p>
           </div>
         </div>
         {{ r.chart|json_script:"rp-data" }}
@@ -241,11 +241,11 @@
       // ramp-end (full ramp) — dashed
       ctx.strokeStyle = MUTED; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(px(d.ramp_i), top); ctx.lineTo(px(d.ramp_i), bot); ctx.stroke();
-      // launch — solid accent line + label
+      // launch — solid green line + label
       var lx = px(d.launch_i);
-      ctx.setLineDash([]); ctx.strokeStyle = '#9B7FE0'; ctx.lineWidth = 2;
+      ctx.setLineDash([]); ctx.strokeStyle = '#55C892'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(lx, top); ctx.lineTo(lx, bot); ctx.stroke();
-      ctx.fillStyle = '#BAA3F0'; ctx.font = '700 10px Inter, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillStyle = '#55C892'; ctx.font = '700 10px Inter, sans-serif'; ctx.textAlign = 'left';
       ctx.fillText('▲ Launch ' + d.launch_date, lx + 4, bot - 6);
       ctx.restore();
     }
