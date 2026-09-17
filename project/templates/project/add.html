@@ -101,6 +101,12 @@
   }
   .est-ig .form-control.ga4-auto { border-color: rgba(85,200,146,.55) !important; }
 
+  /* Live "target vs current" delta under the baseline/target row */
+  .baseline-delta { text-align: right; font-size: 12.5px; font-weight: 600; margin: -4px 0 10px; min-height: 17px; }
+  .baseline-delta.up { color: var(--status-success); }
+  .baseline-delta.down { color: var(--status-danger); }
+  .baseline-delta.flat { color: var(--text-muted); }
+
   /* Evidence-backed target box */
   .evidence-box {
     margin-top: 16px; padding: 12px 14px; border: 1px dashed var(--border-strong);
@@ -251,6 +257,7 @@
                   </div>
                 </div>
               </div>
+              <div class="baseline-delta" id="baseline_delta"></div>
 
               <div class="form-group">
                 <label for="disp_s0">Annual sales baseline</label>
@@ -500,9 +507,21 @@
     }
   }
 
+  // Right-aligned "target is +N% vs current level" readout under the row.
+  function updateBaselineDelta() {
+    var el = $('baseline_delta'); if (!el) return;
+    var f = parseFloat(HID.from.value), t = parseFloat(HID.to.value);
+    if (!(f > 0) || isNaN(t)) { el.textContent = ''; el.className = 'baseline-delta'; return; }
+    var pct = (t - f) / f;
+    var arrow = pct > 0 ? '▲' : (pct < 0 ? '▼' : '■');
+    el.textContent = arrow + ' ' + fmtPct(pct) + ' vs current level';
+    el.className = 'baseline-delta ' + (pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat');
+  }
+
   function recalc() {
     updateAccent();
     updatePlaus();
+    updateBaselineDelta();
     refreshDisplays();
     var f = parseFloat(HID.from.value), t = parseFloat(HID.to.value), base = parseFloat(HID.s0.value);
     if (!(f > 0) || isNaN(t)) { $('m_pct').textContent = '—'; $('m_gross').textContent = '—';
@@ -654,7 +673,7 @@
       var raw = parseLever(disp.value, unit);
       hid.value = isNaN(raw) ? '' : q4(raw);
       markManual(hid); disp.classList.remove('ga4-auto');
-      updateAccent(); updatePlaus();
+      updateAccent(); updatePlaus(); updateBaselineDelta();
       // recompute metrics without reformatting the field being typed in
       var f = parseFloat(HID.from.value), tt = parseFloat(HID.to.value), base = parseFloat(HID.s0.value);
       if (f > 0 && !isNaN(tt)) {
