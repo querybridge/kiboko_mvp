@@ -1,10 +1,17 @@
 <div class="left_col scroll-view">
   <div class="navbar nav_title" style="border: 0;">
-    <a href="/app/analytics/grow-sales/" class="site_title" style="height: auto; line-height: 1.2; margin-top: 15px; display: flex; align-items: flex-start;"><i class="fa fa-tasks" style="margin-right: 8px;"></i><span class="site_title_text" style="display: flex; flex-direction: column; text-align: left;"><strong>Kiboko</strong><span style="font-size: 11px;">Project Prioritization</span></span></a>
+    <a href="/app/analytics/grow-sales/" class="site_title">
+      <img src="/static/images/kiboko-logo-white.png" alt="Kiboko" class="site_logo">
+      <span class="site_title_text">Project Prioritization</span>
+    </a>
     <style>
+      .site_title { height: auto; margin-top: 15px; display: flex; flex-direction: column;
+        align-items: flex-start; line-height: 1.2; }
+      .site_logo { max-height: 34px; width: auto; max-width: 160px; }
+      .site_title_text { font-size: 11px; letter-spacing: .3px; margin-top: 5px; }
+      body.nav-sm .site_title { align-items: center; }
       body.nav-sm .site_title .site_title_text { display: none !important; }
-      body.nav-sm .site_title { justify-content: center; }
-      body.nav-sm .site_title i { margin-right: 0 !important; }
+      body.nav-sm .site_logo { max-height: 26px; max-width: 44px; object-fit: cover; object-position: left center; }
       body.nav-sm .sidebar-collapse-toggle .fa-chevron-left:before { content: "\f054"; }
     </style>
   </div>
