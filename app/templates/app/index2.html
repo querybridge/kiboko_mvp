@@ -463,13 +463,16 @@
                       <td style="border-top:none" class="text-right green" id="summary-actual"></td>
                     </tr>
                     <tr>
-                      <td><strong>Forecast</strong></td>
+                      <td><strong>Trending Forecast</strong>
+                        <i class="fa fa-info-circle" style="color:#888; cursor:help; margin-left:4px;"
+                           title="End-of-period expected total from the current trend, excluding any in-flight (WIP) project impact."></i>
+                      </td>
                       <td class="text-right" id="summary-forecast"></td>
                     </tr>
                     <tr>
                       <td><strong>Prorated Projected Value</strong>
                         <i class="fa fa-info-circle" style="color:#888; cursor:help; margin-left:4px;"
-                           title="Prorated for the selected period: the share of each in-flight (WIP) project's value expected within this period, based on the projects that launch in it — not the full project value."></i>
+                           title="Trending Forecast plus the prorated value of projects for the selected period — the share of each project's value expected within this period, based on the projects that launch in it (not the full project value)."></i>
                       </td>
                       <td class="text-right" id="summary-end-total" style="font-weight:700"></td>
                     </tr>
@@ -684,7 +687,7 @@
             order: 2
           },
           {
-            label: 'Forecast',
+            label: 'Trending Forecast',
             type: 'bar',
             data: dataMTD.forecast_base,
             backgroundColor: '#7ed3b2',
@@ -766,7 +769,7 @@
                   var formattedVal = '$' + Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                   html += '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';margin-right:6px;"></span>' + label + ': ' + formattedVal + '<br>';
 
-                  if (label === 'Forecast') forecastVal = val;
+                  if (label === 'Trending Forecast') forecastVal = val;
                   if (label === 'Project Value Add') projectVal = val;
                 }
               });
