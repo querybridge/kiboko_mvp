@@ -101,19 +101,22 @@
 		color: #fff;
 		font-size: 12px;
 	}
-	#initiatives-summary-table tbody td {
+	#initiatives-summary-table tbody td,
+	#initiatives-summary-table tfoot td {
 		padding: 14px 10px;
 		border-bottom: 1px solid var(--border-subtle, #ececec);
 		vertical-align: middle;
 		font-size: 13px;
 		color: var(--text-primary, #222);
 	}
-	#initiatives-summary-table tbody td.currency {
+	#initiatives-summary-table tbody td.currency,
+	#initiatives-summary-table tfoot td.currency {
 		text-align: right;
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 	}
-	#initiatives-summary-table tbody td.zero {
+	#initiatives-summary-table tbody td.zero,
+	#initiatives-summary-table tfoot td.zero {
 		color: var(--text-muted, #999);
 	}
 	#initiatives-summary-table .initiative-cell {
@@ -604,7 +607,7 @@
                 </tbody>
                 <tfoot>
                   <tr class="initiatives-total-row" style="font-weight:700; border-top:2px solid var(--border-strong, #cbb8ea);">
-                    <td class="initiative-cell">
+                    <td class="initiative-cell" style="--purpose-color: transparent;">
                       <div class="initiative-row">
                         <span class="initiative-name">Total</span>
                         <div class="mini-stat"><span class="label">Actions</span><span class="value">{{ initiatives_totals.actions }}</span></div>
