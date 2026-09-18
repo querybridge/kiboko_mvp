@@ -6,6 +6,13 @@
   <style>
     #wip-page .wip-periods { }
     #wip-page .wip-periods .btn { margin-left: 4px; }
+    #wip-page .wip-periods .wip-period-divider { display: inline-block; width: 1px; height: 18px;
+      background: var(--border-strong, #cbb8ea); opacity: 0.5; margin: 0 4px 0 8px; vertical-align: middle; }
+    /* On Deck (pipeline) bars — shown only in forward periods, marked distinct. */
+    #gantt-panel .gantt-bar.gantt-pipeline { outline: 1px dashed var(--purple-300, #A98EE8); outline-offset: 1px; opacity: 0.9; }
+    #gantt-panel .gl-ondeck { display: inline-block; margin-left: 5px; font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em; color: var(--purple-300, #A98EE8);
+      border: 1px solid var(--purple-300, #A98EE8); border-radius: 6px; padding: 0 5px; vertical-align: middle; }
     /* Gantt chart */
     #gantt-panel .gantt-axis-row { display: flex; margin-bottom: 6px; }
     #gantt-panel .gantt-axis-row .gantt-axis-spacer { width: 250px; flex-shrink: 0; }
@@ -62,6 +69,10 @@
               <button class="btn btn-sm btn-default" data-period="mtd">This Month</button>
               <button class="btn btn-sm btn-default" data-period="qtd">This Quarter</button>
               <button class="btn btn-sm btn-default" data-period="ytd">This Year</button>
+              <span class="wip-period-divider"></span>
+              <button class="btn btn-sm btn-default" data-period="nmo" title="Includes On Deck pipeline">Next Month</button>
+              <button class="btn btn-sm btn-default" data-period="nq" title="Includes On Deck pipeline">Next Quarter</button>
+              <button class="btn btn-sm btn-default" data-period="ny" title="Includes On Deck pipeline">Next Year</button>
             </div>
             <div class="clearfix"></div>
           </div>
@@ -103,11 +114,11 @@
       $axis.empty();
       var totalMs = end - start;
       var ticks = [];
-      if (period === 'mtd') {
+      if (period === 'mtd' || period === 'nmo') {
         var d = new Date(start);
         while (d <= end) { ticks.push(new Date(d)); d.setDate(d.getDate() + 7); }
         if (ticks[ticks.length-1].getTime() !== end.getTime()) ticks.push(new Date(end));
-      } else if (period === 'qtd') {
+      } else if (period === 'qtd' || period === 'nq') {
         var d = new Date(start);
         while (d <= end) { ticks.push(new Date(d)); d.setMonth(d.getMonth() + 1); }
       } else {
@@ -116,7 +127,7 @@
       ticks.forEach(function(t) {
         var pct = (t - start) / totalMs * 100;
         if (pct < 0 || pct > 100) return;
-        var label = (period === 'ytd') ? t.toLocaleString('en-US', { month: 'short' }) : fmtDate(t);
+        var label = (period === 'ytd' || period === 'ny') ? t.toLocaleString('en-US', { month: 'short' }) : fmtDate(t);
         $axis.append('<div class="gantt-axis-tick" style="left:' + pct + '%"></div>');
         $axis.append('<div class="gantt-axis-label" style="left:' + pct + '%">' + label + '</div>');
       });
@@ -132,9 +143,12 @@
       $rows.empty();
 
       var todayDate = parseDate(ganttData.today);
+      var forward = (period === 'nmo' || period === 'nq' || period === 'ny');
 
       var groups = {};
       ganttData.projects.forEach(function(proj) {
+        // On Deck items appear only in the forward-looking periods.
+        if (proj.pipeline && !forward) return;
         var start = parseDate(proj.start);
         var end = parseDate(proj.end);
         if (!start) return;
@@ -186,12 +200,13 @@
           if (isFocus) $action.append('<i class="fa fa-angle-right gantt-focus-chevron"></i> ');
           if (proj.has_deps) $action.append('<i class="fa fa-link" style="color:#E0A65A; margin-right:5px;" title="Starts after its dependencies"></i>');
           $action.append(document.createTextNode(proj.name));
+          if (proj.pipeline) $action.append('<span class="gl-ondeck" title="On Deck — not yet started">On Deck</span>');
           var $project = $('<span class="gl-project" title="Parent project"></span>')
             .append('<i class="fa fa-folder-o"></i>')
             .append(document.createTextNode(proj.project_name || '—'));
           $label.append($action).append($project);
           var $track = $('<div class="gantt-track"></div>');
-          var $bar = $('<div class="gantt-bar' + (entry.end ? '' : ' no-end') + (proj.has_deps ? ' gantt-dep' : '') + '"></div>')
+          var $bar = $('<div class="gantt-bar' + (entry.end ? '' : ' no-end') + (proj.has_deps ? ' gantt-dep' : '') + (proj.pipeline ? ' gantt-pipeline' : '') + '"></div>')
             .css({left: leftPct + '%', width: widthPct + '%'});
 
           var track = proj.objective_track || '#e2e2e2';

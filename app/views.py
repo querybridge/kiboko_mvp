@@ -995,6 +995,17 @@ def _build_gantt_data(active_projects):
     ytd_start = date(year, 1, 1)
     ytd_end = date(year, 12, 31)
 
+    # Forward-looking windows: next month / next quarter / next year.
+    nmo_y, nmo_m = _add_months(year, month, 1)
+    nmo_start = date(nmo_y, nmo_m, 1)
+    nmo_end = date(nmo_y, nmo_m, calendar.monthrange(nmo_y, nmo_m)[1])
+    nq_y, nq_m = _add_months(year, quarter_start_month, 3)
+    nq_end_y, nq_end_m = _add_months(nq_y, nq_m, 2)
+    nq_start = date(nq_y, nq_m, 1)
+    nq_end = date(nq_end_y, nq_end_m, calendar.monthrange(nq_end_y, nq_end_m)[1])
+    ny_start = date(year + 1, 1, 1)
+    ny_end = date(year + 1, 12, 31)
+
     items = []
     for p in active_projects:
         start = p.active_date or p.date_created
@@ -1020,6 +1031,9 @@ def _build_gantt_data(active_projects):
             'project_value': float(proj.value or 0) if proj else 0,
             'project_score': float(proj.normalized_score or 0) if proj else 0,
             'project_status': proj.status if proj else '',
+            # On Deck (not yet started) — shown only in forward-looking periods so
+            # the current WIP windows stay WIP-only.
+            'pipeline': bool(proj and proj.status != 'WIP'),
             'depends_on': [d.name for d in deps],
             'has_deps': bool(deps),
             'objective_track': colors['track'],
@@ -1036,6 +1050,9 @@ def _build_gantt_data(active_projects):
             'mtd': {'start': mtd_start.isoformat(), 'end': mtd_end.isoformat()},
             'qtd': {'start': qtd_start.isoformat(), 'end': qtd_end.isoformat()},
             'ytd': {'start': ytd_start.isoformat(), 'end': ytd_end.isoformat()},
+            'nmo': {'start': nmo_start.isoformat(), 'end': nmo_end.isoformat()},
+            'nq': {'start': nq_start.isoformat(), 'end': nq_end.isoformat()},
+            'ny': {'start': ny_start.isoformat(), 'end': ny_end.isoformat()},
         },
     }
 
@@ -1688,8 +1705,11 @@ def work_in_progress(request):
 
     # Execution tasks (Actions) of WIP projects -- the parent Project carries the
     # Kanban status now, so filter by it (not the vestigial Action.status).
+    # WIP drives the current-period windows; On Deck is carried too but the
+    # template only renders it in the forward-looking periods (next month/quarter/
+    # year) so you can see the pipeline queued up ahead.
     projects = _scope_to(
-        Action.objects.filter(project__status='WIP', project__archived=False)
+        Action.objects.filter(project__status__in=('WIP', 'On Deck'), project__archived=False)
         .select_related('project', 'objective', 'team').prefetch_related('depends_on')
         .order_by('-project__normalized_score'),
         vertical_id, company_id)
@@ -1709,7 +1729,7 @@ def work_in_progress(request):
         focus_action = Action.objects.filter(pk=focus_id).first()
         launch = focus_action.launch.isoformat() if (focus_action and focus_action.launch) else None
         if launch:
-            for key in ('mtd', 'qtd', 'ytd'):
+            for key in ('mtd', 'qtd', 'ytd', 'nmo', 'nq', 'ny'):
                 p = gantt['periods'][key]
                 if p['start'] <= launch <= p['end']:
                     initial_period = key
