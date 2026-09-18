@@ -526,6 +526,7 @@
                     <th>Objective</th>
                     <th>Score</th>
                     <th>Status</th>
+                    <th>Expected Go-Live</th>
                     <th>Avg Progress</th>
                     <th class="text-right">Total Project Value</th>
                     <th>Business Unit</th>
@@ -558,6 +559,7 @@
                       <td>{{ init.objective|default:"—" }}</td>
                       <td style="font-weight:700;">{{ init.score|floatformat:1 }}</td>
                       <td><span class="status-pill status-{{ init.status|lower|cut:' ' }}">{{ init.status|default:"—" }}</span></td>
+                      <td>{{ init.go_live|default:"—" }}</td>
                       <td class="avg-progress-cell">
                         {% if init.avg_progress is not None %}
                           <div class="avg-progress">
@@ -576,7 +578,7 @@
                       <td>{{ init.business_unit|default:"—" }}</td>
                     </tr>
                     <tr class="children-row is-hidden" data-init-id="{{ init.id }}">
-                      <td colspan="8">
+                      <td colspan="9">
                         <table class="children-table">
                           <thead>
                             <tr>
@@ -617,6 +619,7 @@
                         <div class="mini-stat active"><span class="label">Active</span><span class="value">{{ initiatives_totals.active }}</span></div>
                       </div>
                     </td>
+                    <td></td>
                     <td></td>
                     <td></td>
                     <td></td>

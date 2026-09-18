@@ -646,6 +646,8 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'objective': s.objective.name if s.objective_id and s.objective else '',
             'score': float(s.normalized_score) if s.normalized_score is not None else 0.0,
             'status': s.status or '',
+            # Expected go-live (the project's target completion date).
+            'go_live': s.target_completion.isoformat() if s.target_completion else '',
             # The BusinessUnit (GA4 property) -- matches the top-bar selector.
             'business_unit': s.vertical.name if s.vertical_id and s.vertical else '',
             'project_count': s.project_count or 0,
