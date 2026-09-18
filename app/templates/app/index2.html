@@ -412,6 +412,11 @@
         <button class="btn btn-sm btn-info active" data-period="mtd">This Month</button>
         <button class="btn btn-sm btn-default" data-period="qtd">This Quarter</button>
         <button class="btn btn-sm btn-default" data-period="ytd">This Year</button>
+        <span style="display:inline-block; width:1px; height:18px; background:var(--border-strong,#cbb8ea); opacity:0.5; margin:0 8px; vertical-align:middle;"></span>
+        <span style="font-size:12px; opacity:0.75; margin-right:8px;">Look ahead</span>
+        <button class="btn btn-sm btn-default" data-period="nmo">Next Month</button>
+        <button class="btn btn-sm btn-default" data-period="nq">Next Quarter</button>
+        <button class="btn btn-sm btn-default" data-period="ny">Next Year</button>
       </div></div>
 
       <div class="row top_tiles"><hr/>
@@ -655,11 +660,17 @@
     var dataMTD = {{ chart_data_mtd|safe }};
     var dataQTD = {{ chart_data_qtd|safe }};
     var dataYTD = {{ chart_data_ytd|safe }};
+    var dataNMO = {{ chart_data_nmo|safe }};
+    var dataNQ  = {{ chart_data_nq|safe }};
+    var dataNY  = {{ chart_data_ny|safe }};
 
     var datasets = {
       mtd: dataMTD,
       qtd: dataQTD,
-      ytd: dataYTD
+      ytd: dataYTD,
+      nmo: dataNMO,
+      nq: dataNQ,
+      ny: dataNY
     };
 
     var ctx = document.getElementById('revenueChart').getContext('2d');
@@ -839,7 +850,7 @@
       revenueChart.data.datasets[3].data = d.project_value_add;
       revenueChart.update();
       updateSummary(d);
-      $('#revenue-period-label').text({mtd:'This Month', qtd:'This Quarter', ytd:'This Year'}[period] || period);
+      $('#revenue-period-label').text({mtd:'This Month', qtd:'This Quarter', ytd:'This Year', nmo:'Next Month', nq:'Next Quarter', ny:'Next Year'}[period] || period);
 
       $(document).trigger('dashboard:period-change', [period]);
     });

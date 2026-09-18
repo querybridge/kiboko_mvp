@@ -130,9 +130,14 @@ class Command(BaseCommand):
         MonthlyGoal.objects.filter(vertical__in=bus.values()).delete()
         DailyActual.objects.filter(vertical__in=bus.values()).delete()
 
+        # Budgets extend a full year past the actuals so the forward-looking
+        # periods (next month/quarter/year) have a target baseline; actuals below
+        # are naturally bounded to `end` (today) by the day filter, so future
+        # months simply carry a budget with no actuals yet.
+        budget_end = (date(end.year + 1, 12, 1))
         months = []
         y, m = start.year, start.month
-        while (y, m) <= (end.year, end.month):
+        while (y, m) <= (budget_end.year, budget_end.month):
             months.append((y, m))
             y, m = (y + 1, 1) if m == 12 else (y, m + 1)
 

@@ -61,12 +61,17 @@ def _actuals_map_agg(actuals, start, end):
     return {'revenue': rev, 'visits': int(visits), 'orders': int(orders)}
 
 
-def calculate_forecast(year, month, return_components=False, vertical_id=None, actuals=None, company_id=None):
+def calculate_forecast(year, month, return_components=False, vertical_id=None, actuals=None, company_id=None,
+                       statuses=('WIP',)):
     """Calculate forecast for a given month using weekday-weighted projection.
 
     For the current month: uses actuals-to-date + day-of-week projected remainder.
     For future months with no actuals: falls back to prior-year same-month
     actuals scaled by a YoY growth factor (this year budget / last year total).
+
+    ``statuses`` controls which projects contribute uplift. Current-period views
+    use WIP only; forward-looking periods (next month/quarter/year) also pass
+    'On Deck' so the pipeline's expected momentum shows up.
 
     If return_components=True, returns (base_forecast, project_uplift) tuple.
     Otherwise returns total forecast (base + project uplift).
@@ -167,7 +172,7 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
     # only for days in this month on or after its go-live (target completion).
     from strategy.models import Project
     projects = _scope_to(Project.objects.filter(
-        status='WIP',
+        status__in=statuses,
     ).filter(
         Q(target_completion__isnull=True) | Q(target_completion__lte=last_of_month)
     ), vertical_id, company_id)
@@ -186,8 +191,132 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
     return base_forecast + project_uplift
 
 
+def _add_months(year, month, n):
+    """Return (year, month) shifted by ``n`` months (handles year rollover)."""
+    idx = year * 12 + (month - 1) + n
+    return idx // 12, idx % 12 + 1
+
+
+def _goal_budget_for(year, month, vertical_id, company_id):
+    qs = _scope_to(MonthlyGoal.objects.filter(month=date(year, month, 1)), vertical_id, company_id)
+    agg = qs.aggregate(s=Sum('budget'))['s']
+    return float(agg) if agg else 0
+
+
+def _month_actuals_to_date(year, month, today, vertical_id, actuals, company_id):
+    last_day = date(year, month, calendar.monthrange(year, month)[1])
+    if actuals is not None:
+        return float(_actuals_map_agg(
+            actuals, date(year, month, 1), min(last_day, today))['revenue'])
+    return float(_scope_to(DailyActual.objects.filter(
+        date__year=year, date__month=month, date__lte=today), vertical_id, company_id
+    ).aggregate(s=Sum('revenue'))['s'] or 0)
+
+
+def _month_series(months, today, vertical_id, actuals, company_id, statuses=('WIP',)):
+    """Month-granularity chart series for a list of (year, month) tuples.
+
+    Past months render as actual bars; the current and future months render as
+    stacked Trending Forecast + Project Value Add bars. The summary totals sum
+    calculate_forecast across every month (past actuals + forward projection) so
+    "Trending Forecast" is the full end-of-period landing spot, matching the
+    existing This-Quarter / This-Year behavior."""
+    cur_month, cur_year = today.month, today.year
+    labels, budget, fbase, puplift, actual = [], [], [], [], []
+    for (yy, mm) in months:
+        labels.append(date(yy, mm, 1).strftime('%b'))
+        budget.append(_goal_budget_for(yy, mm, vertical_id, company_id))
+        last_day = date(yy, mm, calendar.monthrange(yy, mm)[1])
+        asum = _month_actuals_to_date(yy, mm, today, vertical_id, actuals, company_id)
+        if last_day < today:
+            actual.append(asum)
+            fbase.append(0)
+            puplift.append(0)
+        else:
+            base, up = calculate_forecast(yy, mm, return_components=True, vertical_id=vertical_id,
+                                          actuals=actuals, company_id=company_id, statuses=statuses)
+            fbase.append(float(base))
+            puplift.append(float(up))
+            if mm == cur_month and yy == cur_year:
+                actual.append(asum if asum > 0 else None)
+            else:
+                actual.append(None)
+
+    actual_total = round(sum(v for v in actual if v is not None), 2)
+    f_total = p_total = 0.0
+    for (yy, mm) in months:
+        base, up = calculate_forecast(yy, mm, return_components=True, vertical_id=vertical_id,
+                                      actuals=actuals, company_id=company_id, statuses=statuses)
+        f_total += float(base)
+        p_total += float(up)
+    budget_total = round(sum(budget), 2)
+    return {
+        'labels': labels, 'budget': budget, 'forecast_base': fbase,
+        'project_value_add': puplift, 'actual': actual,
+        'summary': {
+            'actual': actual_total,
+            'forecast': round(f_total, 2),
+            'project_value': round(p_total, 2),
+            'end_total': round(f_total + p_total, 2),
+            'budget_total': budget_total,
+            'delta': round(budget_total - (f_total + p_total), 2),
+        },
+    }
+
+
+def _daily_series(year, month, today, vertical_id, actuals, company_id, statuses=('WIP',)):
+    """Daily cumulative chart series for a single (future) month. No actuals
+    exist yet, so every day is projected: the month's Trending Forecast spread
+    evenly across days, plus the cumulative daily value of pipeline projects that
+    launch on or before each day."""
+    dim = calendar.monthrange(year, month)[1]
+    last_of = date(year, month, dim)
+    month_budget = _goal_budget_for(year, month, vertical_id, company_id)
+    daily_budget_rate = month_budget / dim if dim else 0
+    base, _up = calculate_forecast(year, month, return_components=True, vertical_id=vertical_id,
+                                   actuals=actuals, company_id=company_id, statuses=statuses)
+    base = float(base)
+    daily_base_rate = base / dim if dim else 0
+
+    from strategy.models import Project
+    pqs = _scope_to(Project.objects.filter(status__in=statuses).filter(
+        Q(target_completion__isnull=True) | Q(target_completion__lte=last_of)
+    ), vertical_id, company_id)
+    proj = list(pqs.values_list('value', 'target_completion'))
+
+    def _uplift_day(d):
+        return sum(float(v or 0) / 365.0 for v, launch in proj if (launch is None or launch <= d))
+
+    labels, budget, fbase, puplift, actual = [], [], [], [], []
+    cb = cf = cp = 0.0
+    for day in range(1, dim + 1):
+        d = date(year, month, day)
+        labels.append(d.strftime('%b %d'))
+        cb += daily_budget_rate
+        cf += daily_base_rate
+        cp += _uplift_day(d)
+        budget.append(round(cb, 2))
+        fbase.append(round(cf, 2))
+        puplift.append(round(cp, 2))
+        actual.append(None)
+
+    return {
+        'labels': labels, 'budget': budget, 'forecast_base': fbase,
+        'project_value_add': puplift, 'actual': actual,
+        'summary': {
+            'actual': 0,
+            'forecast': round(base, 2),
+            'project_value': round(cp, 2),
+            'end_total': round(base + cp, 2),
+            'budget_total': round(month_budget, 2),
+            'delta': round(month_budget - (base + cp), 2),
+        },
+    }
+
+
 def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
-    """Build MTD, QTD, and YTD chart data series for the dashboard.
+    """Build MTD, QTD, YTD and forward-looking (next month/quarter/year) chart
+    data series for the dashboard.
 
     ``actuals`` (optional) is a GA4 daily-actuals map {iso_date: {revenue,...}}
     from a Standard connection; when present, actual revenue comes from GA4
@@ -436,7 +565,25 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
     ytd_budget_total = round(sum(ytd_budget), 2)
     ytd_project_value = _project_value_through(date(year, 12, 31))
 
+    # --- Forward-looking periods: what the pipeline (WIP + On Deck) is expected
+    # to deliver next month / next quarter / next year. No actuals exist yet, so
+    # these are pure projection — useful when the current period is already a lost
+    # cause and the question is whether momentum picks up. ---
+    fwd_statuses = ('WIP', 'On Deck')
+    nmo_year, nmo_month = _add_months(current_year, current_month, 1)
+    next_month = _daily_series(nmo_year, nmo_month, today, vertical_id, actuals, company_id, fwd_statuses)
+
+    nq_year, nq_month = _add_months(current_year, quarter_start_month, 3)
+    nq_months = [_add_months(nq_year, nq_month, i) for i in range(3)]
+    next_quarter = _month_series(nq_months, today, vertical_id, actuals, company_id, fwd_statuses)
+
+    ny_months = [(current_year + 1, m) for m in range(1, 13)]
+    next_year = _month_series(ny_months, today, vertical_id, actuals, company_id, fwd_statuses)
+
     return {
+        'nmo': next_month,
+        'nq': next_quarter,
+        'ny': next_year,
         'mtd': {
             'labels': mtd_labels,
             'budget': mtd_budget,
@@ -558,6 +705,9 @@ def index(request):
         'chart_data_mtd': json.dumps(chart_data['mtd']),
         'chart_data_qtd': json.dumps(chart_data['qtd']),
         'chart_data_ytd': json.dumps(chart_data['ytd']),
+        'chart_data_nmo': json.dumps(chart_data['nmo']),
+        'chart_data_nq': json.dumps(chart_data['nq']),
+        'chart_data_ny': json.dumps(chart_data['ny']),
         'performance_data': json.dumps(performance_data),
         'initiatives': initiatives,
         'initiatives_totals': initiatives_totals,
@@ -675,10 +825,22 @@ def _build_performance_data(today, vertical_id=None, actuals=None, company_id=No
     month = today.month
     quarter_start_month = ((month - 1) // 3) * 3 + 1
 
+    nmo_y, nmo_m = _add_months(year, month, 1)
+    nmo_last = calendar.monthrange(nmo_y, nmo_m)[1]
+    nq_y, nq_m = _add_months(year, quarter_start_month, 3)
+    nq_end_y, nq_end_m = _add_months(nq_y, nq_m, 2)
+    nq_end_last = calendar.monthrange(nq_end_y, nq_end_m)[1]
+
+    # (start, end, is_future). Current periods run to today; forward periods span
+    # the whole future window and carry no actuals yet, so their cards show the
+    # target (goal) rather than actuals=0.
     periods = {
-        'mtd': (date(year, month, 1), today),
-        'qtd': (date(year, quarter_start_month, 1), today),
-        'ytd': (date(year, 1, 1), today),
+        'mtd': (date(year, month, 1), today, False),
+        'qtd': (date(year, quarter_start_month, 1), today, False),
+        'ytd': (date(year, 1, 1), today, False),
+        'nmo': (date(nmo_y, nmo_m, 1), date(nmo_y, nmo_m, nmo_last), True),
+        'nq': (date(nq_y, nq_m, 1), date(nq_end_y, nq_end_m, nq_end_last), True),
+        'ny': (date(year + 1, 1, 1), date(year + 1, 12, 31), True),
     }
 
     def _ly_bound(d):
@@ -736,12 +898,31 @@ def _build_performance_data(today, vertical_id=None, actuals=None, company_id=No
         return (actual - baseline) / baseline
 
     result = {}
-    for key, (start, end) in periods.items():
+    for key, (start, end, is_future) in periods.items():
         cur = _aggregate(start, end)
         ly = _aggregate(_ly_bound(start), _ly_bound(end))
 
         sales_goal = _sales_goal_for(start, end)
         visits_goal = (sales_goal / PERFORMANCE_AOV_GOAL / PERFORMANCE_CLOSE_RATE_GOAL) if sales_goal else 0
+
+        if is_future:
+            # No actuals yet — show the target for the period and how it compares
+            # to last year's actuals ("vs LY"). There's nothing to compare against
+            # a goal (the value IS the goal), so delta_goal is n/a.
+            cards = {
+                'sales': {'value': sales_goal, 'unit': 'currency',
+                          'delta_ly': _delta(sales_goal, ly['sales']), 'delta_goal': None},
+                'visits': {'value': visits_goal, 'unit': 'integer',
+                           'delta_ly': _delta(visits_goal, ly['visits']) if visits_goal else None,
+                           'delta_goal': None},
+                'close_rate': {'value': PERFORMANCE_CLOSE_RATE_GOAL, 'unit': 'percent',
+                               'delta_ly': _delta(PERFORMANCE_CLOSE_RATE_GOAL, ly['close_rate']),
+                               'delta_goal': None},
+                'aov': {'value': PERFORMANCE_AOV_GOAL, 'unit': 'currency',
+                        'delta_ly': _delta(PERFORMANCE_AOV_GOAL, ly['aov']), 'delta_goal': None},
+            }
+            result[key] = cards
+            continue
 
         cards = {
             'sales': {
