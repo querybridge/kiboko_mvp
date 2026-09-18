@@ -117,9 +117,27 @@
   });
 
   // ---- Scatter changeplots ------------------------------------------------
+  function cpFmtDelta(delta, label) {
+    // Mirrors the ITG changeplot readout: "N more Orders" / "(N) fewer Units" /
+    // "$N lower Sales". Sales is currency and says "lower" for a decline.
+    var isSales = (label === 'Sales');
+    var absv = Math.abs(delta);
+    var absStr = isSales ? '$' + absv.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                         : Math.round(absv).toLocaleString();
+    var word = delta > 0 ? 'more' : (isSales ? 'lower' : 'fewer');
+    var unit = (Math.round(absv) === 1) ? String(label).slice(0, -1) : label;
+    return (delta < 0 ? '(' + absStr + ') ' : absStr + ' ') + word + ' ' + unit;
+  }
+  function cpPctStr(change) {
+    var s = Math.abs(change).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%';
+    return change >= 0 ? s : '(' + s + ')';
+  }
   if (window.ANALYTICS_SCATTER) Object.keys(ANALYTICS_SCATTER).forEach(function(wid) {
     var widget = ANALYTICS_SCATTER[wid];
     var col = GROUP_COLORS[widget.group] || GROUP_COLORS.engage;
+    // The selected comparison period (e.g. "Last Month" / "Same Month prior
+    // year"), spelled out on the axes + readout instead of a hardcoded "YoY".
+    var cmp = widget.compare_label || 'the prior period';
     widget.charts.forEach(function(ch, ci) {
       var el = document.getElementById('scatter-' + wid + '-' + ci);
       if (!el) return;
@@ -147,7 +165,7 @@
             callbacks: { label: function(item) {
               if (item.datasetIndex === 0) return null;
               var pt = ch.points[item.index];
-              return pt.label + ':  ' + (pt.change >= 0 ? '+' : '') + pt.change + '%  (' + pt.secondary + ' → ' + pt.primary + ')';
+              return pt.label + ':  ' + cpPctStr(pt.change) + '  (' + pt.secondary + ' → ' + pt.primary + ')';
             } }
           },
           onHover: function(e, els) {
@@ -156,17 +174,23 @@
               var i = els[0]._index, di = els[0]._datasetIndex;
               if (di === 1) {
                 var pt = ch.points[i];
+                var lever = ch.heading.replace('Change in ', '');
                 var dir = pt.change >= 0 ? 'up' : 'down';
-                readout.textContent = ch.heading.replace('Change in ', '') + ' for ' + pt.label + ' was ' +
-                  pt.primary + ', ' + dir + ' from ' + pt.secondary + ' prior period — a ' +
-                  (pt.change >= 0 ? '+' : '') + pt.change + '% ' + (pt.change >= 0 ? 'increase' : 'decrease') + '.';
+                var sign = pt.change >= 0 ? 'increase' : 'decrease';
+                var s = lever + ' for ' + pt.label + ' was ' + pt.primary + ', ' + dir +
+                        ' from ' + pt.secondary + ' (' + cmp + '), a ' + cpPctStr(pt.change) + ' ' + sign + '.';
+                if (pt.x_delta !== undefined && pt.y_delta !== undefined) {
+                  s += ' There were ' + cpFmtDelta(pt.x_delta, ch.x_label) + ' and ' +
+                       cpFmtDelta(pt.y_delta, ch.y_label) + ' vs ' + cmp + '.';
+                }
+                readout.textContent = s;
               }
             }
           },
           scales: {
-            xAxes: [{ scaleLabel: { display: true, labelString: ch.x_label + ' YoY %', fontSize: 10 },
+            xAxes: [{ scaleLabel: { display: true, labelString: ch.x_label + ' vs ' + cmp, fontSize: 10 },
                       gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.14)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }],
-            yAxes: [{ scaleLabel: { display: true, labelString: ch.y_label + ' YoY %', fontSize: 10 },
+            yAxes: [{ scaleLabel: { display: true, labelString: ch.y_label + ' vs ' + cmp, fontSize: 10 },
                       gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.14)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }]
           }
         }

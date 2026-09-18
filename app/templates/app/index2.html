@@ -730,12 +730,14 @@
         aspectRatio: 4 / 3,
         scales: {
           xAxes: [{
-            stacked: true
+            stacked: true,
+            ticks: { fontColor: '#9aa4b2' }
           }],
           yAxes: [{
             stacked: true,
             ticks: {
               beginAtZero: true,
+              fontColor: '#9aa4b2',
               callback: function(value) {
                 return '$' + value.toLocaleString();
               }

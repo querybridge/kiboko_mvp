@@ -667,7 +667,11 @@ class Deck:
 
     def scatter_widget(self, wid, group, title, charts, premium=False):
         self.scatter[wid] = {'id': wid, 'group': group, 'title': title,
-                             'charts': charts, 'premium': premium}
+                             'charts': charts, 'premium': premium,
+                             # The selected comparison period, so the changeplot
+                             # axes + hover readout name it instead of hardcoding
+                             # "YoY / prior year".
+                             'compare_label': self.compare_lbl}
 
 
 def _pct_delta(a, b):
@@ -690,6 +694,9 @@ def _real_scatter_chart(heading, x_label, y_label, prim_seg, sec_seg, x_key, y_k
             'color': MARKER_PALETTE[i % len(MARKER_PALETTE)],
             'primary': fmt(prate, kind)[0], 'secondary': fmt(srate, kind)[0],
             'change': round(_pct_delta(prate, srate), 2),
+            # Absolute change in each axis metric vs the comparison period, for
+            # the "There were {x} and {y}" sentence in the hover readout.
+            'x_delta': round(px - sx, 2), 'y_delta': round(py - sy, 2),
         })
         raw.append((x, y))
     trend = _linfit(raw) if len(raw) >= 2 else {'x1': 0, 'y1': 0, 'x2': 0, 'y2': 0}
@@ -731,16 +738,28 @@ def _scatter_chart(seed, heading, x_label, y_label, names, lever_kind):
     rnd = random.Random(seed)
     points = []
     raw = []
+
+    def _abs_delta(pct_change, axis_label):
+        """A plausible absolute change in an axis metric consistent with its
+        %-change, so the readout can say 'N more Orders'. Illustrative only."""
+        base = rnd.uniform(50000, 400000) if axis_label == 'Sales' else rnd.uniform(800, 40000)
+        prev = base / (1 + pct_change / 100.0) if (1 + pct_change / 100.0) else base
+        delta = base - prev
+        return round(delta, 2) if axis_label == 'Sales' else round(delta)
+
     for i, name in enumerate(names):
-        x = round(rnd.uniform(-18, 32), 2)          # YoY % change, x metric
-        y = round(rnd.uniform(-18, 32), 2)          # YoY % change, y metric
+        x = round(rnd.uniform(-18, 32), 2)          # % change, x metric
+        y = round(rnd.uniform(-18, 32), 2)          # % change, y metric
         if lever_kind == 'currency':
             primary = rnd.uniform(60, 260)
         elif lever_kind == 'normal':
             primary = rnd.uniform(1.1, 3.2)
         else:
             primary = rnd.uniform(1.5, 12.0)        # percentage
-        change = round(rnd.uniform(-15, 20), 2)
+        # Rate = y-metric / x-metric, so its % change follows from x and y. This
+        # keeps the readout self-consistent (e.g. fewer Visits + more Carts really
+        # does yield a higher Cart Creation Rate).
+        change = round(((1 + y / 100.0) / (1 + x / 100.0) - 1) * 100, 2)
         secondary = primary / (1 + change / 100.0)
         raw.append((x, y))
         points.append({
@@ -749,6 +768,7 @@ def _scatter_chart(seed, heading, x_label, y_label, names, lever_kind):
             'primary': fmt(primary, lever_kind)[0],
             'secondary': fmt(secondary, lever_kind)[0],
             'change': change,
+            'x_delta': _abs_delta(x, x_label), 'y_delta': _abs_delta(y, y_label),
         })
     return {
         'heading': f'Change in {heading}',
@@ -1085,7 +1105,10 @@ def build_expand_purchases(primary_code, compare_code, rows=None, live=False,
     # SECTION 1 -----------------------------------------------------------
     d.card('expand_aov', 'expand', 'EXPAND', 'AVERAGE ORDER VALUE',
            kpi_val=p['aov'], kpi_kind='currency', delta=pct['aov'],
-           equation=[E(p['sales'], 'currency', 'Sales  /'), E(p['orders'], 'integer', 'Orders  =')],
+           # AOV decomposes as Units per Order x Avg Unit Price (Sales/Orders is
+           # the definition, but the actionable levers are UPO and AUP).
+           equation=[E(p['units_per_order'], 'normal', 'Units per Order  ×'),
+                     E(p['avg_unit_price'], 'currency', 'Avg Unit Price  =')],
            result=E(p['aov'], 'currency', 'AOV'),
            s1=s_aov, s2=s2(s_aov, sd('aov2')), two_sets=True, fmt_kind='currency', chart_height=150)
     d.card('inspire', 'expand', 'INSPIRE', 'UNITS PER ORDER',
