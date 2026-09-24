@@ -59,6 +59,9 @@
       {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
     </form>
     <div class="login-help">Sign in with the username your administrator gave you.</div>
+    <div class="login-help" style="margin-top:8px;">
+      New to Kiboko? <a href="{% url 'users:get_started' %}" style="color:var(--purple-400,#8E6FE0); font-weight:600;">Create a new account</a>
+    </div>
   </div>
 </div>
 {% endblock content %}

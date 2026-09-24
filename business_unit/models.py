@@ -72,7 +72,28 @@ class Organization(models.Model):
 	trial_started = models.DateField(null=True, blank=True,
 	                                 help_text='Trial clock start; null once on a paid plan or internal')
 	plan_status = models.CharField(max_length=20, default='trial',
-	                               help_text='trial | active | past_due (billing wired later)')
+	                               help_text='trial | active | past_due | paused | canceled')
+	# The plan the org signed up on. FK so a price change on the Plan flows through;
+	# the actual charge is Stripe's job once billing is wired.
+	plan = models.ForeignKey('Plan', on_delete=models.SET_NULL, null=True, blank=True,
+	                         related_name='organizations')
+	premium_connection = models.BooleanField(default=False,
+	                                         help_text='Standard add-on: warehouse-grade BigQuery connection')
+	# Billing address (the billing entity of record; Stripe holds the card later).
+	billing_legal_name = models.CharField(max_length=200, blank=True)
+	billing_email = models.EmailField(blank=True)
+	billing_address1 = models.CharField('Billing address', max_length=200, blank=True)
+	billing_address2 = models.CharField('Billing address line 2', max_length=200, blank=True)
+	billing_city = models.CharField(max_length=120, blank=True)
+	billing_state = models.CharField('State / Region', max_length=120, blank=True)
+	billing_postal = models.CharField('Postal code', max_length=40, blank=True)
+	billing_country = models.CharField(max_length=120, blank=True)
+	# Lifecycle. Cancel = self-serve; the org admin ends the account and data is
+	# retained for 90 days (purge_after) then hard-deleted. Pause = admin-side hold.
+	paused_at = models.DateTimeField(null=True, blank=True, help_text='Admin paused this account')
+	canceled_at = models.DateTimeField(null=True, blank=True, help_text='Account canceled by the org admin')
+	purge_after = models.DateField(null=True, blank=True,
+	                               help_text='Canceled data is deleted forever on/after this date (canceled_at + 90 days)')
 	created = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
@@ -86,6 +107,76 @@ class Organization(models.Model):
 		"""What this org calls its companies in the UI."""
 		return 'Client' if self.kind == 'agency' else 'Company'
 
+	TRIAL_DAYS = 30
+	PURGE_DAYS = 90
+
+	@property
+	def trial_days_left(self):
+		"""Days remaining in the trial (>=0), or None if not on a trial."""
+		if self.plan_status != 'trial' or not self.trial_started:
+			return None
+		import datetime
+		left = self.TRIAL_DAYS - (datetime.date.today() - self.trial_started).days
+		return max(0, left)
+
+	@property
+	def is_canceled(self):
+		return self.plan_status == 'canceled'
+
+	def billing_address_lines(self):
+		"""Billing address as a list of non-blank lines (for display / reuse)."""
+		parts = [self.billing_address1, self.billing_address2,
+		         ', '.join(p for p in [self.billing_city, self.billing_state, self.billing_postal] if p),
+		         self.billing_country]
+		return [p for p in parts if p]
+
+	def has_billing_address(self):
+		return bool(self.billing_address1 and self.billing_city)
+
+
+class Plan(models.Model):
+	"""A subscription product/tier shown on the Get Started + Billing pages and
+	(later) synced to Stripe. Price is editable in Django admin; the Stripe ids
+	are placeholders until billing is wired. An add-on (is_addon=True, e.g. the
+	Premium Connection) is purchasable alongside a base plan."""
+	TIER_CHOICES = [
+		('standard', 'Standard'),
+		('premium', 'Premium'),
+		('enterprise', 'Enterprise'),
+		('addon', 'Add-on'),
+	]
+	slug = models.SlugField(max_length=60, unique=True)
+	name = models.CharField(max_length=120)
+	tier = models.CharField(max_length=20, choices=TIER_CHOICES, default='standard')
+	tagline = models.CharField(max_length=200, blank=True,
+	                           help_text='The question this plan answers for the buyer')
+	price = models.DecimalField(max_digits=8, decimal_places=2, default=0,
+	                            help_text='Price in USD for the interval below')
+	interval = models.CharField(max_length=10, default='month',
+	                            help_text='Billing interval (month / year)')
+	features = models.TextField(blank=True, help_text='One feature per line')
+	is_addon = models.BooleanField(default=False,
+	                               help_text='Purchasable alongside a base plan (e.g. Premium Connection)')
+	highlighted = models.BooleanField(default=False,
+	                                  help_text='Visually feature this plan as "most popular"')
+	active = models.BooleanField(default=True)
+	sort_order = models.PositiveIntegerField(default=0)
+	# Placeholders — populated when Stripe is wired; the price above is the source
+	# of truth until then and is pushed to Stripe at that point.
+	stripe_product_id = models.CharField(max_length=80, blank=True)
+	stripe_price_id = models.CharField(max_length=80, blank=True)
+	created = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['sort_order', 'price']
+
+	def __str__(self):
+		return self.name
+
+	def feature_list(self):
+		"""Features as a clean list (one per non-blank line)."""
+		return [ln.strip() for ln in self.features.splitlines() if ln.strip()]
+
 
 class Company(models.Model):
 	"""Top tenant -- a customer company (a Kiboko Account). Maps loosely to a
@@ -95,6 +186,17 @@ class Company(models.Model):
 	name = models.CharField(max_length=200)
 	slug = models.SlugField(max_length=200, unique=True)
 	ga4_account_id = models.CharField(max_length=50, blank=True, help_text='GA4 account id this company was imported from')
+	# Company details (entered by the org admin on the Company Details page).
+	legal_name = models.CharField(max_length=200, blank=True)
+	website = models.CharField(max_length=255, blank=True)
+	address1 = models.CharField('Address', max_length=200, blank=True)
+	address2 = models.CharField('Address line 2', max_length=200, blank=True)
+	city = models.CharField(max_length=120, blank=True)
+	state = models.CharField('State / Region', max_length=120, blank=True)
+	postal = models.CharField('Postal code', max_length=40, blank=True)
+	country = models.CharField(max_length=120, blank=True)
+	same_as_billing = models.BooleanField(default=False,
+	                                      help_text='Reuse the organization billing address for this company')
 	created = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
@@ -104,6 +206,10 @@ class Company(models.Model):
 
 	def __str__(self):
 		return self.name
+
+	def details_complete(self):
+		"""True once the org admin has filled the core company details."""
+		return bool(self.legal_name and (self.same_as_billing or (self.address1 and self.city)))
 
 
 class CompanyMembership(models.Model):

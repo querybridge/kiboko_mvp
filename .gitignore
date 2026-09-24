@@ -131,6 +131,7 @@ wakanda_dark.png
 updates_*.txt
 recap_for_doug_*.txt
 mysql_creds.md
+mysql_creds
 # Generated data exports
 *.xlsx
 docs/google_oauth_setup.md

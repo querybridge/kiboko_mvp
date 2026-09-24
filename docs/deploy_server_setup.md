@@ -48,12 +48,18 @@ real owner and `seed_tenancy_demo` grants that superuser admin access.
    $PY manage.py createsuperuser
    $PY manage.py seed_tenancy_demo            # companies / business units / websites + grant superuser admin
    $PY manage.py seed_organizations           # organizations, links companies
+   $PY manage.py seed_plans                    # subscription plans (Get Started / Billing pricing)
    $PY manage.py seed_metric_recommendations  # Insights win/loss recommendations
    $PY manage.py seed_belami_demo             # Belami demo: projects, actions, actuals (bootstraps its own BUs/depts/objectives)
    $PY manage.py collectstatic --noinput
    touch /var/www/kiboko_pythonanywhere_com_wsgi.py     # reload
    ```
 4. Add real users in-app via **Manage Users** (Huey, sherman, etc.).
+
+**Plan prices** are edited in **Django admin → Business_Unit → Plans** (price is
+inline-editable). `seed_plans` is idempotent and *preserves* admin-edited prices
+on re-run (pass `--reset-prices` only to force the seed defaults back). Prices are
+the source of truth until Stripe is wired, at which point they're pushed to Stripe.
 
 ## Routine deploy (code + schema) — fast, no reseed
 The common case. Keeps all data; the `migrate` write is brief.

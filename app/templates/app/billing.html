@@ -1,25 +1,124 @@
 {% extends "app/base_site.html" %}
 {% block title %} Billing {% endblock title %}
+{% block stylesheets %}{{ block.super }}
+<style>
+  .bl-form label { font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-muted,#8b7fa6); margin-bottom:5px; }
+  .bl-form .form-control { margin-bottom:14px; }
+  .bl-status { display:inline-block; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:700; text-transform:capitalize; }
+  .bl-status.trial { background:rgba(142,111,224,0.2); color:#c9b6ff; }
+  .bl-status.active { background:rgba(46,204,113,0.18); color:#7ee2a8; }
+  .bl-status.canceled, .bl-status.past_due { background:rgba(231,76,60,0.18); color:#f0a59c; }
+  .bl-status.paused { background:rgba(241,196,15,0.18); color:#f2d675; }
+  .bl-plan-price { font-size:28px; font-weight:800; color:var(--text-primary,#f2edff); }
+  .bl-danger { border:1px solid rgba(231,76,60,0.5); border-radius:12px; padding:18px 20px; }
+  .bl-danger h4 { color:#f0a59c; font-weight:700; margin-top:0; }
+</style>
+{% endblock stylesheets %}
 {% block content %}
 <div class="right_col" role="main">
-  <div class="">
-    <div class="page-title">
-      <div class="title_left">
-        <h3>Billing{% if organization %} <small>{{ organization.name }}</small>{% endif %}</h3>
-      </div>
-      <div class="clearfix"></div>
-    </div>
+  <div class="page-title"><div class="title_left">
+    <h3>Billing{% if organization %} <small>{{ organization.name }}</small>{% endif %}</h3>
+  </div><div class="clearfix"></div></div>
 
-    <div class="row"><div class="col-md-12">
-      <div class="x_panel">
-        <div class="x_content" style="padding:40px; text-align:center; color:#888;">
-          <i class="fa fa-credit-card" style="font-size:36px; margin-bottom:12px;"></i>
-          <p>Billing is coming soon. This is where your organization's plan and
-             payment details will live.</p>
+  {% if messages %}
+  <div class="row"><div class="col-md-12">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  {% if not organization %}
+  <div class="row"><div class="col-md-12"><div class="x_panel"><div class="x_content" style="padding:40px; text-align:center; color:#888;">
+    <i class="fa fa-credit-card" style="font-size:36px; margin-bottom:12px;"></i>
+    <p>You don’t administer an organization yet.</p>
+  </div></div></div></div>
+  {% else %}
+
+  {% if organization.is_canceled %}
+  <div class="row"><div class="col-md-12">
+    <div class="alert alert-warning">
+      <i class="fa fa-exclamation-triangle"></i>
+      Your account is <strong>canceled</strong>. Your data stays available until
+      <strong>{{ organization.purge_after|date:"M d, Y" }}</strong>, then it is deleted forever.
+      <form method="post" style="display:inline; margin-left:8px;">{% csrf_token %}
+        <input type="hidden" name="action" value="reactivate">
+        <button type="submit" class="btn btn-success btn-xs"><i class="fa fa-undo"></i> Reactivate account</button>
+      </form>
+    </div>
+  </div></div>
+  {% endif %}
+
+  <div class="row">
+    <!-- Plan summary -->
+    <div class="col-md-6 col-sm-12">
+      <div class="x_panel"><div class="x_title"><h2>Your plan</h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          {% if organization.plan %}
+          <div class="bl-plan-price">${{ organization.plan.price|floatformat:0 }}<small style="font-size:14px; color:var(--text-muted,#8b7fa6);">/{{ organization.plan.interval }}</small></div>
+          <p style="font-size:16px; font-weight:600; margin:2px 0 10px;">{{ organization.plan.name }}
+            {% if organization.premium_connection %}<span class="text-muted" style="font-size:12px;">+ Premium Connection</span>{% endif %}
+          </p>
+          {% else %}
+          <p class="text-muted">No plan selected.</p>
+          {% endif %}
+          <p>Status: <span class="bl-status {{ organization.plan_status }}">{{ organization.plan_status }}</span></p>
+          {% if organization.trial_days_left is not None %}
+          <p class="text-muted"><i class="fa fa-clock-o"></i> {{ organization.trial_days_left }} day{{ organization.trial_days_left|pluralize }} left in your free trial.</p>
+          {% endif %}
+          <p class="text-muted" style="font-size:12px; margin-top:14px;">
+            <i class="fa fa-lock"></i> Payment collection is coming soon — no card is charged yet.
+          </p>
         </div>
       </div>
-    </div></div>
+    </div>
 
+    <!-- Billing address -->
+    <div class="col-md-6 col-sm-12">
+      <div class="x_panel"><div class="x_title"><h2>Billing address</h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          <form method="post" class="bl-form">{% csrf_token %}
+            <input type="hidden" name="action" value="save_billing_address">
+            <label>Billing legal name</label>
+            <input type="text" name="billing_legal_name" class="form-control" value="{{ organization.billing_legal_name }}">
+            <label>Billing email</label>
+            <input type="email" name="billing_email" class="form-control" value="{{ organization.billing_email }}">
+            <label>Address</label>
+            <input type="text" name="billing_address1" class="form-control" value="{{ organization.billing_address1 }}" placeholder="Street address">
+            <input type="text" name="billing_address2" class="form-control" value="{{ organization.billing_address2 }}" placeholder="Suite, unit (optional)">
+            <div class="row">
+              <div class="col-md-6"><label>City</label><input type="text" name="billing_city" class="form-control" value="{{ organization.billing_city }}"></div>
+              <div class="col-md-6"><label>State / Region</label><input type="text" name="billing_state" class="form-control" value="{{ organization.billing_state }}"></div>
+            </div>
+            <div class="row">
+              <div class="col-md-6"><label>Postal code</label><input type="text" name="billing_postal" class="form-control" value="{{ organization.billing_postal }}"></div>
+              <div class="col-md-6"><label>Country</label><input type="text" name="billing_country" class="form-control" value="{{ organization.billing_country }}"></div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fa fa-floppy-o"></i> Save billing address</button>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
+
+  {% if not organization.is_canceled %}
+  <div class="row"><div class="col-md-12">
+    <div class="bl-danger">
+      <h4><i class="fa fa-exclamation-triangle"></i> Cancel account</h4>
+      <p class="text-muted" style="margin-bottom:14px;">
+        Cancelling ends your subscription. Your data stays available for
+        <strong>90 days</strong>, then it is <strong>deleted forever</strong>. You can reactivate any time before then.
+      </p>
+      <form method="post" onsubmit="return confirm('Cancel this account? Your data will be kept for 90 days, then permanently deleted.');">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancel_account">
+        <button type="submit" class="btn btn-danger"><i class="fa fa-times-circle"></i> Cancel my account</button>
+      </form>
+    </div>
+  </div></div>
+  {% endif %}
+
+  {% endif %}
 </div>
 {% endblock content %}

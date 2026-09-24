@@ -36,6 +36,7 @@ admin.site.register(Action)
 admin.site.register(ActionComment)
 admin.site.register(Department)
 admin.site.register(BusinessUnit)
-admin.site.register(Organization)
+# Organization is registered with a richer admin (pause/resume/cancel) in
+# business_unit/admin.py.
 admin.site.register(Company)
 admin.site.register(CompanyMembership)

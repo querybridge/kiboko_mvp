@@ -26,6 +26,127 @@ def register(request):
     return redirect('users:login')
 
 
+def _signup_username(email):
+    """Login = the part before '@' in the email, sanitized and made unique.
+    Mirrors app.views._gen_username so admin-created and self-serve accounts
+    derive usernames the same way."""
+    from django.contrib.auth.models import User
+    local = (email.split('@')[0] or '').lower()
+    base = ''.join(ch for ch in local if ch.isalnum() or ch in '._-') or 'user'
+    base = base[:150]
+    username, i = base, 1
+    while User.objects.filter(username__iexact=username).exists():
+        i += 1
+        username = f'{base[:150 - len(str(i))]}{i}'
+    return username
+
+
+def _unique_slug(model, value):
+    """A unique slug for `model` derived from `value`."""
+    from django.utils.text import slugify
+    base = slugify(value)[:180] or 'org'
+    slug, i = base, 1
+    while model.objects.filter(slug=slug).exists():
+        i += 1
+        slug = f'{base[:180]}-{i}'
+    return slug
+
+
+def get_started(request):
+    """Public "Create a new account" page: describes the onboarding steps,
+    shows the pricing/plan table, and takes a self-serve trial signup.
+
+    The submit is a TEST path until Stripe is wired: it creates the User +
+    Organization (trial) + Company, records the chosen plan, logs the person in,
+    and drops them on the logged-in Getting Started checklist. No charge is made.
+    """
+    import datetime
+    from django.contrib import messages
+    from django.contrib.auth import login
+    from django.contrib.auth.models import User
+    from django.db import transaction
+    from business_unit.models import Plan, Organization, Company, CompanyMembership
+
+    if request.user.is_authenticated:
+        return redirect('app:getting_started')
+
+    plans = list(Plan.objects.filter(active=True, is_addon=False).order_by('sort_order', 'price'))
+    addon = Plan.objects.filter(active=True, is_addon=True).order_by('sort_order').first()
+    valid_slugs = {p.slug for p in plans}
+    default_slug = next((p.slug for p in plans if p.highlighted), plans[0].slug if plans else '')
+
+    # Onboarding steps described on the page (mirrors the logged-in checklist).
+    steps = [
+        {'label': 'Create your account', 'desc': 'Tell us who you are and name your company.'},
+        {'label': 'Choose a plan', 'desc': 'Pick Standard, Premium, or Enterprise. Start a free trial — no charge today.'},
+        {'label': 'Connect your data', 'desc': 'Link GA4 (Standard) or a BigQuery service account (Premium Connection).'},
+        {'label': 'Invite your team', 'desc': 'Add teammates and set each one’s role and business units.'},
+        {'label': 'Set your budget & go', 'desc': 'Enter monthly revenue targets and start prioritizing the work that moves revenue.'},
+    ]
+
+    form = {'first_name': '', 'last_name': '', 'email': '', 'company': '',
+            'plan': default_slug, 'premium_connection': False}
+
+    if request.method == 'POST':
+        form = {
+            'first_name': (request.POST.get('first_name') or '').strip(),
+            'last_name': (request.POST.get('last_name') or '').strip(),
+            'email': (request.POST.get('email') or '').strip(),
+            'company': (request.POST.get('company') or '').strip(),
+            'plan': (request.POST.get('plan') or '').strip(),
+            'premium_connection': bool(request.POST.get('premium_connection')),
+        }
+        password = request.POST.get('password') or ''
+        confirm = request.POST.get('password_confirm') or ''
+
+        errors = []
+        if not form['first_name'] or not form['last_name']:
+            errors.append('Enter your first and last name.')
+        if not form['email']:
+            errors.append('Enter a work email.')
+        elif User.objects.filter(email__iexact=form['email']).exists() or \
+                User.objects.filter(username__iexact=form['email']).exists():
+            errors.append('An account with that email already exists — try signing in instead.')
+        if not form['company']:
+            errors.append('Enter your company name.')
+        if len(password) < 8:
+            errors.append('Choose a password of at least 8 characters.')
+        elif password != confirm:
+            errors.append('The passwords do not match.')
+        if form['plan'] not in valid_slugs:
+            errors.append('Choose a plan.')
+
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+        else:
+            chosen = Plan.objects.get(slug=form['plan'])
+            # Premium/Enterprise include the connection; the add-on only applies to Standard.
+            premium_conn = form['premium_connection'] if chosen.tier == 'standard' else (chosen.tier != 'standard')
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=_signup_username(form['email']), email=form['email'],
+                    password=password, first_name=form['first_name'], last_name=form['last_name'])
+                org = Organization.objects.create(
+                    name=form['company'], slug=_unique_slug(Organization, form['company']),
+                    kind='direct', org_admin=user, plan=chosen,
+                    premium_connection=premium_conn,
+                    plan_status='trial', trial_started=datetime.date.today())
+                company = Company.objects.create(
+                    organization=org, name=form['company'],
+                    slug=_unique_slug(Company, form['company']))
+                CompanyMembership.objects.create(user=user, company=company, role='admin')
+            # No authenticate() call (we set the password directly), so name the backend.
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            messages.success(request, f'Welcome to Kiboko! Your {chosen.name} trial has started. '
+                                      'Finish setup below — no charge today.')
+            return redirect('app:getting_started')
+
+    return render(request, 'users/get_started.html', {
+        'title': 'Get Started', 'plans': plans, 'addon': addon, 'steps': steps,
+        'form': form, 'default_slug': default_slug})
+
+
 @login_required
 def profile(request):
     """User Settings — change password and username. Also the landing page when a

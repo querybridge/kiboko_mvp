@@ -1,0 +1,170 @@
+{% extends "app/base_site.html" %}
+{% block title %} Get Started {% endblock title %}
+
+{# Standalone public page: no app nav until the user is signed in. #}
+{% block sidebar %}{% endblock sidebar %}
+{% block top_navigation %}{% endblock top_navigation %}
+
+{% block stylesheets %}{{ block.super }}
+<style>
+  .gs-wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 60px; }
+  .gs-head { text-align: center; margin-bottom: 30px; }
+  .gs-logo { max-height: 40px; width: auto; margin-bottom: 14px; }
+  .gs-head h1 { font-size: 26px; font-weight: 700; color: var(--text-primary, #f2edff); margin: 0 0 8px; }
+  .gs-head p { color: var(--text-secondary, #b9adcf); font-size: 14px; margin: 0; }
+
+  .gs-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-muted, #8b7fa6); margin: 34px 0 14px; }
+
+  /* Steps */
+  .gs-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .gs-step { background: var(--bg-surface, #1b1230); border: 1px solid var(--border-subtle, #33264d);
+    border-radius: 12px; padding: 16px; }
+  .gs-step .n { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
+    border-radius: 50%; background: var(--purple-400, #8E6FE0); color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+  .gs-step .t { font-weight: 700; color: var(--text-primary, #f2edff); font-size: 14px; margin-bottom: 4px; }
+  .gs-step .d { color: var(--text-secondary, #b9adcf); font-size: 12.5px; line-height: 1.45; }
+
+  /* Plans */
+  .gs-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: stretch; }
+  .gs-plan { position: relative; background: var(--bg-surface, #1b1230); border: 1px solid var(--border-subtle, #33264d);
+    border-radius: 14px; padding: 22px 20px; cursor: pointer; transition: border-color .12s, box-shadow .12s; display: flex; flex-direction: column; }
+  .gs-plan:hover { border-color: var(--purple-400, #8E6FE0); }
+  .gs-plan.selected { border-color: var(--purple-400, #8E6FE0); box-shadow: 0 0 0 2px rgba(142,111,224,0.35); }
+  .gs-plan .badge-pop { position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+    background: var(--purple-400, #8E6FE0); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 20px; }
+  .gs-plan h3 { font-size: 17px; font-weight: 700; color: var(--text-primary, #f2edff); margin: 0 0 4px; }
+  .gs-plan .tagline { color: var(--text-secondary, #b9adcf); font-size: 12.5px; font-style: italic; min-height: 34px; }
+  .gs-plan .price { font-size: 28px; font-weight: 800; color: var(--text-primary, #f2edff); margin: 12px 0 2px; }
+  .gs-plan .price small { font-size: 13px; font-weight: 500; color: var(--text-muted, #8b7fa6); }
+  .gs-plan ul { list-style: none; padding: 0; margin: 14px 0 0; }
+  .gs-plan li { color: var(--text-secondary, #b9adcf); font-size: 12.5px; line-height: 1.5; padding-left: 20px; position: relative; margin-bottom: 7px; }
+  .gs-plan li:before { content: "\f00c"; font-family: FontAwesome; color: #2ecc71; position: absolute; left: 0; top: 1px; font-size: 11px; }
+  .gs-plan .pick { margin-top: auto; padding-top: 16px; }
+  .gs-plan .pick .fa-circle-o, .gs-plan .pick .fa-check-circle { margin-right: 6px; }
+
+  .gs-addon { margin-top: 14px; background: var(--bg-surface-muted, #241a3d); border: 1px dashed var(--border-subtle, #3a2c57);
+    border-radius: 12px; padding: 14px 16px; color: var(--text-secondary, #b9adcf); font-size: 13px; }
+
+  /* Form */
+  .gs-form { background: var(--bg-surface, #1b1230); border: 1px solid var(--border-subtle, #33264d);
+    border-radius: 14px; padding: 24px; }
+  .gs-form label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-muted, #8b7fa6); margin-bottom: 5px; }
+  .gs-form input[type=text], .gs-form input[type=email], .gs-form input[type=password] {
+    width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 14px;
+    background: var(--bg-surface-muted, #241a3d); color: var(--text-primary, #f2edff);
+    border: 1px solid var(--border-subtle, #3a2c57); border-radius: 8px; }
+  .gs-form input:focus { outline: none; border-color: var(--purple-400, #8E6FE0); }
+  .gs-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .gs-field { margin-bottom: 14px; }
+  .gs-test-note { font-size: 12px; color: var(--text-muted, #8b7fa6); margin-top: 12px; text-align: center; }
+  @media (max-width: 560px) { .gs-grid2 { grid-template-columns: 1fr; } }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="gs-wrap">
+  <div class="gs-head">
+    <img src="/static/images/kiboko-logo-white.png" alt="Kiboko" class="gs-logo">
+    <h1>Create your Kiboko account</h1>
+    <p>See performance, prioritize the projects that move revenue, and prove the impact. Start a free trial — no charge today.</p>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}" style="margin-bottom:14px;">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="gs-section-title">How it works</div>
+  <div class="gs-steps">
+    {% for step in steps %}
+    <div class="gs-step">
+      <div class="n">{{ forloop.counter }}</div>
+      <div class="t">{{ step.label }}</div>
+      <div class="d">{{ step.desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <form method="post" action="{% url 'users:get_started' %}" id="gs-signup">
+    {% csrf_token %}
+
+    <div class="gs-section-title">Choose your plan</div>
+    <div class="gs-plans">
+      {% for plan in plans %}
+      <label class="gs-plan{% if plan.slug == form.plan %} selected{% endif %}" data-slug="{{ plan.slug }}" data-tier="{{ plan.tier }}">
+        {% if plan.highlighted %}<span class="badge-pop">Most popular</span>{% endif %}
+        <input type="radio" name="plan" value="{{ plan.slug }}" style="display:none;" {% if plan.slug == form.plan %}checked{% endif %}>
+        <h3>{{ plan.name }}</h3>
+        <div class="tagline">{{ plan.tagline }}</div>
+        <div class="price">${{ plan.price|floatformat:0 }}<small>/{{ plan.interval }}</small></div>
+        <ul>
+          {% for f in plan.feature_list %}<li>{{ f }}</li>{% endfor %}
+        </ul>
+        <div class="pick">
+          <span class="pick-indicator"><i class="fa {% if plan.slug == form.plan %}fa-check-circle{% else %}fa-circle-o{% endif %}"></i>{% if plan.slug == form.plan %}Selected{% else %}Select{% endif %}</span>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+
+    {% if addon %}
+    <div class="gs-addon" id="gs-addon-row">
+      <label style="display:flex; align-items:flex-start; gap:10px; margin:0; text-transform:none; letter-spacing:normal; font-weight:normal; color:inherit;">
+        <input type="checkbox" name="premium_connection" style="margin-top:3px;" {% if form.premium_connection %}checked{% endif %}>
+        <span><strong>Add {{ addon.name }}</strong> — +${{ addon.price|floatformat:0 }}/{{ addon.interval }}. {{ addon.tagline }}.
+          <br><span style="font-size:12px; color:var(--text-muted,#8b7fa6);">Included with Premium &amp; Enterprise.</span></span>
+      </label>
+    </div>
+    {% endif %}
+
+    <div class="gs-section-title">Your details</div>
+    <div class="gs-form">
+      <div class="gs-grid2">
+        <div class="gs-field"><label>First name</label><input type="text" name="first_name" value="{{ form.first_name }}" required></div>
+        <div class="gs-field"><label>Last name</label><input type="text" name="last_name" value="{{ form.last_name }}" required></div>
+      </div>
+      <div class="gs-grid2">
+        <div class="gs-field"><label>Work email</label><input type="email" name="email" value="{{ form.email }}" placeholder="you@company.com" required></div>
+        <div class="gs-field"><label>Company name</label><input type="text" name="company" value="{{ form.company }}" required></div>
+      </div>
+      <div class="gs-grid2">
+        <div class="gs-field"><label>Password</label><input type="password" name="password" placeholder="At least 8 characters" required></div>
+        <div class="gs-field"><label>Confirm password</label><input type="password" name="password_confirm" required></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">Start my free trial</button>
+      <div class="gs-test-note">
+        <i class="fa fa-lock"></i> Test mode — no payment is collected yet. Your trial account is created and you'll be signed in.
+      </div>
+      <div class="gs-test-note" style="margin-top:6px;">
+        Already have an account? <a href="{% url 'users:login' %}" style="color:var(--purple-400,#8E6FE0); font-weight:600;">Sign in</a>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock content %}
+
+{% block javascripts %}{{ block.super }}
+<script>
+  jQuery(function () {
+    var $addonRow = jQuery('#gs-addon-row');
+    function refresh() {
+      jQuery('.gs-plan').each(function () {
+        var $p = jQuery(this), on = $p.find('input[type=radio]').prop('checked');
+        $p.toggleClass('selected', on);
+        $p.find('.pick-indicator').html('<i class="fa ' + (on ? 'fa-check-circle' : 'fa-circle-o') + '"></i>' + (on ? 'Selected' : 'Select'));
+      });
+      // The Premium Connection add-on only applies to Standard (bundled otherwise).
+      var tier = jQuery('.gs-plan input[type=radio]:checked').closest('.gs-plan').data('tier');
+      if ($addonRow.length) { $addonRow.toggle(tier === 'standard'); }
+    }
+    jQuery('.gs-plan').on('click', function () {
+      jQuery(this).find('input[type=radio]').prop('checked', true);
+      refresh();
+    });
+    refresh();
+  });
+</script>
+{% endblock javascripts %}

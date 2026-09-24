@@ -2135,54 +2135,150 @@ def manage_users(request):
 
 @login_required
 def billing(request):
-    """Billing — visible only to organization admins. Blank placeholder for now
-    (real billing wired in a later phase; it will define the Organization)."""
+    """Billing — visible only to organization admins. Shows plan/trial status,
+    the billing address, and lets the admin cancel the account (data retained 90
+    days, then deleted forever). Payment collection is wired to Stripe later."""
+    import datetime
+    from django.utils import timezone
+
     if not (request.user.is_superuser or request.user.administered_orgs.exists()):
         return HttpResponseForbidden('Billing is available to organization admins only.')
     org = request.user.administered_orgs.first()
+
+    if request.method == 'POST' and org is not None:
+        action = request.POST.get('action', '')
+        if action == 'save_billing_address':
+            org.billing_legal_name = (request.POST.get('billing_legal_name') or '').strip()
+            org.billing_email = (request.POST.get('billing_email') or '').strip()
+            org.billing_address1 = (request.POST.get('billing_address1') or '').strip()
+            org.billing_address2 = (request.POST.get('billing_address2') or '').strip()
+            org.billing_city = (request.POST.get('billing_city') or '').strip()
+            org.billing_state = (request.POST.get('billing_state') or '').strip()
+            org.billing_postal = (request.POST.get('billing_postal') or '').strip()
+            org.billing_country = (request.POST.get('billing_country') or '').strip()
+            org.save()
+            messages.success(request, 'Billing address saved.')
+        elif action == 'cancel_account':
+            org.plan_status = 'canceled'
+            org.canceled_at = timezone.now()
+            org.purge_after = datetime.date.today() + datetime.timedelta(days=org.PURGE_DAYS)
+            org.save(update_fields=['plan_status', 'canceled_at', 'purge_after'])
+            # No flash message here — the persistent canceled banner below already
+            # states the retention window and offers Reactivate.
+        elif action == 'reactivate':
+            org.plan_status = 'trial' if org.trial_started else 'active'
+            org.canceled_at = None
+            org.purge_after = None
+            org.save(update_fields=['plan_status', 'canceled_at', 'purge_after'])
+            messages.success(request, 'Welcome back — your account is active again.')
+        return redirect('app:billing')
+
     return render(request, 'app/billing.html', {'title': 'Billing', 'organization': org})
 
 
-@login_required
-def getting_started(request):
-    """Onboarding checklist for an org's setup: add a company/client, invite the
-    team, connect data, set goals. Scoped to the viewer's organization."""
-    from business_unit.models import (CompanyMembership, BigQueryConnection, BusinessUnit)
+def _org_for(user):
+    """The org a user administers, else the org of a real company they belong to."""
     from business_unit.access import real_companies
-    from app.models import MonthlyGoal
-
-    user = request.user
     org = user.administered_orgs.first()
     if org is None:
         rc = real_companies(user).first()
         org = rc.organization if rc else None
+    return org
+
+
+def getting_started_steps(user):
+    """Shared onboarding checklist for an org's setup. Returns (org, steps) where
+    each step is a dict {key, label, desc, url, done}. Used by the Getting Started
+    page and the "Return to Getting Started" banner shown on each step's page."""
+    from django.urls import reverse
+    from business_unit.models import (Company, CompanyMembership, BigQueryConnection, BusinessUnit)
+    from app.models import MonthlyGoal
+
+    org = _org_for(user)
     if org is None:
-        return render(request, 'app/getting_started.html', {'title': 'Getting Started', 'org': None, 'steps': []})
+        return None, []
 
     company_ids = list(org.companies.values_list('id', flat=True))
-    noun = 'Client' if org.kind == 'agency' else 'Company'
+    is_agency = org.kind == 'agency'
     member_count = (CompanyMembership.objects.filter(company_id__in=company_ids)
                     .values('user').distinct().count())
     has_data = (BigQueryConnection.objects.filter(company_id__in=company_ids).exists()
                 or BusinessUnit.objects.filter(company_id__in=company_ids)
                 .exclude(ga4_property_id='').exists())
-    is_agency = org.kind == 'agency'
+    details_done = any(c.details_complete() for c in Company.objects.filter(id__in=company_ids))
+
     first_co_label = 'Add your first client' if is_agency else 'Add your company details'
-    first_co_desc = ('Create the first client you’ll track.' if is_agency
-                     else 'Add the details of the company you’ll track.')
+    first_co_desc = ('Add your first client’s legal name, address, and website.' if is_agency
+                     else 'Add your company’s legal name, address, and website.')
     steps = [
-        {'label': first_co_label, 'done': bool(company_ids),
-         'url': '/app/data-connection/', 'desc': first_co_desc},
-        {'label': 'Invite your team', 'done': member_count >= 2,
-         'url': '/app/manage-users/', 'desc': 'Add users and set each one’s role and business units.'},
-        {'label': 'Connect analytics data', 'done': has_data,
-         'url': '/app/data-connection/', 'desc': 'Connect GA4 (Standard) or a BigQuery service account (Premium).'},
-        {'label': 'Set your budget', 'done': MonthlyGoal.objects.filter(vertical__company_id__in=company_ids).exists(),
-         'url': '/app/goals/', 'desc': 'Enter monthly revenue targets per business unit.'},
+        {'key': 'company', 'label': first_co_label, 'done': details_done,
+         'url': reverse('app:company_details'), 'desc': first_co_desc},
+        {'key': 'team', 'label': 'Invite your team', 'done': member_count >= 2,
+         'url': reverse('app:manage_users'), 'desc': 'Add users and set each one’s role and business units.'},
+        {'key': 'data', 'label': 'Connect analytics data', 'done': has_data,
+         'url': reverse('app:data_connection'), 'desc': 'Connect GA4 (Standard) or a BigQuery service account (Premium).'},
+        {'key': 'budget', 'label': 'Set your budget', 'done': MonthlyGoal.objects.filter(vertical__company_id__in=company_ids).exists(),
+         'url': reverse('app:edit_goals'), 'desc': 'Enter monthly revenue targets per business unit.'},
     ]
+    return org, steps
+
+
+@login_required
+def getting_started(request):
+    """Onboarding checklist for an org's setup: add company details, invite the
+    team, connect data, set goals. Scoped to the viewer's organization."""
+    org, steps = getting_started_steps(request.user)
+    if org is None:
+        return render(request, 'app/getting_started.html', {'title': 'Getting Started', 'org': None, 'steps': []})
+    noun = 'Client' if org.kind == 'agency' else 'Company'
     return render(request, 'app/getting_started.html', {
         'title': 'Getting Started', 'org': org, 'noun': noun, 'steps': steps,
         'done_count': sum(1 for s in steps if s['done']), 'total': len(steps)})
+
+
+@login_required
+def company_details(request):
+    """Org-admin-scoped page to edit each company's details (legal name, address,
+    website), with an option to reuse the organization's billing address."""
+    from business_unit.models import Company
+
+    org = _org_for(request.user)
+    is_admin = request.user.is_superuser or (org is not None and org.org_admin_id == request.user.id)
+    if org is None or not is_admin:
+        return render(request, 'app/company_details.html', {
+            'title': 'Company Details', 'org': org, 'forbidden': True})
+
+    companies = list(org.companies.all().order_by('name'))
+    if request.method == 'POST':
+        company = next((c for c in companies if str(c.id) == request.POST.get('company', '')), None)
+        if company is not None:
+            company.legal_name = (request.POST.get('legal_name') or '').strip()
+            company.website = (request.POST.get('website') or '').strip()
+            company.same_as_billing = bool(request.POST.get('same_as_billing'))
+            if company.same_as_billing:
+                # Copy the org billing address so the stored company address stays in sync.
+                company.address1 = org.billing_address1
+                company.address2 = org.billing_address2
+                company.city = org.billing_city
+                company.state = org.billing_state
+                company.postal = org.billing_postal
+                company.country = org.billing_country
+            else:
+                company.address1 = (request.POST.get('address1') or '').strip()
+                company.address2 = (request.POST.get('address2') or '').strip()
+                company.city = (request.POST.get('city') or '').strip()
+                company.state = (request.POST.get('state') or '').strip()
+                company.postal = (request.POST.get('postal') or '').strip()
+                company.country = (request.POST.get('country') or '').strip()
+            company.save()
+            messages.success(request, f'Saved details for {company.name}.')
+            return redirect('app:company_details')
+
+    noun = 'Client' if org.kind == 'agency' else 'Company'
+    return render(request, 'app/company_details.html', {
+        'title': 'Company Details', 'org': org, 'companies': companies, 'noun': noun,
+        'has_billing': org.has_billing_address(),
+        'billing_lines': org.billing_address_lines()})
 
 
 # The six BVM criteria, in scoring order, carrying the given per-company weights

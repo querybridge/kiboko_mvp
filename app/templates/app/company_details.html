@@ -1,0 +1,115 @@
+{% extends "app/base_site.html" %}
+{% block title %} Company Details {% endblock title %}
+{% block stylesheets %}{{ block.super }}
+<style>
+  .cd-form label { font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-muted,#8b7fa6); margin-bottom:5px; }
+  .cd-form .form-control { margin-bottom:14px; }
+  .cd-reuse { background:var(--bg-surface-muted,#241a3d); border:1px dashed var(--border-subtle,#3a2c57);
+    border-radius:10px; padding:12px 14px; margin-bottom:16px; }
+  .cd-reuse .muted { font-size:12px; color:var(--text-muted,#8b7fa6); margin:6px 0 0; }
+  .cd-address.reused { opacity:.5; pointer-events:none; }
+</style>
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="page-title"><div class="title_left">
+    <h3>Company Details{% if org %} <small>{{ org.name }}</small>{% endif %}</h3>
+  </div><div class="clearfix"></div></div>
+
+  {% if forbidden %}
+    <div class="row"><div class="col-md-12"><div class="x_panel"><div class="x_content">
+      <div class="alert alert-warning" style="margin:0;">
+        <i class="fa fa-lock"></i> Company details are managed by your organization admin.
+        {% if org and org.org_admin %}Ask <strong>{{ org.org_admin.get_full_name|default:org.org_admin.username }}</strong> to update them.{% endif %}
+      </div>
+    </div></div></div></div>
+  {% else %}
+
+  {% include 'app/_gs_banner.html' with gs_current='company' %}
+
+  {% if messages %}
+  <div class="row"><div class="col-md-12">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  {% if has_billing %}
+  <div class="row"><div class="col-md-12">
+    <p class="text-muted" style="margin-bottom:16px;">
+      Tip: your billing address is on file. Check <em>“Reuse billing address”</em> on any {{ noun|lower }} to copy it.
+    </p>
+  </div></div>
+  {% else %}
+  <div class="row"><div class="col-md-12">
+    <div class="alert alert-info">
+      No billing address on file yet. Add one on the <a href="{% url 'app:billing' %}">Billing</a> page to reuse it here.
+    </div>
+  </div></div>
+  {% endif %}
+
+  {% for c in companies %}
+  <div class="row"><div class="col-md-8 col-sm-12">
+    <div class="x_panel">
+      <div class="x_title"><h2>{{ c.name }} <small>{{ noun }} details</small></h2><div class="clearfix"></div></div>
+      <div class="x_content">
+        <form method="post" class="cd-form" data-company="{{ c.id }}">
+          {% csrf_token %}
+          <input type="hidden" name="company" value="{{ c.id }}">
+
+          <label>Legal name</label>
+          <input type="text" name="legal_name" class="form-control" value="{{ c.legal_name }}" placeholder="Legal entity name">
+
+          <label>Website</label>
+          <input type="text" name="website" class="form-control" value="{{ c.website }}" placeholder="https://example.com">
+
+          {% if has_billing %}
+          <div class="cd-reuse">
+            <label style="text-transform:none; letter-spacing:normal; font-weight:600; color:var(--text-primary,#f2edff);">
+              <input type="checkbox" name="same_as_billing" class="cd-reuse-toggle" {% if c.same_as_billing %}checked{% endif %}>
+              Reuse billing address
+            </label>
+            <p class="muted">{% for line in billing_lines %}{{ line }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+          </div>
+          {% endif %}
+
+          <div class="cd-address {% if c.same_as_billing %}reused{% endif %}">
+            <label>Address</label>
+            <input type="text" name="address1" class="form-control" value="{{ c.address1 }}" placeholder="Street address">
+            <input type="text" name="address2" class="form-control" value="{{ c.address2 }}" placeholder="Suite, unit (optional)">
+            <div class="row">
+              <div class="col-md-6"><label>City</label><input type="text" name="city" class="form-control" value="{{ c.city }}"></div>
+              <div class="col-md-6"><label>State / Region</label><input type="text" name="state" class="form-control" value="{{ c.state }}"></div>
+            </div>
+            <div class="row">
+              <div class="col-md-6"><label>Postal code</label><input type="text" name="postal" class="form-control" value="{{ c.postal }}"></div>
+              <div class="col-md-6"><label>Country</label><input type="text" name="country" class="form-control" value="{{ c.country }}"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary"><i class="fa fa-floppy-o"></i> Save details</button>
+        </form>
+      </div>
+    </div>
+  </div></div>
+  {% empty %}
+  <div class="row"><div class="col-md-12"><div class="alert alert-info">No {{ noun|lower }} yet.</div></div></div>
+  {% endfor %}
+
+  {% endif %}
+</div>
+{% endblock content %}
+{% block javascripts %}{{ block.super }}
+<script>
+  jQuery(function () {
+    // "Reuse billing address" dims + disables the manual address inputs.
+    jQuery('.cd-reuse-toggle').each(function () {
+      var $toggle = jQuery(this), $addr = $toggle.closest('form').find('.cd-address');
+      function sync() { $addr.toggleClass('reused', $toggle.prop('checked')); }
+      $toggle.on('change', sync); sync();
+    });
+  });
+</script>
+{% endblock javascripts %}

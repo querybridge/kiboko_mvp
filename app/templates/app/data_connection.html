@@ -18,6 +18,8 @@
     <div class="page-title"><div class="title_left"><h3>Data Connection</h3></div></div>
     <div class="clearfix"></div>
 
+    {% include 'app/_gs_banner.html' with gs_current='data' %}
+
     {% if messages %}
       {% for message in messages %}
       <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>

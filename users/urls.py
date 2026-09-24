@@ -17,6 +17,9 @@ urlpatterns = [
 	#Registration Page
 	path('register/', views.register, name='register'),
 
+	#Public "Create a new account" / Get Started (self-serve trial signup)
+	path('get-started/', views.get_started, name='get_started'),
+
 	#User Settings (profile: change password + username)
 	path('profile/', views.profile, name='profile'),
 ]

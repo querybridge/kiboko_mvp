@@ -18,6 +18,7 @@ urlpatterns = [
     path('help/', views.help_page, name='help'),
     path('work-in-progress/', views.work_in_progress, name='work_in_progress'),
     path('data-connection/', views.data_connection, name='data_connection'),
+    path('company-details/', views.company_details, name='company_details'),
     path('manage-users/', views.manage_users, name='manage_users'),
     path('score-weights/', views.settings_score_weights, name='settings_score_weights'),
     path('estimator/', views.settings_estimator, name='settings_estimator'),

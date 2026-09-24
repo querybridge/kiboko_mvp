@@ -14,6 +14,8 @@
       <div class="clearfix"></div>
     </div>
 
+    {% include 'app/_gs_banner.html' with gs_current='team' %}
+
     {% if messages %}
     <div class="row"><div class="col-md-12">
       {% for message in messages %}

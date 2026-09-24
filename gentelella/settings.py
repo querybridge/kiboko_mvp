@@ -82,6 +82,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'app.context_processors.tenancy_selector',
                 'app.context_processors.google_flags',
+                'app.context_processors.getting_started_banner',
             ],
         },
     },

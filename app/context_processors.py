@@ -7,6 +7,33 @@ def google_flags(request):
     return {'google_oauth_enabled': google_oauth.is_enabled()}
 
 
+def getting_started_banner(request):
+    """Onboarding state for the "Return to Getting Started" banner shown on each
+    step's page during initial setup. Returns nothing once every step is done, so
+    the banner disappears. Each step is annotated with the next incomplete step."""
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return {}
+    try:
+        from app.views import getting_started_steps
+        org, steps = getting_started_steps(user)
+    except Exception:
+        return {}
+    if not org or not steps:
+        return {}
+    incomplete = [s for s in steps if not s['done']]
+    if not incomplete:
+        return {}                                   # all set up -> no banner anywhere
+    for i, s in enumerate(steps):
+        nxt = next((t for t in steps[i + 1:] if not t['done']), None)
+        if nxt is None:
+            nxt = next((t for t in incomplete if t['key'] != s['key']), None)
+        s['next'] = nxt
+    return {'gs_setup': {'active': True, 'steps': steps,
+                         'done_count': sum(1 for s in steps if s['done']),
+                         'total': len(steps)}}
+
+
 def tenancy_selector(request):
     """Cascading Company -> BusinessUnit -> Website scope for the top bar.
 
