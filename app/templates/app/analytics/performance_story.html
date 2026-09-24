@@ -67,8 +67,8 @@
       <div class="ps-colhead">
         <span class="ps-c-metric"></span>
         <span class="ps-c-value">Current Period</span>
-        <span class="ps-c-pct">% to PRV</span>
-        <span class="ps-c-msg">Compared to PRV</span>
+        <span class="ps-c-pct">% to {{ compare_label|default:"prior period" }}</span>
+        <span class="ps-c-msg">Compared to {{ compare_label|default:"prior period" }}</span>
       </div>
       <div class="ps-toggle">
         <button type="button" class="ps-toggle-btn active" data-mode="brief">Brief</button>
