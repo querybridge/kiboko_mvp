@@ -1999,8 +1999,11 @@ def manage_users(request):
             email = request.POST.get('email', '').strip()
             first = request.POST.get('first_name', '').strip()
             last = request.POST.get('last_name', '').strip()
+            roles_list = [r for r in request.POST.getlist('roles') if r in ROLE_KEYS]
             if not email:
                 messages.error(request, 'Enter an email or Google account.')
+            elif not roles_list:
+                messages.error(request, 'Select at least one role for the new user.')
             else:
                 member = (User.objects.filter(email__iexact=email).first()
                           or User.objects.filter(username__iexact=email).first())
@@ -2030,15 +2033,14 @@ def manage_users(request):
                     member.save(update_fields=['first_name', 'last_name'])
                 CompanyMembership.objects.get_or_create(
                     company=company, user=member, defaults={'role': 'member'})
-                if not member.profile.roles:
-                    _set_roles(member, ['business_unit_user'])
+                _set_roles(member, roles_list)          # the roles chosen on the add row
                 if starter_pw:
-                    # Don't pop the credentials yet — wait until roles are saved so the
-                    # emailed login reflects the correct role(s).
-                    messages.success(request, f'Added {email} — assign their roles and click Save to get '
-                                              'their temporary login (with the correct roles) to email.')
+                    # Roles are defined at add time, so pop the credentials now — the
+                    # emailed login reflects the selected role(s).
+                    _flash_starter_creds(member, company)
+                    messages.success(request, f'Added {email} — copy their temporary login from the popup to email.')
                 else:
-                    messages.success(request, f'Added {email} to {company.name}.')
+                    messages.success(request, f'Added {email} to {company.name} with the selected role(s).')
 
         elif action == 'set_roles' and company:
             member = User.objects.filter(pk=request.POST.get('user_id', '')).first()

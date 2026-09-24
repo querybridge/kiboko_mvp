@@ -46,8 +46,8 @@
                   <th>User</th>
                   <th>Member name</th>
                   <th>Email</th>
-                  <th style="width:150px;">Save</th>
                   <th>Roles</th>
+                  <th style="width:160px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -56,8 +56,21 @@
                   <td>{{ m.user.username }}</td>
                   <td>{{ m.user.get_full_name|default:"—" }}</td>
                   <td>{{ m.user.email|default:"—" }}</td>
-                  <!-- Save column: saves the roles set on the right; the credentials
-                       popup then reflects the just-saved roles. -->
+                  <td>
+                    <form method="post" id="roles-{{ entry.company.id }}-{{ m.user.id }}">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="set_roles">
+                      <input type="hidden" name="company" value="{{ entry.company.id }}">
+                      <input type="hidden" name="user_id" value="{{ m.user.id }}">
+                      <div style="display:flex; flex-wrap:wrap; gap:2px 14px;">
+                        {% for value, label in kiboko_roles %}
+                        <label style="font-weight:normal; margin:0;">
+                          <input type="checkbox" name="roles" value="{{ value }}" {% if value in m.user.profile.roles %}checked{% endif %}> {{ label }}
+                        </label>
+                        {% endfor %}
+                      </div>
+                    </form>
+                  </td>
                   <td style="white-space:nowrap;">
                     <button type="submit" form="roles-{{ entry.company.id }}-{{ m.user.id }}" class="btn btn-info btn-xs"><i class="fa fa-floppy-o"></i> Save</button>
                     {% if m.user.profile.must_change_password %}
@@ -77,26 +90,11 @@
                       <button type="submit" class="btn btn-danger btn-xs" title="Remove access" onclick="return confirm('Remove this person\'s access to {{ entry.company.name|escapejs }}?')"><i class="fa fa-times"></i></button>
                     </form>
                   </td>
-                  <td>
-                    <form method="post" id="roles-{{ entry.company.id }}-{{ m.user.id }}">
-                      {% csrf_token %}
-                      <input type="hidden" name="action" value="set_roles">
-                      <input type="hidden" name="company" value="{{ entry.company.id }}">
-                      <input type="hidden" name="user_id" value="{{ m.user.id }}">
-                      <div style="display:flex; flex-wrap:wrap; gap:2px 14px;">
-                        {% for value, label in kiboko_roles %}
-                        <label style="font-weight:normal; margin:0;">
-                          <input type="checkbox" name="roles" value="{{ value }}" {% if value in m.user.profile.roles %}checked{% endif %}> {{ label }}
-                        </label>
-                        {% endfor %}
-                      </div>
-                    </form>
-                  </td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="5" style="text-align:center;">No one has been given access yet.</td></tr>
                 {% endfor %}
-                <!-- Add a user (assign roles, then Save to get their login) -->
+                <!-- Add a user: enter details + pick roles, then Add (one shot). -->
                 <tr>
                   <form method="post">
                     {% csrf_token %}
@@ -110,8 +108,16 @@
                     <td>
                       <input type="email" name="email" placeholder="name@example.com (email or Google account)" class="form-control" required>
                     </td>
-                    <td><button type="submit" class="btn btn-success btn-xs">Add</button></td>
-                    <td><small class="text-muted">Then assign roles and click <strong>Save</strong> to get their temporary login (with the right roles) to email.</small></td>
+                    <td>
+                      <div style="display:flex; flex-wrap:wrap; gap:2px 14px;">
+                        {% for value, label in kiboko_roles %}
+                        <label style="font-weight:normal; margin:0;">
+                          <input type="checkbox" name="roles" value="{{ value }}"> {{ label }}
+                        </label>
+                        {% endfor %}
+                      </div>
+                    </td>
+                    <td><button type="submit" class="btn btn-success btn-xs"><i class="fa fa-plus"></i> Add</button></td>
                   </form>
                 </tr>
               </tbody>
@@ -175,12 +181,14 @@ You’ll be asked to set your own password the first time you sign in.</textarea
 {% block javascripts %}
 {{ block.super }}
 <script>
-  // Require at least one role before a Save (roles) form submits.
+  // Require at least one role before any form that carries role checkboxes
+  // submits (both Add-user and Save-roles).
   jQuery(function () {
-    jQuery('form[id^="roles-"]').on('submit', function (e) {
-      if (jQuery(this).find('input[name="roles"]:checked').length === 0) {
+    jQuery('form').on('submit', function (e) {
+      var $roles = jQuery(this).find('input[name="roles"]');
+      if ($roles.length && $roles.filter(':checked').length === 0) {
         e.preventDefault();
-        alert('Define at least one role before saving.');
+        alert('Select at least one role.');
       }
     });
   });
