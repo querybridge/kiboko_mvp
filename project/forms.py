@@ -22,14 +22,14 @@ class RoundedDecimalField(forms.DecimalField):
 class ProjectForm(ModelForm):
     """Add / edit a Project (the scored unit). AEE is inherited from the
     objective, so it isn't set here."""
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, company_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense',
-                  'ramp_days', 'plausibility_factor', 'value',
+                  'ramp_days', 'plausibility_factor',
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note'):
             self.fields[f].required = False
         self.fields['plausibility_factor'].initial = 1.0
-        self._scope_choices(user)
+        self._scope_choices(user, company_id)
 
         # Round decimal inputs to their column precision (GA4 levels can carry more).
         for name in ('target_from', 'target_to', 's0_annual', 'evidence_prior_level'):
@@ -47,18 +47,30 @@ class ProjectForm(ModelForm):
             return first or u.get_username()
         self.fields['owner'].label_from_instance = _owner_label
 
-    def _scope_choices(self, user):
+    def _scope_choices(self, user, company_id=None):
         """Limit the Owner + Business Unit dropdowns to the tenants the user can
         see, so a member of one company never picks another company's BU or a
-        superuser account as owner. Superusers/org-admins still see everything."""
+        superuser account as owner. When a company is scoped (the top-bar Company
+        selector), narrow to just that company. Superusers/org-admins still see
+        everything they're allowed to."""
         if user is None or not getattr(user, 'is_authenticated', False):
             return
-        from business_unit.access import visible_companies, allowed_bu_ids
-        from business_unit.models import BusinessUnit
+        from business_unit.access import visible_companies, allowed_bu_ids, can_access_company
+        from business_unit.models import BusinessUnit, Company
         from django.contrib.auth.models import User
         companies = list(visible_companies(user))
         if not companies:
             return
+        # Company-scope: restrict to the active top-bar company when one is set
+        # and the user can access it (else keep all visible companies).
+        if company_id:
+            scoped = [c for c in companies if c.id == company_id]
+            if not scoped:
+                comp = Company.objects.filter(pk=company_id).first()
+                if comp and can_access_company(user, comp):
+                    scoped = [comp]
+            if scoped:
+                companies = scoped
         inst = getattr(self, 'instance', None)
 
         bu_ids = set()
@@ -130,7 +142,7 @@ class ProjectForm(ModelForm):
         fields = ['name', 'objective', 'owner', 'vertical', 'department',
                   'target_completion', 'why', 'definition_of_done',
                   'lever', 'target_from', 'target_to', 's0_annual', 'ramp_days',
-                  'direct_expense', 'plausibility_factor', 'value',
+                  'direct_expense', 'plausibility_factor',
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note']
         labels = {
             'vertical': 'Business Unit',
@@ -144,7 +156,6 @@ class ProjectForm(ModelForm):
             's0_annual': 'Annual sales baseline ($)',
             'ramp_days': 'Ramp to full effect (days)',
             'direct_expense': 'Direct expense ($)',
-            'value': 'Estimated Value',
         }
         help_texts = {
             'objective': 'The annual objective this supports (its AEE element is inherited).',
@@ -177,11 +188,6 @@ class ProjectForm(ModelForm):
             'direct_expense': forms.HiddenInput(),
             'ramp_days': NumberInput(attrs={'min': 1}),
             'plausibility_factor': forms.HiddenInput(),
-            # Manual fallback for the estimated annual $ impact, used when there's
-            # no GA4 history to auto-estimate from (shown in the Size-of-Impact
-            # placeholder). Ignored on save when the lever estimator can compute.
-            'value': NumberInput(attrs={'min': 0, 'class': 'form-control',
-                                        'placeholder': 'e.g. 250000'}),
             'evidence_backed': forms.CheckboxInput(),
             'evidence_kind': Select(),
             'evidence_prior_level': forms.HiddenInput(),      # raw; formatted display in template

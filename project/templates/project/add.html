@@ -352,13 +352,9 @@
                 <p id="plaus_empty_note" class="est-hint plaus-note" style="margin-top:6px;">
                   <i class="fa fa-lock"></i>Available with at least {{ plaus_min_weeks }} weeks
                   of connected GA4 history for the selected Business Unit.</p>
-                <!-- No history to auto-estimate from: let the user enter the value manually. -->
-                <div class="form-group" style="margin-top:12px;">
-                  <label for="id_value">Estimated Value <small class="text-muted">annual revenue impact ($)</small></label>
-                  {{ form.value }}
-                  <small class="est-hint" style="display:block; margin-top:5px;">Enter the expected annual
-                    revenue impact — the auto-estimator needs connected GA4 history.</small>
-                </div>
+                <p class="est-hint" style="margin-top:6px;">The impact value is still estimated from the
+                  current level, target level, and annual sales baseline above — history only powers the
+                  Size-of-Impact gauge.</p>
               </div>
 
               <!-- Evidence-backed target: anchor plausibility to an evidenced prior

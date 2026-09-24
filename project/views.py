@@ -128,7 +128,7 @@ def project(request):
     approval -> Developer effort + capability -> Ready to Score -> team vote).
     Revenue is auto-estimated from the impact estimator, not entered by hand."""
     if request.method == 'POST':
-        form = ProjectForm(request.POST, user=request.user)
+        form = ProjectForm(request.POST, user=request.user, company_id=_get_company_id(request))
         if form.is_valid():
             p = form.save()
             # Audit trail: record an evidence-backed claim as a comment for voters.
@@ -187,7 +187,7 @@ def project(request):
         default_dept = getattr(profile, 'department', None) or Department.objects.first()
         if default_dept:
             initial['department'] = default_dept.pk
-        form = ProjectForm(initial=initial, user=request.user)
+        form = ProjectForm(initial=initial, user=request.user, company_id=_get_company_id(request))
     ctx = _project_form_context(form, title='Add Project')
     return render(request, 'project/add.html', ctx)
 
@@ -306,8 +306,10 @@ def project_edit(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     next_url = (request.POST.get('next') or request.GET.get('next')
                 or reverse('project:project_detail', kwargs={'project_id': project.id}))
+    edit_company_id = (project.vertical.company_id if project.vertical_id and project.vertical
+                       else _get_company_id(request))
     if request.method == 'POST':
-        form = ProjectForm(request.POST, instance=project, user=request.user)
+        form = ProjectForm(request.POST, instance=project, user=request.user, company_id=edit_company_id)
         if form.is_valid():
             p = form.save()
             from project.services import impact
@@ -327,7 +329,7 @@ def project_edit(request, project_id):
                 problems.append(f'{label}: {errs[0]}')
             messages.error(request, 'Couldn’t save — ' + ' · '.join(problems[:6]))
     else:
-        form = ProjectForm(instance=project, user=request.user)
+        form = ProjectForm(instance=project, user=request.user, company_id=edit_company_id)
     return render(request, 'project/add.html',
                   _project_form_context(form, title='Edit Project', is_edit=True, next_url=next_url))
 
