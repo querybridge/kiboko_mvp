@@ -45,6 +45,7 @@
   }
   .est-metric .sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
   .est-metric.accent .val { color: var(--purple-300); }
+  .est-metric.expected .val { color: var(--accent-secondary, #55C892); }
 
   /* Plausibility gradient legend (visual identity from the Figma/Streamlit gauge) */
   .plaus-bar {
@@ -107,6 +108,9 @@
   .baseline-delta.up { color: var(--status-success); }
   .baseline-delta.down { color: var(--status-danger); }
   .baseline-delta.flat { color: var(--text-muted); }
+  /* When the target trips the plausibility discount, warn instead of green. */
+  .baseline-delta.stretch { color: #ECB752; }
+  .baseline-delta.implausible { color: #d7191c; }
 
   /* Evidence-backed target box */
   .evidence-box {
@@ -297,6 +301,11 @@
                   <div class="lbl">Gross impact / yr</div>
                   <div class="val" id="m_gross">—</div>
                   <div class="sub">S₀ × %&Delta; lever</div>
+                </div>
+                <div class="est-metric expected">
+                  <div class="lbl">Expected (risk-adjusted)</div>
+                  <div class="val" id="m_expected">—</div>
+                  <div class="sub">gross <span id="m_pfac">—</span> plausibility</div>
                 </div>
                 <div class="est-metric">
                   <div class="lbl">Realized this yr</div>
@@ -508,15 +517,32 @@
     }
   }
 
+  // Current plausibility discount factor (1 = no discount), kept live by updatePlaus.
+  function plausFactor() {
+    var P = pfactor ? parseFloat(pfactor.value) : 1;
+    return isFinite(P) ? P : 1;
+  }
+
+  // Expected (risk-adjusted) = gross × plausibility factor. Keeps gross as the
+  // hero but shows the discounted number the gauge implies.
+  function applyExpected(gross, base) {
+    var P = plausFactor();
+    $('m_expected').textContent = base > 0 ? fmtUSD(gross * P, 0) : '—';
+    $('m_pfac').textContent = base > 0 ? '× ' + P.toFixed(2) : '—';
+  }
+
   // Right-aligned "target is +N% vs current level" readout under the row.
   function updateBaselineDelta() {
     var el = $('baseline_delta'); if (!el) return;
     var f = parseFloat(HID.from.value), t = parseFloat(HID.to.value);
     if (!(f > 0) || isNaN(t)) { el.textContent = ''; el.className = 'baseline-delta'; return; }
     var pct = (t - f) / f;
+    var P = plausFactor(), stretch = P < 1;    // plausibility discount active
     var arrow = pct > 0 ? '▲' : (pct < 0 ? '▼' : '■');
-    el.textContent = arrow + ' ' + fmtPct(pct) + ' vs current level';
-    el.className = 'baseline-delta ' + (pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat');
+    el.textContent = arrow + ' ' + fmtPct(pct) + ' vs current level' + (stretch ? ' · stretch' : '');
+    var cls = stretch ? (P < 0.4 ? 'implausible' : 'stretch')
+                      : (pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat');
+    el.className = 'baseline-delta ' + cls;
   }
 
   function recalc() {
@@ -526,7 +552,8 @@
     refreshDisplays();
     var f = parseFloat(HID.from.value), t = parseFloat(HID.to.value), base = parseFloat(HID.s0.value);
     if (!(f > 0) || isNaN(t)) { $('m_pct').textContent = '—'; $('m_gross').textContent = '—';
-      $('m_realized').textContent = '—'; $('m_rf').textContent = '—'; return; }
+      $('m_realized').textContent = '—'; $('m_rf').textContent = '—';
+      $('m_expected').textContent = '—'; $('m_pfac').textContent = '—'; return; }
     var pct = (t - f) / f;
     var gross = (base > 0 ? base : 0) * pct;
     var rf = realizedFraction(launch && launch.value, ramp && ramp.value);
@@ -534,6 +561,7 @@
     $('m_gross').textContent = base > 0 ? fmtUSD(gross, 0) : '—';
     $('m_realized').textContent = base > 0 ? fmtUSD(gross * rf, 0) : '—';
     $('m_rf').textContent = Math.round(rf * 100) + '%';
+    applyExpected(gross, base);
   }
 
   // Mirror impact.plausibility. The target's distance is measured from the
@@ -683,6 +711,7 @@
         $('m_gross').textContent = base > 0 ? fmtUSD(base * pct, 0) : '—';
         $('m_realized').textContent = base > 0 ? fmtUSD(base * pct * rf, 0) : '—';
         $('m_rf').textContent = Math.round(rf * 100) + '%';
+        applyExpected(base * pct, base);
       }
     });
     disp.addEventListener('focus', function () {
