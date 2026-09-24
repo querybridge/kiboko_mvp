@@ -174,14 +174,12 @@ def project(request):
             'target_completion': _business_days_out(timezone.localdate(), 30),
             'plausibility_factor': 1.0,
         }
-        # Pre-select the Business Unit from the active top-bar scope so the
-        # estimator can auto-fill GA4 baselines on load (the form's Business Unit,
-        # not the scope, is what drives the fetch).
-        sv = request.session.get('scope_vertical')
-        if sv and sv != 'all' and str(sv).isdigit():
-            from business_unit.models import BusinessUnit
-            if BusinessUnit.objects.filter(pk=sv).exists():
-                initial['vertical'] = sv
+        # Default the Business Unit to the one selected in the top nav (its GET
+        # param or the persisted scope), so the estimator can auto-fill GA4
+        # baselines on load. Uses the canonical scope helper for consistency.
+        vid = _get_vertical_id(request)
+        if vid:
+            initial['vertical'] = vid
         # Department defaults to the creator's own (Profile.department), else the first.
         profile = getattr(request.user, 'profile', None)
         default_dept = getattr(profile, 'department', None) or Department.objects.first()
