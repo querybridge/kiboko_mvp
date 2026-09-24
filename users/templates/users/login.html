@@ -1,77 +1,64 @@
 {% extends "app/base_site.html" %}
-{% block title %} New Strategy {% endblock title %}
-{% block stylesheets %}
-<!--https://django-crispy-forms.readthedocs.io/en/latest/index.html-->
-{% load crispy_forms_tags %}
-{{ block.super }}
-<!-- Ion.RangeSlider -->
-<link href="/static/vendors/normalize-css/normalize.css" rel="stylesheet">
-<link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.css" rel="stylesheet">
-<link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.skinNice.css" rel="stylesheet">
+{% block title %} Sign in {% endblock title %}
+
+{# Standalone login: no app nav until the user is signed in. #}
+{% block sidebar %}{% endblock sidebar %}
+{% block top_navigation %}{% endblock top_navigation %}
+
+{% block stylesheets %}{{ block.super }}
+<style>
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .login-card { width: 100%; max-width: 380px; background: var(--bg-surface, #1b1230);
+    border: 1px solid var(--border-subtle, #33264d); border-radius: 14px; padding: 28px 26px 24px; }
+  .login-brand { text-align: center; margin-bottom: 20px; }
+  .login-logo { max-height: 40px; width: auto; margin-bottom: 12px; }
+  .login-tagline { font-size: 13px; font-weight: 600; letter-spacing: .3px; color: var(--text-secondary, #b9adcf); }
+  .login-sub { font-size: 12px; color: var(--text-muted, #8b7fa6); margin-top: 6px; line-height: 1.4; }
+  #login-form p { margin-bottom: 14px; }
+  #login-form label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--text-muted, #8b7fa6); margin-bottom: 5px; }
+  #login-form input[type=text], #login-form input[type=password] {
+    width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 14px;
+    background: var(--bg-surface-muted, #241a3d); color: var(--text-primary, #f2edff);
+    border: 1px solid var(--border-subtle, #3a2c57); border-radius: 8px; }
+  #login-form input:focus { outline: none; border-color: var(--purple-400, #8E6FE0); }
+  .login-submit { margin-top: 4px; }
+  .login-help { font-size: 11.5px; color: var(--text-muted, #8b7fa6); text-align: center; margin-top: 12px; }
+</style>
 {% endblock stylesheets %}
+
 {% block content %}
-<div class="right_col" role="main">
-  <div class="">
-    <div class="page-title">
-      <div class="title_left">
-        <h3>Login</h3>
-      </div>
-      <div class="clearfix"></div>
-      <div class="row">
-        <div class="col-md-6 col-sm-6 col-xs-6">
-          
-          <!--- Test Form -->
-          <div class="x_panel">
-            <div class="x_title">
-              <div class="clearfix"></div>
-            </div>
-            <div class="x_content">
-              {% if messages %}
-                {% for message in messages %}
-                <div class="alert alert-danger" style="margin-bottom:12px;">{{ message }}</div>
-                {% endfor %}
-              {% endif %}
-              {% if google_oauth_enabled %}
-              <a href="{% url 'google_login' %}" class="btn btn-primary btn-block" style="margin-bottom:16px;">
-                <i class="fa fa-google"></i>&nbsp; Sign in with Google
-              </a>
-              <div style="text-align:center; color:#888; margin-bottom:12px;">— or —</div>
-              {% endif %}
-              {% if form.errors %}
-              <p>Your username and password didn't match. Please try again.</p>
-              {% endif %}
-
-              <form method="post" action="{% url 'users:login' %}">
-	              {% csrf_token %}
-	              {{ form.as_p }}
-
-	              <button name="submit">sign in</button>
-	              {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">
+      <img src="/static/images/kiboko-logo-white.png" alt="Kiboko" class="login-logo">
+      <div class="login-tagline">RevOps platform for eCommerce</div>
+      <div class="login-sub">See performance, prioritize the projects that move revenue, and prove the impact.</div>
     </div>
+
+    {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-danger" style="margin-bottom:14px;">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% if form.errors %}
+      <div class="alert alert-danger" style="margin-bottom:14px;">Your username and password didn't match. Please try again.</div>
+    {% endif %}
+
+    {% if google_oauth_enabled %}
+    <a href="{% url 'google_login' %}" class="btn btn-primary btn-block" style="margin-bottom:14px;">
+      <i class="fa fa-google"></i>&nbsp; Sign in with Google
+    </a>
+    <div style="text-align:center; color:var(--text-muted,#8b7fa6); margin-bottom:12px; font-size:12px;">— or —</div>
+    {% endif %}
+
+    <form method="post" action="{% url 'users:login' %}" id="login-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="btn btn-primary btn-block login-submit">Sign in</button>
+      {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+    </form>
+    <div class="login-help">Sign in with the username your administrator gave you.</div>
   </div>
 </div>
 {% endblock content %}
-{% block javascripts %}
-{{ block.super }}
-<!-- Ion.RangeSlider -->
-<script src="/static/vendors/ion.rangeSlider/js/ion.rangeSlider.js"></script>
-{% endblock javascripts %}
-<!--
-Desired Impact -- 70 Chart Input
-Definition of success -- 70 Chart Input
-Alignment - Ic, IPs, IPF -- Multi Check
-corporate strategy, business unit strategy, and team strategy -- radio
-Business Unit/Corporate Area/Team -- drop down
-Competitive Position - Dominant, Strong, Favorable, Tenable, Weak -- Radio Button
-Purpose - New Growth, Hold Position, Defend Position, Reverse Decay -- Radio Button
-Projects
-Feature/Test
-Update/New
-ADL Matrix - https://www.youtube.com/watch?v=4S90cdIeYoI
-https://www.mindtools.com/pages/article/what-is-strategy.htm
--->

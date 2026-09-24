@@ -170,6 +170,10 @@
           },
           onHover: function(e, els) {
             if (!readout) return;
+            if (!els || !els.length) {           // mouse left all points — reset
+              readout.textContent = 'Hover over a point to see details.';
+              return;
+            }
             if (els && els.length) {
               var i = els[0]._index, di = els[0]._datasetIndex;
               if (di === 1) {

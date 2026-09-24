@@ -52,10 +52,11 @@
               <td><span class="cp-verdict cp-mixed">{{ p.status }}</span></td>
               <td style="white-space:nowrap;">
                 <a href="{% url 'project:project_detail' p.id %}#realized" class="btn btn-success btn-xs"><i class="fa fa-line-chart"></i> Analyze Impact</a>
-                <form method="post" action="{% url 'project:archive_project' p.id %}" style="display:inline; margin-left:4px;"
-                      onsubmit="return confirm('Archive “{{ p.name|escapejs }}”?');">
+                <span style="display:inline-block; width:1px; height:16px; background:var(--border-strong,#cbb8ea); opacity:.4; margin:0 10px; vertical-align:middle;"></span>
+                <form method="post" action="{% url 'project:archive_project' p.id %}" style="display:inline;"
+                      onsubmit="return confirm('Archive “{{ p.name|escapejs }}”? It will move to the Archive.');">
                   {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
-                  <button type="submit" class="btn btn-warning btn-xs"><i class="fa fa-archive"></i> Archive</button>
+                  <button type="submit" class="btn btn-default btn-xs" title="Move to Archive"><i class="fa fa-archive"></i> Archive</button>
                 </form>
               </td>
             </tr>

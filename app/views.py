@@ -795,6 +795,7 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
             'aee_color': _AEE_COLOR.get(aee, '#888'),
             'objective': s.objective.name if s.objective_id and s.objective else '',
             'score': float(s.normalized_score) if s.normalized_score is not None else 0.0,
+            'scored': s.normalized_score is not None,
             'status': s.status or '',
             # Expected go-live (the project's target completion date).
             'go_live': s.target_completion.isoformat() if s.target_completion else '',

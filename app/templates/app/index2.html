@@ -562,7 +562,7 @@
                         {% endif %}
                       </td>
                       <td>{{ init.objective|default:"—" }}</td>
-                      <td style="font-weight:700;">{{ init.score|floatformat:1 }}</td>
+                      <td style="font-weight:700;">{% if init.scored %}{{ init.score|floatformat:1 }}{% else %}<span class="zero" title="Not scored yet">—</span>{% endif %}</td>
                       <td><span class="status-pill status-{{ init.status|lower|cut:' ' }}">{{ init.status|default:"—" }}</span></td>
                       <td>{{ init.go_live|default:"—" }}</td>
                       <td class="avg-progress-cell">
@@ -780,7 +780,7 @@
                 var label = dataset.label;
                 var val = dp.yLabel;
 
-                if (val !== null && val !== undefined && val !== 0) {
+                if (val !== null && val !== undefined && val !== 0 && !isNaN(val)) {
                   var color = dataset.borderColor || dataset.backgroundColor;
                   var formattedVal = '$' + Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                   html += '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';margin-right:6px;"></span>' + label + ': ' + formattedVal + '<br>';

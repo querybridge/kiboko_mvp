@@ -74,15 +74,17 @@ GROUP_LINKS = {
 # Distinct per-marker colors for changeplot points, so each device / channel /
 # category reads as its own group. A vibrant, warm, flat categorical palette in
 # the spirit of bold Afro-diasporic color work — legible on the dark surface.
+# Ordered for maximum hue separation between ADJACENT segments (device/channel
+# lists render in order), so neighbors like Direct vs Referral don't collide.
 MARKER_PALETTE = [
-    '#F2A03D',  # amber
+    '#4E8FD6',  # sky blue
     '#E8654F',  # coral
     '#46B3A3',  # teal
     '#8E6FE0',  # violet
     '#E4B93C',  # gold
-    '#4E8FD6',  # sky blue
-    '#C9468C',  # magenta
     '#6FB84A',  # green
+    '#C9468C',  # magenta
+    '#F2A03D',  # amber
 ]
 
 
