@@ -1991,6 +1991,17 @@ def manage_users(request):
         }
         return True
 
+    def _gen_username(email):
+        """Default login = the part before '@' in the email, made unique."""
+        local = email.split('@')[0].lower()
+        base = ''.join(ch for ch in local if ch.isalnum() or ch in '._-') or 'user'
+        base = base[:150]
+        username, i = base, 1
+        while User.objects.filter(username__iexact=username).exists():
+            i += 1
+            username = f'{base[:150 - len(str(i))]}{i}'
+        return username
+
     if request.method == 'POST':
         action = request.POST.get('action', '')
         company = companies.filter(pk=request.POST.get('company', '')).first()
@@ -2010,7 +2021,8 @@ def manage_users(request):
                 starter_pw = None
                 if member is None:
                     member = User.objects.create_user(
-                        username=email[:150], email=email, first_name=first, last_name=last)
+                        username=_gen_username(email), email=email,
+                        first_name=first, last_name=last)
                     # Give a random 8-char temporary password + force a change on first
                     # login, so non-Google users can sign in. (Google users log in
                     # without a password and never see this.)

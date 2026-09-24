@@ -100,7 +100,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="add_member">
                     <input type="hidden" name="company" value="{{ entry.company.id }}">
-                    <td><small class="text-muted">login = email</small></td>
+                    <td><small class="text-muted">login = the part before @ in the email</small></td>
                     <td>
                       <input type="text" name="first_name" placeholder="First name" class="form-control" style="margin-bottom:5px;">
                       <input type="text" name="last_name" placeholder="Last name" class="form-control">
