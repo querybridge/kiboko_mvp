@@ -473,6 +473,11 @@ def _analyst_baselines(request, project):
     # value reproducible from the composition).
     if project.lever and project.target_from is not None:
         levels[project.lever] = float(project.target_from)
+    # Base the composition on the PROJECT's own annual sales baseline (the same
+    # base the auto value uses), so an unchanged review yields zero delta. The
+    # freshly-fetched baselines are only used for the other levers' current levels.
+    if project.s0_annual:
+        s0 = float(project.s0_annual)
     return levels, s0, source
 
 
