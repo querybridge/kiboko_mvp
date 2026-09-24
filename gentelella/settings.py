@@ -97,6 +97,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        # SQLite is single-writer: a long write (e.g. the demo seed) can lock the
+        # file while web workers read/write the session table. Wait up to 30s for
+        # a lock instead of erroring at the 5s default — this prevents the
+        # "database is locked" 500s during a deploy/seed. (WAL is intentionally
+        # NOT enabled: it's unreliable on PythonAnywhere's networked filesystem.)
+        'OPTIONS': {'timeout': 30},
     }
 }
 
