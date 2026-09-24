@@ -494,6 +494,16 @@ DA_SESSIONS_PER_VISITOR = 1.3      # sessions (visits) per visitor (user)
 DA_NEW_VISITOR_SHARE = 0.40
 DA_CART_COMPLETION = 0.35          # orders / carts
 DA_UNITS_PER_ORDER = 1.8
+# Best-effort engagement / funnel ratios for the Storyboard's softer metrics on
+# the DailyActual tier (revenue/visits/orders are exact; these are approximations).
+DA_ENGAGED_SESSION_SHARE = 0.58
+DA_ENGAGEMENT_SECS = 62.0          # avg engagement seconds per session
+DA_PAGES_PER_SESSION = 4.2
+DA_PDP_PER_SESSION = 2.6
+DA_PLP_PER_SESSION = 1.5
+DA_CARTVIEW_PER_CART = 1.2
+DA_CHECKOUT_PER_ORDER = 1.3
+DA_SHIPPING_PER_ORDER = 1.1
 # Best-effort device / channel mix for split cards (must sum ~1 per split).
 DA_DEVICE_MIX = {'desktop': 0.42, 'mobile': 0.50, 'tablet': 0.05, 'others': 0.03}
 DA_CHANNEL_MIX = {'direct': 0.26, 'organic': 0.34, 'paid': 0.18, 'social': 0.10,
@@ -856,6 +866,27 @@ def _story_fundamentals(t):
 STORY_TOTALS_KEYS = STORY_GA4_METRICS + STORY_EVENT_NAMES
 
 
+def _story_totals_from_actual(r, v, o):
+    """STORY totals dict from DailyActual (revenue, visits, orders), using the SAME
+    ratios as the analytics DailyActual tier so the Storyboard's Sales / Visits /
+    Close Rate / AOV match Grow Sales exactly. Engagement/funnel views are
+    best-effort approximations (item/event-level data needs GA4 or BigQuery)."""
+    v = float(v or 0); o = float(o or 0); r = float(r or 0)
+    visitors = v / DA_SESSIONS_PER_VISITOR if v else 0.0
+    carts = o / DA_CART_COMPLETION if o else 0.0
+    return {
+        'sessions': v, 'totalUsers': visitors, 'newUsers': visitors * DA_NEW_VISITOR_SHARE,
+        'engagedSessions': v * DA_ENGAGED_SESSION_SHARE,
+        'userEngagementDuration': v * DA_ENGAGEMENT_SECS,
+        'screenPageViews': v * DA_PAGES_PER_SESSION,
+        'addToCarts': carts, 'ecommercePurchases': o,
+        'itemsPurchased': o * DA_UNITS_PER_ORDER, 'purchaseRevenue': r,
+        'view_item': v * DA_PDP_PER_SESSION, 'view_item_list': v * DA_PLP_PER_SESSION,
+        'view_cart': carts * DA_CARTVIEW_PER_CART, 'begin_checkout': o * DA_CHECKOUT_PER_ORDER,
+        'add_shipping_info': o * DA_SHIPPING_PER_ORDER,
+    }
+
+
 def _bq_story_fundamentals(request, bqp, primary_code, compare_code, today):
     """Premium storyboard fundamentals from BigQuery -- mirrors ga4_story_fundamentals.
     single_sku comes from the real purchase item arrays."""
@@ -883,10 +914,27 @@ def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
     if bqp is not None:                            # Premium company -> BigQuery
         return _bq_story_fundamentals(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
-    if sc is None:
-        return None
-    identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
+    if sc is None:
+        # DailyActual fallback (seeded/uploaded actuals) before dummy, mirroring
+        # ga4_rows so the Storyboard matches Grow Sales / Pipeline for the same scope.
+        verts = _scoped_verticals(request)
+        p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
+        by_p = _actual_by_day(verts, p_start, p_end)
+        if by_p is None:
+            return None
+
+        def _sum_actual(by):
+            tr = tv = to = 0.0
+            for f in (by or {}).values():
+                tr += f.get('sales', 0.0); tv += f.get('visits', 0.0); to += f.get('orders', 0.0)
+            return tr, tv, to
+
+        pr, pv, po = _sum_actual(by_p)
+        sr, sv, so = _sum_actual(_actual_by_day(verts, s_start, s_end) or {})
+        return (_story_fundamentals(_story_totals_from_actual(pr, pv, po)),
+                _story_fundamentals(_story_totals_from_actual(sr, sv, so)))
+    identity, property_ids, stream_id = sc
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
 
     def zeros():
