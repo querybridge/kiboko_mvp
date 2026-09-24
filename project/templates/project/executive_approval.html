@@ -33,7 +33,7 @@
               <th>Project</th>
               <th>Business Unit</th>
               <th>Objective</th>
-              <th class="text-right">Score</th>
+              <th class="text-right">Score /10</th>
               <th class="text-right">Projected value</th>
               <th style="width:170px;"></th>
             </tr>
@@ -46,7 +46,7 @@
               </td>
               <td>{{ p.vertical.name|default:"—" }}</td>
               <td>{{ p.objective.name|default:"—" }}</td>
-              <td class="text-right">{{ p.score|floatformat:0|default:"—" }}</td>
+              <td class="text-right">{{ p.normalized_score|floatformat:1 }}</td>
               <td class="text-right">${{ p.value|default:0|intcomma }}</td>
               <td>
                 {% if can_greenlight %}

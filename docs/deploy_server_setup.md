@@ -83,6 +83,7 @@ backfills existing projects/actions (objective links, real-baseline s0_annual).
 ```bash
 cd /home/kiboko/kiboko_mvp && PY=/home/kiboko/.virtualenvs/kiboko/bin/python
 $PY manage.py seed_belami_demo
+$PY manage.py seed_exec_approval_demo        # optional: extra Scored/Exec-Approval projects to test the greenlight queue
 $PY manage.py seed_metric_recommendations   # if Insights recommendations changed
 touch /var/www/kiboko_pythonanywhere_com_wsgi.py
 ```
