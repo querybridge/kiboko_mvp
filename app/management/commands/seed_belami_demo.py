@@ -281,7 +281,7 @@ class Command(BaseCommand):
                 go = date(today.year, rng.randint(1, 12), rng.randint(1, 28))
 
             p = Project(
-                name=name, owner=rng.choice(owners), vertical=bu,
+                name=name, owner=(rng.choice(owners) if owners else None), vertical=bu,
                 department=rng.choice(depts) if depts else None, objective=objective,
                 why=f'As a shopper, I want {name.lower()}, so that Belami {bu_name} grows.'[:400],
                 definition_of_done='Shipped to all users; success metric tracked; no P1 defects.',
