@@ -1246,6 +1246,7 @@ def realized_perf_for_project(request, project, measure_days=30):
             'gross': _usd_fin(gross_annual * frac),
             'discounted': _usd_fin(gross_annual * pf * frac),
             'actual': _usd_fin(rp['delta']),
+            'actual_sales': _usd_fin(after['sales']),   # actual sales in the window
         }
     return rp
 
