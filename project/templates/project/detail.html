@@ -9,6 +9,10 @@
   #realized .tile_stats_count .count { color: var(--text-primary); font-size: 24px; }
   #realized .tile_stats_count .count_top, #realized .tile_stats_count .count_bottom { color: var(--text-muted); }
   #realized .rp-lead { font-size: 15px; line-height: 1.5; }
+  #realized .rp-proj { max-width: 440px; margin: 4px 0 8px; }
+  #realized .rp-proj td { padding: 6px 12px; border-top: 1px solid var(--card-edge); }
+  #realized .rp-proj .rp-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #realized .rp-proj tr.rp-actual td { font-weight: 700; border-top: 2px solid var(--border-strong, #cbb8ea); }
   #realized details.rp-detail { margin: 10px 0 2px; border-top: 1px solid var(--card-edge); padding-top: 8px; }
   #realized details.rp-detail > summary { cursor: pointer; color: var(--text-secondary); font-size: 13px;
     font-weight: 600; list-style: none; padding: 4px 0; outline: none; }
@@ -118,6 +122,19 @@
         <div class="alert alert-info rp-lead">↔️ {{ r.plain_summary }}</div>
         {% else %}
         <div class="alert alert-info rp-lead">❔ {{ r.plain_summary }}</div>
+        {% endif %}
+
+        {% if r.proj %}
+        <table class="table rp-proj">
+          <tbody>
+            <tr><td>Gross projection <small class="text-muted">({{ r.proj.window_days }}-day window)</small></td>
+              <td class="rp-num">{{ r.proj.gross }}</td></tr>
+            <tr><td>Discounted projection <small class="text-muted">(risk-adjusted)</small></td>
+              <td class="rp-num">{{ r.proj.discounted }}</td></tr>
+            <tr class="rp-actual"><td>Actual sales change</td>
+              <td class="rp-num">{{ r.proj.actual }}</td></tr>
+          </tbody>
+        </table>
         {% endif %}
 
         <details class="rp-detail">

@@ -1192,10 +1192,12 @@ def realized_perf_for_project(request, project, measure_days=30):
                 return i
         return max(0, len(dates) - 1)
 
+    # Descending so the biggest POSITIVE contributions sit at the top of the
+    # horizontal bar (Chart.js draws index 0 at the top).
     contrib = sorted(
         ({'label': impact.LEVERS[k][0], 'value': round(rp['contrib'].get(k, 0.0)),
           'color': aee_color.get(impact.LEVERS[k][1], '#9B7FE0'), 'is_target': (k == lever)}
-         for k in impact.LEVER_KEYS), key=lambda c: c['value'])
+         for k in impact.LEVER_KEYS), key=lambda c: c['value'], reverse=True)
     rp['chart'] = {
         'labels': [d[5:] for d in dates],                        # MM-DD
         'sales': [round(x) for x in roll],
@@ -1231,6 +1233,20 @@ def realized_perf_for_project(request, project, measure_days=30):
         'offset': "The targeted lever moved, but other levers offset it — overall sales were flat or down.",
     }.get(rp['verdict'], "The signal is mixed — see the breakdown below.")
     rp['plain_summary'] = summary
+
+    # Projection vs actual over the measurement window: gross (undiscounted),
+    # plausibility-discounted ("Expected"), and the actual sales change.
+    s0 = float(getattr(project, 's0_annual', 0) or 0)
+    pf = float(getattr(project, 'plausibility_factor', 1) or 1)
+    if s0 > 0 and planned is not None:
+        frac = measure_days / 365.0
+        gross_annual = s0 * planned
+        rp['proj'] = {
+            'window_days': measure_days,
+            'gross': _usd_fin(gross_annual * frac),
+            'discounted': _usd_fin(gross_annual * pf * frac),
+            'actual': _usd_fin(rp['delta']),
+        }
     return rp
 
 
