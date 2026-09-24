@@ -127,9 +127,18 @@ LANE_ORDER = ('ready_to_score', 'scored', 'executive_approval', 'on_deck', 'acti
 # project is authoritative -- a move or an edit-form change sticks as-is.
 COLUMN_STATUSES = set(LANE_STATUS.values())
 
-# Intake pipeline (pre-Kanban): a project is approved by a BU lead, then an
-# Analyst sets revenue, then a Developer sets LOE, then it's Ready to Score.
-PIPELINE_STATUSES = ('Incomplete Entry', 'Pending Revenue', 'Pending LOE')
+# Intake pipeline (pre-Kanban): a BU lead approves, then in parallel an Analyst
+# signs off the projected value AND a Developer sets LOE; once BOTH are done the
+# project is Ready to Score. 'In Intake' is the approved-but-awaiting-sign-offs
+# state; 'Pending Revenue'/'Pending LOE' are kept for back-compat.
+PIPELINE_STATUSES = ('Incomplete Entry', 'In Intake', 'Pending Revenue', 'Pending LOE')
+
+
+def intake_ready(project):
+    """Both intake sign-offs complete: developer LOE (effort + capability) AND
+    analyst value review."""
+    loe = bool(getattr(project, 'effort_size', '') and getattr(project, 'capability', ''))
+    return loe and bool(getattr(project, 'analyst_reviewed', False))
 
 
 def derive_status(project):
@@ -150,13 +159,13 @@ def derive_status(project):
 
     if status == 'Pending Assignment':
         return 'On Deck'
-    # Blank / legacy -> infer the intake stage. Revenue is auto-estimated at Add
-    # Project, so there's no Analyst stage: after BU-lead approval a Developer
-    # sets the effort size + capability, then it's Ready to Score.
+    # Blank / legacy -> infer the intake stage. After BU-lead approval a project
+    # sits 'In Intake' until BOTH the analyst value sign-off and the developer LOE
+    # are done (parallel gates), then it's Ready to Score.
     if _is_incomplete(project) or not project.approved:
         return 'Incomplete Entry'
-    if not (getattr(project, 'effort_size', '') and getattr(project, 'capability', '')):
-        return 'Pending LOE'
+    if not intake_ready(project):
+        return 'In Intake'
     return 'Ready to Score'
 
 # Transitions: which lanes can a card be dragged INTO

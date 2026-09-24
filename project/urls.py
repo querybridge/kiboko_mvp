@@ -16,6 +16,8 @@ urlpatterns = [
     path('approve/', views.approve_projects, name='approve_projects'),
     path('<int:project_id>/approve-action/', views.approve_action, name='approve_action'),
     path('<int:project_id>/set-loe/', views.set_loe, name='set_loe'),
+    path('<int:project_id>/analyst-review/', views.analyst_review, name='analyst_review'),
+    path('<int:project_id>/set-analyst-review/', views.set_analyst_review, name='set_analyst_review'),
     # Kanban
     path('kanban/', views.kanban_view, name='kanban'),
     path('kanban/move/', views.kanban_move, name='kanban_move'),

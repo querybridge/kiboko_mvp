@@ -16,7 +16,8 @@ from .forms import ProjectForm, ActionTaskForm
 from business_unit.models import Department
 from .services.kanban import (
     LANES, LANE_STATUS, PIPELINE_STATUSES, get_lane, group_projects, compute_all_lane_totals,
-    validate_move, apply_move, is_ready_for_review, can_approve, can_set_loe,
+    validate_move, apply_move, is_ready_for_review, can_approve, can_set_loe, can_set_revenue,
+    intake_ready,
 )
 
 # Statuses that are terminal / not represented as a Kanban lane. These never
@@ -267,12 +268,20 @@ def project_detail(request, project_id):
     if project.status in COMPLETED_STATUSES:
         from app.integrations import ga4_dashboard
         realized = ga4_dashboard.realized_perf_for_project(request, project)
+    # Analyst review audit: the auto value + delta vs the analyst's projected value.
+    analyst_auto = analyst_delta = None
+    if project.analyst_reviewed and project.analyst_value is not None:
+        est = project._estimate()
+        analyst_auto = int(round(est['gross_annual'])) if est else 0
+        analyst_delta = int(project.analyst_value) - analyst_auto
     return render(request, 'project/detail.html', {
         'project': project,
         'actions': actions,
         'action_form': ActionTaskForm(project=project),
         'realized': realized,
         'completed': project.status in COMPLETED_STATUSES,
+        'analyst_auto': analyst_auto,
+        'analyst_delta': analyst_delta,
     })
 
 
@@ -353,16 +362,23 @@ def approve_projects(request):
     """Intake queue: Incomplete -> Pending Approval (BU lead) -> Pending LOE
     (Developer sets effort size + capability) -> Ready to Score."""
     vertical_id = _get_vertical_id(request)
+    INTAKE = ('In Intake', 'Pending LOE', 'Pending Revenue')
     qs = _scope(Project.objects.filter(archived=False).filter(
-        Q(approved=False) | Q(status='Pending LOE')
+        Q(approved=False) | Q(status__in=INTAKE)
     ).select_related('owner', 'objective', 'vertical', 'department'),
         vertical_id, _get_company_id(request))
 
-    pending, incomplete, pending_loe = [], [], []
+    pending, incomplete, pending_loe, pending_analyst = [], [], [], []
     for p in qs:
-        if p.status == 'Pending LOE':
-            p.user_can_act = can_set_loe(request.user, p)
-            pending_loe.append(p)
+        if p.status in INTAKE:
+            # Parallel gates: a project needs an analyst value sign-off AND a
+            # developer LOE. It shows in each section until that gate is done.
+            p.can_analyst = can_set_revenue(request.user, p)
+            p.can_loe = can_set_loe(request.user, p)
+            if not p.analyst_reviewed:
+                pending_analyst.append(p)
+            if not (p.effort_size and p.capability):
+                pending_loe.append(p)
         elif is_ready_for_review(p):
             p.user_can_act = can_approve(request.user, p)
             pending.append(p)
@@ -370,10 +386,11 @@ def approve_projects(request):
             incomplete.append(p)
     from project.project_field_options import EFFORT_SIZE_CHOICES, CAPABILITY_CHOICES
     return render(request, 'project/approve_projects.html', {
-        'title': 'Project Intake',
+        'title': 'Approve Projects',
         'pending_projects': pending,
         'incomplete_projects': incomplete,
         'pending_loe_projects': pending_loe,
+        'pending_analyst_projects': pending_analyst,
         'effort_sizes': EFFORT_SIZE_CHOICES,
         'capability_choices': [c for c in CAPABILITY_CHOICES if c[0]],
     })
@@ -391,9 +408,10 @@ def approve_action(request, project_id):
                                 'current/target level, sales baseline) via Edit before approving.')
     else:
         project.approved = True
-        project.status = 'Pending LOE'
+        project.status = 'In Intake'
         project.save()
-        messages.success(request, f'Approved "{project.name}" — awaiting effort + capability (Developer).')
+        messages.success(request, f'Approved "{project.name}" — awaiting analyst value sign-off '
+                                  f'and developer effort + capability.')
     return redirect('project:approve_projects')
 
 
@@ -415,10 +433,158 @@ def set_loe(request, project_id):
     else:
         project.effort_size = size
         project.capability = cap
-        project.status = LANE_STATUS['ready_to_score']
+        # Ready to Score only when the analyst has also signed off (parallel gate).
+        ready = bool(project.analyst_reviewed)
+        project.status = LANE_STATUS['ready_to_score'] if ready else 'In Intake'
         project.save()
         impact.recompute_scores(company=project._company())
-        messages.success(request, f'Set effort {size} + capability for "{project.name}" — now Ready to Score.')
+        if ready:
+            messages.success(request, f'Set effort {size} + capability for "{project.name}" — now Ready to Score.')
+        else:
+            messages.success(request, f'Set effort {size} + capability for "{project.name}" — '
+                                      f'still awaiting the analyst value sign-off.')
+    return redirect('project:approve_projects')
+
+
+# Display units for the six levers on the analyst review screen.
+_LEVER_UNITS = {
+    'visitors': 'integer', 'visits_per_visitor': 'decimal', 'cart_creation': 'percent',
+    'cart_completion': 'percent', 'units_per_order': 'decimal', 'avg_unit_price': 'currency',
+}
+
+
+def _analyst_baselines(request, project):
+    """(current_levels{lever:val}, s0_annual, source) for the project's BU, from the
+    data tier; falls back to the project's own stored baseline for the primary lever."""
+    from app.integrations import ga4_dashboard
+    from project.services import impact
+    levels, s0, source = {}, float(project.s0_annual or 0), None
+    bu = project.vertical
+    if bu:
+        status = ga4_dashboard.baseline_status(request, bu)
+        if status in ('premium', 'standard', 'dailyactual'):
+            daily = ga4_dashboard.baseline_daily_for_bu(request, bu, DEFAULT_BASELINE_WINDOW)
+            b = impact.baselines_from_daily(daily, DEFAULT_BASELINE_WINDOW) if daily else None
+            if b:
+                levels = dict(b['levels'])
+                s0 = b['s0_annual']
+                source = {'premium': 'BigQuery', 'standard': 'GA4', 'dailyactual': 'actuals'}[status]
+    # The primary lever's current level is the intake baseline (keeps the auto
+    # value reproducible from the composition).
+    if project.lever and project.target_from is not None:
+        levels[project.lever] = float(project.target_from)
+    return levels, s0, source
+
+
+def _analyst_metrics(project, levels):
+    """Build the per-lever rows for the analyst screen: current, planned, expected."""
+    from project.services import impact
+    adj = project.analyst_adjustments or {}
+    rows = []
+    for k in impact.LEVER_KEYS:
+        label = impact.LEVERS[k][0]
+        current = levels.get(k)
+        is_primary = (k == project.lever)
+        planned = float(project.target_to) if (is_primary and project.target_to is not None) else current
+        if k in adj and adj[k] not in (None, ''):
+            expected = float(adj[k])
+        else:
+            expected = planned
+        rows.append({'key': k, 'label': label, 'unit': _LEVER_UNITS.get(k, 'decimal'),
+                     'current': current, 'planned': planned, 'expected': expected,
+                     'is_primary': is_primary})
+    return rows
+
+
+@login_required
+def analyst_review(request, project_id):
+    """Analyst screen: verify or adjust the projected value by setting expected
+    post-launch levels for one or more of the six levers (parallel intake gate)."""
+    from project.services import impact
+    project = get_object_or_404(Project, pk=project_id)
+    if not can_set_revenue(request.user, project):
+        messages.error(request, 'Only an analyst can review the projected value.')
+        return redirect('project:project_detail', project_id=project.id)
+    levels, s0, source = _analyst_baselines(request, project)
+    metrics = _analyst_metrics(project, levels)
+    est = project._estimate()
+    auto_value = int(round(est['gross_annual'])) if est else 0
+    has_baselines = bool(s0 and any(m['current'] for m in metrics))
+    return render(request, 'project/analyst_review.html', {
+        'project': project, 'metrics': metrics, 's0_annual': s0, 'source': source,
+        'auto_value': auto_value, 'has_baselines': has_baselines,
+        'current_value': project.analyst_value if project.analyst_reviewed else auto_value,
+        'lever_keys': impact.LEVER_KEYS,
+    })
+
+
+@login_required
+@require_POST
+def set_analyst_review(request, project_id):
+    """Save the analyst's value sign-off / adjustments (parallel intake gate)."""
+    from django.utils import timezone as _tz
+    from project.services import impact
+    project = get_object_or_404(Project, pk=project_id)
+    if not can_set_revenue(request.user, project):
+        messages.error(request, 'Only an analyst can review the projected value.')
+        return redirect('project:project_detail', project_id=project.id)
+
+    levels, s0, _ = _analyst_baselines(request, project)
+    est = project._estimate()
+    auto_value = int(round(est['gross_annual'])) if est else 0
+
+    # Collect the analyst's expected post-launch levels (only those that differ
+    # from the planned/current default are recorded as adjustments).
+    adjustments, expected_levels = {}, {}
+    for k in impact.LEVER_KEYS:
+        raw = (request.POST.get(f'expected_{k}') or '').strip()
+        if raw == '':
+            continue
+        try:
+            val = float(raw)
+        except ValueError:
+            continue
+        # Percent levers are entered as percentages (e.g. 20 -> 0.20 raw) to match
+        # the fraction-scale baselines the value math uses.
+        if _LEVER_UNITS.get(k) == 'percent':
+            val = val / 100.0
+        expected_levels[k] = val
+        adjustments[k] = val
+
+    note = (request.POST.get('analyst_note') or '').strip()
+    if levels and s0:
+        analyst_value = int(round(impact.value_from_adjustments(s0, levels, expected_levels)))
+    else:
+        # No baselines to reconstruct from: accept the auto value unless the
+        # analyst typed an explicit override value.
+        try:
+            analyst_value = int(round(float(request.POST.get('manual_value') or auto_value)))
+        except ValueError:
+            analyst_value = auto_value
+
+    # A note is required whenever the analyst changes the value.
+    if analyst_value != auto_value and not note:
+        messages.error(request, 'Add a note justifying the adjustment before saving.')
+        return redirect('project:analyst_review', project_id=project.id)
+
+    project.analyst_reviewed = True
+    project.analyst_value = analyst_value
+    project.analyst_adjustments = adjustments
+    project.analyst_note = note[:500]
+    project.analyst_reviewed_by = request.user
+    project.analyst_reviewed_at = _tz.now()
+    ready = bool(project.effort_size and project.capability)
+    project.status = LANE_STATUS['ready_to_score'] if ready else 'In Intake'
+    project.save()
+    impact.recompute_scores(company=project._company())
+    delta = analyst_value - auto_value
+    if delta:
+        messages.success(request, f'Value set to ${analyst_value:,} for "{project.name}" '
+                                  f'({"+" if delta > 0 else "−"}${abs(delta):,} vs auto-estimate)'
+                                  + ('' if not ready else ' — now Ready to Score.'))
+    else:
+        messages.success(request, f'Value signed off (${analyst_value:,}) for "{project.name}"'
+                                  + ('.' if not ready else ' — now Ready to Score.'))
     return redirect('project:approve_projects')
 
 

@@ -28,6 +28,20 @@
     <div class="clearfix"></div>
   </div>
 
+  {% if project.analyst_reviewed and analyst_auto is not None %}
+  {% load humanize %}
+  <div class="row"><div class="col-md-12">
+    <div class="alert" style="background:rgba(142,111,224,0.10); border:1px solid var(--card-edge);">
+      <i class="fa fa-sliders"></i> <strong>Analyst value review:</strong>
+      ${{ project.analyst_value|intcomma }}
+      <span class="text-muted">(auto-estimate ${{ analyst_auto|intcomma }};
+        Δ {% if analyst_delta >= 0 %}+${{ analyst_delta|intcomma }}{% else %}−${{ analyst_delta|cut:"-"|intcomma }}{% endif %})</span>
+      {% if project.analyst_note %}<div style="margin-top:6px;">“{{ project.analyst_note }}”</div>{% endif %}
+      {% if project.analyst_reviewed_by %}<small class="text-muted">— {{ project.analyst_reviewed_by.get_full_name|default:project.analyst_reviewed_by.username }}{% if project.analyst_reviewed_at %}, {{ project.analyst_reviewed_at|date:"M j, Y" }}{% endif %}</small>{% endif %}
+    </div>
+  </div></div>
+  {% endif %}
+
   {% if messages %}
   <div class="row"><div class="col-md-12">
     {% for message in messages %}

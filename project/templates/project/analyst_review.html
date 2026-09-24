@@ -1,0 +1,149 @@
+{% extends "app/base_site.html" %}
+{% load humanize %}
+{% block title %} Analyst Value Review {% endblock title %}
+{% block stylesheets %}{{ block.super }}
+<style>
+  #ar .ar-sub { color: var(--text-muted); font-size: 13px; }
+  #ar table.ar-metrics { width: 100%; margin: 8px 0 4px; }
+  #ar table.ar-metrics th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-muted); border-bottom: 1px solid var(--card-edge); padding: 6px 10px; text-align: right; }
+  #ar table.ar-metrics th.ar-l, #ar table.ar-metrics td.ar-l { text-align: left; }
+  #ar table.ar-metrics td { padding: 8px 10px; border-bottom: 1px solid var(--card-edge);
+    text-align: right; font-variant-numeric: tabular-nums; }
+  #ar tr.ar-primary td { background: rgba(142,111,224,0.10); }
+  #ar .ar-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--purple-300, #A98EE8); border: 1px solid var(--purple-300, #A98EE8);
+    border-radius: 6px; padding: 0 5px; margin-left: 6px; }
+  #ar input.ar-exp { width: 120px; text-align: right; padding: 5px 8px; border-radius: 6px;
+    border: 1px solid var(--border-subtle, #3a2c57); background: var(--bg-surface-muted, #241a3d);
+    color: var(--text-primary, #f2edff); }
+  #ar .ar-summary { display: flex; gap: 26px; flex-wrap: wrap; margin: 16px 0 8px; }
+  #ar .ar-stat .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+  #ar .ar-stat .val { font-size: 22px; font-weight: 700; }
+  #ar #ar_delta.up { color: var(--status-success, #55C892); }
+  #ar #ar_delta.down { color: #ECB752; }
+</style>
+{% endblock stylesheets %}
+{% block content %}
+<div class="right_col" role="main" id="ar">
+  <div class="page-title">
+    <div class="title_left"><h3>Value Review <small>{{ project.name }}</small></h3></div>
+    <div class="clearfix"></div>
+  </div>
+
+  {% if messages %}
+  <div class="row"><div class="col-md-10">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  <div class="row"><div class="col-md-10 col-sm-12">
+    <div class="x_panel">
+      <div class="x_title"><h2>Verify or adjust the projected value</h2><div class="clearfix"></div></div>
+      <div class="x_content">
+        <p class="ar-sub">This project targets <strong>{{ project.get_lever_display|default:"a lever" }}</strong>.
+          Kiboko estimates value from the six levers below. If a foreseeable change will move a metric the
+          estimator can't see (e.g. a promotion or price realignment lowering <em>Avg Unit Price</em>), set
+          its <strong>expected post-launch</strong> value{% if source %} — current values are from {{ source }}{% endif %}.</p>
+
+        <form method="post" action="{% url 'project:set_analyst_review' project.id %}">
+          {% csrf_token %}
+          {% if has_baselines %}
+          <table class="ar-metrics">
+            <thead><tr>
+              <th class="ar-l">Metric</th><th>Current</th><th>Planned (post-launch)</th><th>Expected post-launch</th>
+            </tr></thead>
+            <tbody>
+              {% for m in metrics %}
+              <tr class="{% if m.is_primary %}ar-primary{% endif %}"
+                  data-key="{{ m.key }}" data-unit="{{ m.unit }}"
+                  data-current="{{ m.current|default_if_none:0 }}" data-planned="{{ m.planned|default_if_none:0 }}">
+                <td class="ar-l">{{ m.label }}{% if m.is_primary %}<span class="ar-badge">Target</span>{% endif %}</td>
+                <td class="ar-cur">—</td>
+                <td class="ar-plan">—</td>
+                <td><input type="text" class="ar-exp" name="expected_{{ m.key }}"
+                           value="{{ m.expected|default_if_none:'' }}" data-raw="{{ m.expected|default_if_none:'' }}"></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <div class="ar-summary">
+            <div class="ar-stat"><div class="lbl">Auto-estimated value</div><div class="val" id="ar_auto">${{ auto_value|intcomma }}</div></div>
+            <div class="ar-stat"><div class="lbl">Your projected value</div><div class="val" id="ar_new">${{ current_value|intcomma }}</div></div>
+            <div class="ar-stat"><div class="lbl">Delta vs auto</div><div class="val" id="ar_delta">$0</div></div>
+          </div>
+          {% else %}
+          <div class="alert alert-warning">No connected history for this business unit, so the six-metric
+            breakdown isn't available. Sign off on the auto value, or enter an override.</div>
+          <div class="form-group" style="max-width:320px;">
+            <label>Projected value ($/yr)</label>
+            <input type="number" name="manual_value" class="form-control" value="{{ current_value }}" min="0">
+            <small class="text-muted">Auto-estimated: ${{ auto_value|intcomma }}</small>
+          </div>
+          {% endif %}
+
+          <div class="form-group" style="margin-top:14px; max-width:640px;">
+            <label>Justification note <small class="text-muted">required when you change the value</small></label>
+            <textarea name="analyst_note" class="form-control" rows="3" maxlength="500"
+                      placeholder="e.g. Q4 promo will drop avg unit price ~3% post-launch, offsetting part of the cart-completion gain.">{{ project.analyst_note }}</textarea>
+          </div>
+
+          <button type="submit" class="btn btn-success"><i class="fa fa-check"></i> Save value sign-off</button>
+          <a href="{% url 'project:approve_projects' %}" class="btn btn-default">Cancel</a>
+        </form>
+      </div>
+    </div>
+  </div></div>
+</div>
+{% endblock content %}
+{% block javascripts %}{{ block.super }}
+{% if has_baselines %}
+<script>
+(function(){
+  var S0 = {{ s0_annual }}, AUTO = {{ auto_value }};
+  function toRaw(x, unit){ return unit==='percent' ? x/100 : x; }
+  function toDisp(v, unit){ return unit==='percent' ? v*100 : v; }
+  function fmt(v, unit){
+    if(v==null||isNaN(v)) return '—';
+    if(unit==='percent') return (v*100).toFixed(2)+'%';
+    if(unit==='currency') return '$'+Number(v).toLocaleString(undefined,{maximumFractionDigits:2});
+    if(unit==='decimal') return Number(v).toFixed(2);
+    return Math.round(v).toLocaleString();
+  }
+  function money(v){ var s=v<0?'-$':'$'; return s+Math.abs(Math.round(v)).toLocaleString(); }
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#ar tr[data-key]'));
+  // Fill current/planned cells + set inputs to display units.
+  rows.forEach(function(r){
+    var unit=r.getAttribute('data-unit');
+    var cur=parseFloat(r.getAttribute('data-current'));
+    var plan=parseFloat(r.getAttribute('data-planned'));
+    r.querySelector('.ar-cur').textContent=fmt(cur,unit);
+    r.querySelector('.ar-plan').textContent=fmt(plan,unit);
+    var inp=r.querySelector('.ar-exp');
+    var raw=parseFloat(inp.getAttribute('data-raw'));
+    inp.value = isFinite(raw) ? (unit==='percent'? +toDisp(raw,unit).toFixed(4) : raw) : '';
+    inp.addEventListener('input', recompute);
+  });
+  function recompute(){
+    var mult=1;
+    rows.forEach(function(r){
+      var unit=r.getAttribute('data-unit');
+      var cur=parseFloat(r.getAttribute('data-current'));
+      var x=parseFloat(r.querySelector('.ar-exp').value);
+      var exp = isFinite(x) ? toRaw(x,unit) : cur;
+      if(isFinite(cur) && cur>0 && isFinite(exp)) mult *= exp/cur;
+    });
+    var val = S0*mult - S0;
+    document.getElementById('ar_new').textContent = money(val);
+    var d = val - AUTO, el = document.getElementById('ar_delta');
+    el.textContent = (d>=0?'+':'−') + '$' + Math.abs(Math.round(d)).toLocaleString();
+    el.className = 'val ' + (d>=0?'up':'down');
+  }
+  recompute();
+})();
+</script>
+{% endif %}
+{% endblock javascripts %}

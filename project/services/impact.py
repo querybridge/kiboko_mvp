@@ -290,7 +290,7 @@ def blended_score(voted_0_10, algo_0_10):
 SCORED_STATUSES = {'Scored', 'Executive Approval', 'On Deck', 'WIP'}
 
 
-_PRE_SCORING = ('Incomplete Entry', 'Pending Revenue', 'Pending LOE', 'Ready to Score')
+_PRE_SCORING = ('Incomplete Entry', 'In Intake', 'Pending Revenue', 'Pending LOE', 'Ready to Score')
 
 
 def recompute_scores(company=None, vertical=None):
@@ -307,16 +307,35 @@ def recompute_scores(company=None, vertical=None):
         qs = qs.filter(vertical__company=company)
     projs = list(qs)
     ests = {p.pk: p._estimate() for p in projs}
-    raws = [e['kiboko_raw'] for e in ests.values() if e is not None]
+
+    def _effective(p, est):
+        """(value, raw) applying an analyst value override: the analyst's value
+        replaces the auto value and the raw priority is scaled by the same ratio
+        so scoring reflects the correction."""
+        override = p.analyst_reviewed and p.analyst_value is not None
+        if est is None:
+            return (int(round(p.analyst_value)) if override else None), None
+        value = int(round(est['gross_annual']))
+        raw = est['kiboko_raw']
+        if override:
+            auto = float(est['gross_annual']) or 0
+            value = int(round(p.analyst_value))
+            if auto:
+                raw = est['kiboko_raw'] * (float(p.analyst_value) / auto)
+        return value, raw
+
+    eff = {p.pk: _effective(p, ests[p.pk]) for p in projs}
+    raws = [r for (_v, r) in eff.values() if r is not None]
     for p in projs:
-        est = ests[p.pk]
+        value, raw = eff[p.pk]
         upd = {}
-        if est is not None:
-            upd['algo_raw'] = est['kiboko_raw']
-            upd['value'] = int(round(est['gross_annual']))
+        if raw is not None:
+            upd['algo_raw'] = raw
+        if value is not None:
+            upd['value'] = value
         if p.status in SCORED_STATUSES:
-            if est is not None:                          # blend vote + algorithmic
-                a10 = algo_score_0_10(est['kiboko_raw'], raws)
+            if raw is not None:                          # blend vote + algorithmic
+                a10 = algo_score_0_10(raw, raws)
                 upd['normalized_score'] = blended_score(float(p.voted_score or 0), a10)
             else:                                        # no estimate -> vote only
                 upd['normalized_score'] = float(p.voted_score or 0)
