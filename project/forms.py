@@ -25,7 +25,7 @@ class ProjectForm(ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense',
-                  'ramp_days', 'plausibility_factor',
+                  'ramp_days', 'plausibility_factor', 'value',
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note'):
             self.fields[f].required = False
         self.fields['plausibility_factor'].initial = 1.0
@@ -130,7 +130,7 @@ class ProjectForm(ModelForm):
         fields = ['name', 'objective', 'owner', 'vertical', 'department',
                   'target_completion', 'why', 'definition_of_done',
                   'lever', 'target_from', 'target_to', 's0_annual', 'ramp_days',
-                  'direct_expense', 'plausibility_factor',
+                  'direct_expense', 'plausibility_factor', 'value',
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note']
         labels = {
             'vertical': 'Business Unit',
@@ -144,6 +144,7 @@ class ProjectForm(ModelForm):
             's0_annual': 'Annual sales baseline ($)',
             'ramp_days': 'Ramp to full effect (days)',
             'direct_expense': 'Direct expense ($)',
+            'value': 'Estimated Value',
         }
         help_texts = {
             'objective': 'The annual objective this supports (its AEE element is inherited).',
@@ -176,6 +177,11 @@ class ProjectForm(ModelForm):
             'direct_expense': forms.HiddenInput(),
             'ramp_days': NumberInput(attrs={'min': 1}),
             'plausibility_factor': forms.HiddenInput(),
+            # Manual fallback for the estimated annual $ impact, used when there's
+            # no GA4 history to auto-estimate from (shown in the Size-of-Impact
+            # placeholder). Ignored on save when the lever estimator can compute.
+            'value': NumberInput(attrs={'min': 0, 'class': 'form-control',
+                                        'placeholder': 'e.g. 250000'}),
             'evidence_backed': forms.CheckboxInput(),
             'evidence_kind': Select(),
             'evidence_prior_level': forms.HiddenInput(),      # raw; formatted display in template
