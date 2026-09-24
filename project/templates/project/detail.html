@@ -168,7 +168,7 @@
           <p style="margin-top:10px;">This project was estimated to produce
             <strong>{{ r.predicted_disp }}</strong> in value by increasing the
             <strong>{{ r.lever_label }}</strong> lever by <strong>{{ r.planned_disp|floatformat:1 }}%</strong>.
-            We can attribute <strong>{{ r.lever_contrib_disp }}</strong> in Sales to {{ r.lever_label }}.</p>
+            We can attribute <strong>{{ r.lever_contrib_disp }}</strong> in Sales to the change in {{ r.lever_label }}.</p>
           {% endif %}
         </div>
 

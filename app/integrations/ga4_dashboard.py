@@ -1217,21 +1217,20 @@ def realized_perf_for_project(request, project, measure_days=30):
                'predicted_disp': _usd_fin(rp['predicted']) if rp['predicted'] is not None else None,
                'residual_disp': _usd_fin(rp['residual'])})
 
-    # Plain-English one-liner for business users (analyst detail lives below it).
+    # Plain-English one-liner anyone can read to tell if the project worked.
     delta = rp['delta']
-    verb = 'rose' if delta > 0 else ('fell' if delta < 0 else 'was flat')
+    verb = 'rose' if delta > 0 else ('fell' if delta < 0 else 'held flat')
     mag = f"${abs(round(delta)):,}"
     summary = f"Sales {verb} {mag} in the {measure_days} days after launch"
     annual = float(getattr(project, 'value', 0) or 0)
     if annual > 0:
-        window_proj = annual / 365.0 * measure_days
-        if window_proj:
-            summary += f" — about {round(delta / window_proj * 100)}% of the ${round(annual):,}/yr projection for that window"
+        window_proj = round(annual / 365.0 * measure_days)
+        summary += f", vs a projected gain of ${window_proj:,}"
     summary += '. ' + {
-        'meaningful': "This project's targeted lever was the main driver.",
-        'not_mainly': "But the improvement came mostly from other levers, not this project.",
-        'offset': "The targeted lever moved, but other levers offset it — overall sales were flat or down.",
-    }.get(rp['verdict'], "The signal is mixed — see the breakdown below.")
+        'meaningful': "This project drove the gain — it worked.",
+        'not_mainly': "The gain came mostly from other levers, not this project.",
+        'offset': "The targeted lever improved, but other levers offset it, so overall sales didn't grow.",
+    }.get(rp['verdict'], "The result is mixed — see the breakdown below.")
     rp['plain_summary'] = summary
 
     # Projection vs actual over the measurement window: gross (undiscounted),
