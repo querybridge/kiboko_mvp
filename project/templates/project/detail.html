@@ -67,10 +67,10 @@
     <!-- Execution tasks (Actions) -->
     <div class="col-md-7 col-sm-12">
       <div class="x_panel">
-        <div class="x_title"><h2>Actions <small>execution tasks</small> <span class="badge">{{ actions|length }}</span></h2><div class="clearfix"></div></div>
+        <div class="x_title"><h2>Actions <small>the steps that deliver this project</small> <span class="badge">{{ actions|length }}</span></h2><div class="clearfix"></div></div>
         <div class="x_content">
           <table class="table table-striped">
-            <thead><tr><th>Task</th><th>Owner</th><th>Depends on</th><th style="width:150px;">Start (earliest)</th><th style="width:110px;">Target</th><th style="width:80px;">Progress</th></tr></thead>
+            <thead><tr><th>Action</th><th>Owner</th><th>Depends on</th><th style="width:150px;">Start (earliest)</th><th style="width:110px;">Target</th><th style="width:80px;">Progress</th></tr></thead>
             <tbody>
               {% for a in actions %}
               <tr>
@@ -82,14 +82,14 @@
                 <td>{{ a.progress|default:0 }}%</td>
               </tr>
               {% empty %}
-              <tr><td colspan="6" class="text-center text-muted">No tasks yet. Add the first one below.</td></tr>
+              <tr><td colspan="6" class="text-center text-muted">No actions yet. Add the first one below.</td></tr>
               {% endfor %}
             </tbody>
           </table>
 
           {% if completed %}
           <p class="text-muted" style="margin-top:14px;"><i class="fa fa-lock"></i> This project is
-            {{ project.status|lower }} — tasks can’t be added.</p>
+            {{ project.status|lower }} — actions can’t be added.</p>
           {% else %}
           <h4 style="margin-top:18px;">Add Action</h4>
           <form method="post" action="{% url 'project:add_action' project.id %}">
