@@ -22,13 +22,14 @@ class RoundedDecimalField(forms.DecimalField):
 class ProjectForm(ModelForm):
     """Add / edit a Project (the scored unit). AEE is inherited from the
     objective, so it isn't set here."""
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense',
                   'ramp_days', 'plausibility_factor',
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note'):
             self.fields[f].required = False
         self.fields['plausibility_factor'].initial = 1.0
+        self._scope_choices(user)
 
         # Round decimal inputs to their column precision (GA4 levels can carry more).
         for name in ('target_from', 'target_to', 's0_annual', 'evidence_prior_level'):
@@ -45,6 +46,44 @@ class ProjectForm(ModelForm):
                 return f'{first} {last[0]}.'
             return first or u.get_username()
         self.fields['owner'].label_from_instance = _owner_label
+
+    def _scope_choices(self, user):
+        """Limit the Owner + Business Unit dropdowns to the tenants the user can
+        see, so a member of one company never picks another company's BU or a
+        superuser account as owner. Superusers/org-admins still see everything."""
+        if user is None or not getattr(user, 'is_authenticated', False):
+            return
+        from business_unit.access import visible_companies, allowed_bu_ids
+        from business_unit.models import BusinessUnit
+        from django.contrib.auth.models import User
+        companies = list(visible_companies(user))
+        if not companies:
+            return
+        inst = getattr(self, 'instance', None)
+
+        bu_ids = set()
+        for c in companies:
+            ids = allowed_bu_ids(user, c)
+            if ids is None:
+                bu_ids |= set(BusinessUnit.objects.filter(company=c).values_list('id', flat=True))
+            else:
+                bu_ids |= set(ids)
+        if inst and inst.pk and inst.vertical_id:
+            bu_ids.add(inst.vertical_id)          # keep the current value valid on edit
+        self.fields['vertical'].queryset = (BusinessUnit.objects.filter(id__in=bu_ids)
+                                            .select_related('company').order_by('company__name', 'name'))
+
+        # Members of the visible companies, minus system/superuser accounts
+        # (master/admin/kiboko) which shouldn't be pickable owners — but always
+        # keep the current user and any existing owner valid.
+        owner_ids = set(User.objects.filter(
+            company_memberships__company__in=companies, is_superuser=False
+        ).values_list('id', flat=True))
+        owner_ids.add(user.id)
+        if inst and inst.pk and inst.owner_id:
+            owner_ids.add(inst.owner_id)
+        self.fields['owner'].queryset = User.objects.filter(
+            id__in=owner_ids).order_by('first_name', 'last_name', 'username')
 
     def clean(self):
         cleaned = super().clean()

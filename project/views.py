@@ -111,13 +111,24 @@ def _quarter_end(d):
     return datetime.date(d.year, q_end_month + 1, 1) - datetime.timedelta(days=1)
 
 
+def _business_days_out(start, n):
+    """The date `n` business days (Mon–Fri) after `start`."""
+    import datetime
+    d, added = start, 0
+    while added < n:
+        d += datetime.timedelta(days=1)
+        if d.weekday() < 5:                              # 0=Mon … 4=Fri
+            added += 1
+    return d
+
+
 @login_required
 def project(request):
     """Add a new Project. It enters the intake pipeline (Incomplete -> BU-lead
     approval -> Developer effort + capability -> Ready to Score -> team vote).
     Revenue is auto-estimated from the impact estimator, not entered by hand."""
     if request.method == 'POST':
-        form = ProjectForm(request.POST)
+        form = ProjectForm(request.POST, user=request.user)
         if form.is_valid():
             p = form.save()
             # Audit trail: record an evidence-backed claim as a comment for voters.
@@ -153,7 +164,7 @@ def project(request):
         # Convenience defaults (all still editable on the form).
         initial = {
             'owner': request.user.pk,                        # default to the creator
-            'target_completion': _quarter_end(timezone.localdate()),
+            'target_completion': _business_days_out(timezone.localdate(), 30),
             'plausibility_factor': 1.0,
         }
         # Pre-select the Business Unit from the active top-bar scope so the
@@ -169,7 +180,7 @@ def project(request):
         default_dept = getattr(profile, 'department', None) or Department.objects.first()
         if default_dept:
             initial['department'] = default_dept.pk
-        form = ProjectForm(initial=initial)
+        form = ProjectForm(initial=initial, user=request.user)
     ctx = _project_form_context(form, title='Add Project')
     return render(request, 'project/add.html', ctx)
 
@@ -289,7 +300,7 @@ def project_edit(request, project_id):
     next_url = (request.POST.get('next') or request.GET.get('next')
                 or reverse('project:project_detail', kwargs={'project_id': project.id}))
     if request.method == 'POST':
-        form = ProjectForm(request.POST, instance=project)
+        form = ProjectForm(request.POST, instance=project, user=request.user)
         if form.is_valid():
             p = form.save()
             from project.services import impact
@@ -306,7 +317,7 @@ def project_edit(request, project_id):
                 problems.append(f'{label}: {errs[0]}')
             messages.error(request, 'Couldn’t save — ' + ' · '.join(problems[:6]))
     else:
-        form = ProjectForm(instance=project)
+        form = ProjectForm(instance=project, user=request.user)
     return render(request, 'project/add.html',
                   _project_form_context(form, title='Edit Project', is_edit=True, next_url=next_url))
 
