@@ -31,7 +31,7 @@
                   <td><input type="number" name="year" value="{{ o.year }}" class="form-control"></td>
                   <td>
                     <select name="aee_alignment" class="form-control" required>
-                      {% if not o.aee_alignment %}<option value="" selected>⚠ Set alignment…</option>{% endif %}
+                      {% if not o.aee_alignment %}<option value="" selected>Set alignment…</option>{% endif %}
                       {% for val, label in aee_choices %}<option value="{{ val }}" {% if o.aee_alignment == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
                     </select>
                   </td>

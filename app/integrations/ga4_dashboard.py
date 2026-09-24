@@ -1241,11 +1241,12 @@ def realized_perf_for_project(request, project, measure_days=30):
     if s0 > 0 and planned is not None:
         frac = measure_days / 365.0
         gross_annual = s0 * planned
+        base_sales = float(before['sales'])             # expected period sales without the project
         rp['proj'] = {
             'window_days': measure_days,
-            'gross': _usd_fin(gross_annual * frac),
-            'discounted': _usd_fin(gross_annual * pf * frac),
-            'actual': _usd_fin(rp['delta']),            # actual incremental sales in the window
+            'gross': _usd_fin(base_sales + gross_annual * frac),        # total = baseline + gross lift
+            'discounted': _usd_fin(base_sales + gross_annual * pf * frac),  # total = baseline + risk-adj lift
+            'actual': _usd_fin(after['sales']),         # actual total sales in the window
         }
     return rp
 

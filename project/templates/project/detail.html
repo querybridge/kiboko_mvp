@@ -125,23 +125,23 @@
           vs pre-launch <strong>{{ r.base_start|date:"M j, Y" }} → {{ r.base_end|date:"M j, Y" }}</strong>.</p>
 
         {% if r.verdict == 'meaningful' %}
-        <div class="alert alert-success rp-lead">✅ {{ r.plain_summary }}</div>
+        <div class="alert alert-success rp-lead"><i class="fa fa-check-circle"></i> {{ r.plain_summary }}</div>
         {% elif r.verdict == 'not_mainly' %}
-        <div class="alert alert-warning rp-lead">⚠️ {{ r.plain_summary }}</div>
+        <div class="alert alert-warning rp-lead"><i class="fa fa-exclamation-triangle"></i> {{ r.plain_summary }}</div>
         {% elif r.verdict == 'offset' %}
-        <div class="alert alert-info rp-lead">↔️ {{ r.plain_summary }}</div>
+        <div class="alert alert-info rp-lead"><i class="fa fa-exchange"></i> {{ r.plain_summary }}</div>
         {% else %}
-        <div class="alert alert-info rp-lead">❔ {{ r.plain_summary }}</div>
+        <div class="alert alert-info rp-lead"><i class="fa fa-question-circle"></i> {{ r.plain_summary }}</div>
         {% endif %}
 
         {% if r.proj %}
         <table class="table rp-proj">
           <tbody>
-            <tr><td>Gross projection <small class="text-muted">({{ r.proj.window_days }}-day window)</small></td>
+            <tr><td>Projected total sales <small class="text-muted">(gross, {{ r.proj.window_days }}-day window)</small></td>
               <td class="rp-num">{{ r.proj.gross }}</td></tr>
-            <tr><td>Discounted projection <small class="text-muted">(risk-adjusted)</small></td>
+            <tr><td>Projected total sales <small class="text-muted">(risk-adjusted)</small></td>
               <td class="rp-num">{{ r.proj.discounted }}</td></tr>
-            <tr class="rp-actual"><td>Actual sales <small class="text-muted">(incremental, {{ r.proj.window_days }}-day window)</small></td>
+            <tr class="rp-actual"><td>Actual total sales <small class="text-muted">({{ r.proj.window_days }}-day window)</small></td>
               <td class="rp-num">{{ r.proj.actual }}</td></tr>
           </tbody>
         </table>
