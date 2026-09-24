@@ -126,6 +126,24 @@ def baselines_from_daily(daily, window_days):
             's0_annual': s0_annual, 'weekly': weekly, 'window_days': ndays}
 
 
+def value_from_adjustments(s0_annual, current_levels, expected_levels):
+    """Adjusted gross annual revenue impact from the six-lever composition:
+    revenue = s0 x product(expected_k / current_k), so the delta is
+    s0 x (product of ratios) - s0. Lets an analyst move one or more levers
+    (e.g. cart completion up AND avg unit price down) and get the net value.
+    Unchanged levers default to their current level (ratio 1)."""
+    s0 = float(s0_annual or 0)
+    mult = 1.0
+    for k in LEVER_KEYS:
+        cur = float((current_levels or {}).get(k) or 0)
+        if cur <= 0:
+            continue
+        exp = expected_levels.get(k) if expected_levels else None
+        exp = float(exp) if exp not in (None, '') else cur
+        mult *= exp / cur
+    return s0 * mult - s0
+
+
 def _log_mean(a, b):
     """Logarithmic mean; L(a,a)=a. Makes LMDI contributions sum exactly."""
     a, b = float(a), float(b)

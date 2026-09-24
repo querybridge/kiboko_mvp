@@ -134,6 +134,18 @@ class Project(models.Model):
     capability = models.CharField(max_length=12, choices=CAPABILITY_CHOICES, blank=True, default='')  # developer only
     direct_expense = models.IntegerField(default=0)
     plausibility_factor = models.FloatField(default=1.0)        # target plausibility risk-adjustment (P)
+    # --- Analyst value review (intake gate, parallel to developer LOE) ---
+    # An Analyst verifies the auto-estimated value, or adjusts it by setting
+    # expected post-launch values for one or more of the six levers (e.g. a
+    # promo lowering avg unit price the estimator can't foresee). When reviewed,
+    # `analyst_value` REPLACES the auto value everywhere (see save()).
+    analyst_reviewed = models.BooleanField(default=False)
+    analyst_value = models.IntegerField(null=True, blank=True)   # analyst's projected value ($/yr)
+    analyst_adjustments = models.JSONField(default=dict, blank=True)  # {lever_key: expected_level}
+    analyst_note = models.CharField(max_length=500, blank=True, default='')
+    analyst_reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                            related_name='analyst_reviewed_projects')
+    analyst_reviewed_at = models.DateTimeField(null=True, blank=True)
     # Evidence-backed target: when the target's plausibility rests on evidence the
     # recent GA4 window can't see (a level sustained before a regression, an A/B
     # result, an external benchmark), plausibility is anchored to `evidence_prior_level`
@@ -213,6 +225,13 @@ class Project(models.Model):
         if est is not None:
             self.value = int(round(est['gross_annual']))
             self.algo_raw = est['kiboko_raw']
+        # Analyst sign-off replaces the value everywhere. Scale the raw algorithmic
+        # priority by the same ratio so scoring reflects the corrected value.
+        if self.analyst_reviewed and self.analyst_value is not None:
+            auto_gross = float(est['gross_annual']) if est else 0.0
+            self.value = int(round(self.analyst_value))
+            if est is not None and auto_gross:
+                self.algo_raw = est['kiboko_raw'] * (float(self.analyst_value) / auto_gross)
         # normalized_score (the blended final) is set by impact.recompute_scores()
         # after a vote finalizes / estimate changes -- it needs the backlog.
         self.status = derive_status(self)
