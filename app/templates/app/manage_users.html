@@ -1,4 +1,5 @@
 {% extends "app/base_site.html" %}
+{% load user_extras %}
 {% block title %} Manage Users {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
@@ -43,9 +44,9 @@
             <table class="table table-striped table-bordered">
               <thead>
                 <tr>
-                  <th>User</th>
                   <th>Member name</th>
                   <th>Email</th>
+                  <th>User</th>
                   <th>Roles</th>
                   <th style="width:160px;">Actions</th>
                 </tr>
@@ -53,9 +54,9 @@
               <tbody>
                 {% for m in entry.members %}
                 <tr>
-                  <td>{{ m.user.username }}</td>
                   <td>{{ m.user.get_full_name|default:"—" }}</td>
                   <td>{{ m.user.email|default:"—" }}</td>
+                  <td>{{ m.user.username|before_at }}</td>
                   <td>
                     <form method="post" id="roles-{{ entry.company.id }}-{{ m.user.id }}">
                       {% csrf_token %}
@@ -100,13 +101,15 @@
                     {% csrf_token %}
                     <input type="hidden" name="action" value="add_member">
                     <input type="hidden" name="company" value="{{ entry.company.id }}">
-                    <td><small class="text-muted">login = the part before @ in the email</small></td>
                     <td>
                       <input type="text" name="first_name" placeholder="First name" class="form-control" style="margin-bottom:5px;">
                       <input type="text" name="last_name" placeholder="Last name" class="form-control">
                     </td>
                     <td>
-                      <input type="email" name="email" placeholder="name@example.com (email or Google account)" class="form-control" required>
+                      <input type="email" name="email" placeholder="name@example.com (email or Google account)" class="form-control add-email" required>
+                    </td>
+                    <td>
+                      <input type="text" class="form-control add-username" placeholder="from email" readonly tabindex="-1" title="Login username — derived from the email">
                     </td>
                     <td>
                       <div style="display:flex; flex-wrap:wrap; gap:2px 14px;">
@@ -181,15 +184,20 @@ You’ll be asked to set your own password the first time you sign in.</textarea
 {% block javascripts %}
 {{ block.super }}
 <script>
-  // Require at least one role before any form that carries role checkboxes
-  // submits (both Add-user and Save-roles).
   jQuery(function () {
+    // Require at least one role before any form that carries role checkboxes
+    // submits (both Add-user and Save-roles).
     jQuery('form').on('submit', function (e) {
       var $roles = jQuery(this).find('input[name="roles"]');
       if ($roles.length && $roles.filter(':checked').length === 0) {
         e.preventDefault();
         alert('Select at least one role.');
       }
+    });
+    // Live preview: the login username is the part before '@' in the email.
+    jQuery('.add-email').on('input', function () {
+      var local = (this.value.split('@')[0] || '').toLowerCase().replace(/[^a-z0-9._-]/g, '');
+      jQuery(this).closest('tr').find('.add-username').val(local);
     });
   });
 </script>
