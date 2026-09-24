@@ -141,8 +141,8 @@
               <td class="rp-num">{{ r.proj.gross }}</td></tr>
             <tr><td>Discounted projection <small class="text-muted">(risk-adjusted)</small></td>
               <td class="rp-num">{{ r.proj.discounted }}</td></tr>
-            <tr class="rp-actual"><td>Actual sales <small class="text-muted">({{ r.proj.window_days }}-day window)</small></td>
-              <td class="rp-num">{{ r.proj.actual_sales }}</td></tr>
+            <tr class="rp-actual"><td>Actual sales <small class="text-muted">(incremental, {{ r.proj.window_days }}-day window)</small></td>
+              <td class="rp-num">{{ r.proj.actual }}</td></tr>
           </tbody>
         </table>
         {% endif %}
