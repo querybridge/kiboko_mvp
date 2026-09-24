@@ -2033,9 +2033,10 @@ def manage_users(request):
                 if not member.profile.roles:
                     _set_roles(member, ['business_unit_user'])
                 if starter_pw:
-                    _flash_starter_creds(member, company)
-                    messages.success(request, f'Added {email} — assign roles, then copy their temporary '
-                                              'login from the popup.')
+                    # Don't pop the credentials yet — wait until roles are saved so the
+                    # emailed login reflects the correct role(s).
+                    messages.success(request, f'Added {email} — assign their roles and click Save to get '
+                                              'their temporary login (with the correct roles) to email.')
                 else:
                     messages.success(request, f'Added {email} to {company.name}.')
 

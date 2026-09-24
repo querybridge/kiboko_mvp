@@ -45,8 +45,8 @@
                 <tr>
                   <th>User</th>
                   <th>Email</th>
+                  <th style="width:150px;">Save</th>
                   <th>Roles</th>
-                  <th style="width:120px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -54,31 +54,17 @@
                 <tr>
                   <td>{{ m.user.get_full_name|default:m.user.username }}</td>
                   <td>{{ m.user.email|default:"—" }}</td>
-                  <td>
-                    <form method="post">
-                      {% csrf_token %}
-                      <input type="hidden" name="action" value="set_roles">
-                      <input type="hidden" name="company" value="{{ entry.company.id }}">
-                      <input type="hidden" name="user_id" value="{{ m.user.id }}">
-                      <div style="display:flex; flex-wrap:wrap; gap:2px 14px; margin-bottom:6px;">
-                        {% for value, label in kiboko_roles %}
-                        <label style="font-weight:normal; margin:0;">
-                          <input type="checkbox" name="roles" value="{{ value }}" {% if value in m.user.profile.roles %}checked{% endif %}> {{ label }}
-                        </label>
-                        {% endfor %}
-                      </div>
-                      <button type="submit" class="btn btn-info btn-xs">Save roles</button>
-                    </form>
-                  </td>
-                  <td>
+                  <!-- Save column: saves the roles set on the right; the credentials
+                       popup then reflects the just-saved roles. -->
+                  <td style="white-space:nowrap;">
+                    <button type="submit" form="roles-{{ entry.company.id }}-{{ m.user.id }}" class="btn btn-info btn-xs"><i class="fa fa-floppy-o"></i> Save</button>
                     {% if m.user.profile.must_change_password %}
                     <form method="post" style="display:inline">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="show_login">
                       <input type="hidden" name="company" value="{{ entry.company.id }}">
                       <input type="hidden" name="user_id" value="{{ m.user.id }}">
-                      <button type="submit" class="btn btn-default btn-xs" title="Show the temporary login to email">
-                        <i class="fa fa-key"></i> Login</button>
+                      <button type="submit" class="btn btn-default btn-xs" title="Show the temporary login to email"><i class="fa fa-key"></i></button>
                     </form>
                     {% endif %}
                     <form method="post" style="display:inline">
@@ -86,14 +72,29 @@
                       <input type="hidden" name="action" value="remove_member">
                       <input type="hidden" name="company" value="{{ entry.company.id }}">
                       <input type="hidden" name="membership_id" value="{{ m.id }}">
-                      <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Remove this person\'s access to {{ entry.company.name|escapejs }}?')">Remove</button>
+                      <button type="submit" class="btn btn-danger btn-xs" title="Remove access" onclick="return confirm('Remove this person\'s access to {{ entry.company.name|escapejs }}?')"><i class="fa fa-times"></i></button>
+                    </form>
+                  </td>
+                  <td>
+                    <form method="post" id="roles-{{ entry.company.id }}-{{ m.user.id }}">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="set_roles">
+                      <input type="hidden" name="company" value="{{ entry.company.id }}">
+                      <input type="hidden" name="user_id" value="{{ m.user.id }}">
+                      <div style="display:flex; flex-wrap:wrap; gap:2px 14px;">
+                        {% for value, label in kiboko_roles %}
+                        <label style="font-weight:normal; margin:0;">
+                          <input type="checkbox" name="roles" value="{{ value }}" {% if value in m.user.profile.roles %}checked{% endif %}> {{ label }}
+                        </label>
+                        {% endfor %}
+                      </div>
                     </form>
                   </td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="4" style="text-align:center;">No one has been given access yet.</td></tr>
                 {% endfor %}
-                <!-- Add a user (assign roles after) -->
+                <!-- Add a user (assign roles, then Save to get their login) -->
                 <tr>
                   <form method="post">
                     {% csrf_token %}
@@ -106,8 +107,8 @@
                     <td>
                       <input type="email" name="email" placeholder="name@example.com (email or Google account)" class="form-control" required>
                     </td>
-                    <td><small class="text-muted">Assign roles after adding (defaults to Business Unit User).</small></td>
                     <td><button type="submit" class="btn btn-success btn-xs">Add</button></td>
+                    <td><small class="text-muted">Then assign roles and click <strong>Save</strong> to get their temporary login (with the right roles) to email.</small></td>
                   </form>
                 </tr>
               </tbody>
