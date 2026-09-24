@@ -63,8 +63,10 @@
                 <td class="ar-l">{{ m.label }}{% if m.is_primary %}<span class="ar-badge">Target</span>{% endif %}</td>
                 <td class="ar-cur">—</td>
                 <td class="ar-plan">—</td>
-                <td><input type="text" class="ar-exp" name="expected_{{ m.key }}"
-                           value="{{ m.expected|default_if_none:'' }}" data-raw="{{ m.expected|default_if_none:'' }}"></td>
+                <td>
+                  <input type="hidden" name="planned_{{ m.key }}" class="ar-planned">
+                  <input type="text" class="ar-exp" name="expected_{{ m.key }}"
+                         data-raw="{{ m.expected|default_if_none:'' }}"></td>
               </tr>
               {% endfor %}
             </tbody>
@@ -104,8 +106,7 @@
 <script>
 (function(){
   var S0 = {{ s0_annual }}, AUTO = {{ auto_value }};
-  function toRaw(x, unit){ return unit==='percent' ? x/100 : x; }
-  function toDisp(v, unit){ return unit==='percent' ? v*100 : v; }
+  function disp(v, unit){ return unit==='percent' ? +(v*100).toFixed(4) : v; }
   function fmt(v, unit){
     if(v==null||isNaN(v)) return '—';
     if(unit==='percent') return (v*100).toFixed(2)+'%';
@@ -115,28 +116,29 @@
   }
   function money(v){ var s=v<0?'-$':'$'; return s+Math.abs(Math.round(v)).toLocaleString(); }
   var rows = Array.prototype.slice.call(document.querySelectorAll('#ar tr[data-key]'));
-  // Fill current/planned cells + set inputs to display units.
   rows.forEach(function(r){
     var unit=r.getAttribute('data-unit');
     var cur=parseFloat(r.getAttribute('data-current'));
     var plan=parseFloat(r.getAttribute('data-planned'));
     r.querySelector('.ar-cur').textContent=fmt(cur,unit);
     r.querySelector('.ar-plan').textContent=fmt(plan,unit);
-    var inp=r.querySelector('.ar-exp');
-    var raw=parseFloat(inp.getAttribute('data-raw'));
-    inp.value = isFinite(raw) ? (unit==='percent'? +toDisp(raw,unit).toFixed(4) : raw) : '';
+    var inp=r.querySelector('.ar-exp'), hid=r.querySelector('.ar-planned');
+    var raw=parseFloat(inp.getAttribute('data-raw'));           // saved adjustment, else planned
+    var expInit = isFinite(raw) ? raw : plan;
+    // Planned + expected both in DISPLAY units, so their ratio cancels units and
+    // an unchanged lever is exactly x1 (identical values -> ratio 1, no residual).
+    hid.value = isFinite(plan) ? disp(plan,unit) : '';
+    inp.value = isFinite(expInit) ? disp(expInit,unit) : '';
     inp.addEventListener('input', recompute);
   });
   function recompute(){
-    var mult=1;
+    var mult=1;                                                 // relative to the planned (auto) state
     rows.forEach(function(r){
-      var unit=r.getAttribute('data-unit');
-      var cur=parseFloat(r.getAttribute('data-current'));
-      var x=parseFloat(r.querySelector('.ar-exp').value);
-      var exp = isFinite(x) ? toRaw(x,unit) : cur;
-      if(isFinite(cur) && cur>0 && isFinite(exp)) mult *= exp/cur;
+      var exp=parseFloat(r.querySelector('.ar-exp').value);
+      var pl=parseFloat(r.querySelector('.ar-planned').value);
+      if(isFinite(exp) && isFinite(pl) && pl!==0) mult *= exp/pl;
     });
-    var val = S0*mult - S0;
+    var val = (S0+AUTO)*mult - S0;
     document.getElementById('ar_new').textContent = money(val);
     var d = val - AUTO, el = document.getElementById('ar_delta');
     el.textContent = (d>=0?'+':'−') + '$' + Math.abs(Math.round(d)).toLocaleString();

@@ -534,37 +534,33 @@ def set_analyst_review(request, project_id):
         messages.error(request, 'Only an analyst can review the projected value.')
         return redirect('project:project_detail', project_id=project.id)
 
-    levels, s0, _ = _analyst_baselines(request, project)
     est = project._estimate()
     auto_value = int(round(est['gross_annual'])) if est else 0
+    s0 = float(project.s0_annual or 0)
 
-    # Collect the analyst's expected post-launch levels (only those that differ
-    # from the planned/current default are recorded as adjustments).
-    adjustments, expected_levels = {}, {}
+    # Value is computed RELATIVE to the planned state (the auto value), so any
+    # lever left unchanged contributes exactly x1 and an untouched review yields
+    # exactly the auto value (no rounding residual). Each lever posts its planned
+    # and expected levels in the same display units, so the ratio cancels units.
+    multiplier, adjustments = 1.0, {}
     for k in impact.LEVER_KEYS:
-        raw = (request.POST.get(f'expected_{k}') or '').strip()
-        if raw == '':
-            continue
         try:
-            val = float(raw)
-        except ValueError:
+            exp = float(request.POST.get(f'expected_{k}'))
+            pl = float(request.POST.get(f'planned_{k}'))
+        except (TypeError, ValueError):
             continue
-        # Percent levers are entered as percentages (e.g. 20 -> 0.20 raw) to match
-        # the fraction-scale baselines the value math uses.
-        if _LEVER_UNITS.get(k) == 'percent':
-            val = val / 100.0
-        expected_levels[k] = val
-        adjustments[k] = val
+        if pl and abs(exp / pl - 1.0) > 1e-6:            # a real change to this lever
+            multiplier *= exp / pl
+            adjustments[k] = (exp / 100.0) if _LEVER_UNITS.get(k) == 'percent' else exp
 
     note = (request.POST.get('analyst_note') or '').strip()
-    if levels and s0:
-        analyst_value = int(round(impact.value_from_adjustments(s0, levels, expected_levels)))
+    if s0:
+        analyst_value = int(round((s0 + auto_value) * multiplier - s0))
     else:
-        # No baselines to reconstruct from: accept the auto value unless the
-        # analyst typed an explicit override value.
+        # No sales baseline to compose from: accept the auto value unless overridden.
         try:
             analyst_value = int(round(float(request.POST.get('manual_value') or auto_value)))
-        except ValueError:
+        except (TypeError, ValueError):
             analyst_value = auto_value
 
     # A note is required whenever the analyst changes the value.
