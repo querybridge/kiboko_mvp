@@ -141,6 +141,13 @@ def project(request):
             from project.services import impact
             impact.recompute_scores(company=p._company())
             from django.utils.html import format_html
+            # "Save progress" saves the draft and returns to it so the user can
+            # finish the Impact Estimator; "Submit for approval" resets for a new one.
+            if request.POST.get('action') == 'save_progress':
+                messages.success(request, format_html(
+                    'Progress saved for “{}”. Now complete the Impact Estimator, then submit for approval.',
+                    p.name))
+                return redirect('project:project_edit', project_id=p.id)
             messages.success(request, format_html(
                 'Project “{}” submitted. Next: a business-unit lead approves it, a '
                 'developer sizes effort &amp; capability, then the team scores it. '
@@ -305,6 +312,9 @@ def project_edit(request, project_id):
             p = form.save()
             from project.services import impact
             impact.recompute_scores(company=p._company())
+            if request.POST.get('action') == 'save_progress':
+                messages.success(request, f'Progress saved for “{p.name}”. Complete the Impact Estimator, then submit.')
+                return redirect('project:project_edit', project_id=p.id)
             messages.success(request, f'Saved “{p.name}”.')
             return HttpResponseRedirect(next_url)
         else:

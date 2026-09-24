@@ -67,6 +67,13 @@
     border-top: 10px solid var(--text-primary); transform: translateX(-6px);
     transition: left .18s ease; left: 0;
   }
+  /* Size-of-Impact band markers along the bar: label + implied target value. */
+  .soi-scale { position: relative; margin: 2px 0; }
+  .soi-marks { position: relative; height: 30px; margin-top: 3px; }
+  .soi-mark { position: absolute; top: 0; transform: translateX(-50%); width: 62px; text-align: center; }
+  .soi-mark .tk { position: absolute; bottom: 100%; left: 50%; width: 1px; height: 9px; background: rgba(255,255,255,0.55); }
+  .soi-mark .nm { font-size: 9px; font-weight: 700; color: var(--text-secondary); line-height: 1.15; }
+  .soi-mark .vl { font-size: 9.5px; color: var(--text-muted); }
 
   /* "from GA4" baseline-source badge + auto-filled input tint */
   .baseline-src {
@@ -202,6 +209,12 @@
                 <div class="col-sm-6">{{ form.department|as_crispy_field }}</div>
               </div>
               {{ form.target_completion|as_crispy_field }}
+              <div class="intake-panel-actions" style="margin-top:10px; border-top:1px solid var(--border-subtle); padding-top:12px;">
+                <button type="submit" name="action" value="save_progress" class="btn btn-default btn-sm">
+                  <i class="fa fa-floppy-o"></i> Save progress</button>
+                <small class="text-muted" style="display:block; margin-top:7px;">
+                  Saves your details so you can return — then complete the <strong>Impact Estimator →</strong></small>
+              </div>
             </div>
           </div>
         </div>
@@ -314,26 +327,30 @@
                 </div>
               </div>
 
-              <div class="est-section-label" style="margin-top:16px;">Plausibility</div>
+              <div class="est-section-label" style="margin-top:16px;">Size of Impact</div>
 
-              <!-- Live gauge: shown when the scoped Business Unit has GA4 history -->
+              <!-- Live scale: markers show what a Modest → Extreme target looks like
+                   for this lever (baseline + k×weekly-swing), so the user can gauge
+                   what's achievable. Shown when the BU has GA4 history. -->
               <div id="plaus_live" style="display:none;">
-                <div id="plaus_band" style="font-weight:700;font-size:12px;margin-bottom:3px;">&nbsp;</div>
-                <div class="plaus-bar" style="position:relative;">
-                  <div id="plaus_marker"></div>
+                <div id="plaus_band" style="font-weight:700;font-size:12px;margin-bottom:5px;">&nbsp;</div>
+                <div class="soi-scale">
+                  <div class="plaus-bar" style="position:relative;">
+                    <div id="plaus_marker"></div>
+                  </div>
+                  <div class="soi-marks" id="soi_marks"></div>
                 </div>
-                <div class="plaus-ends"><span>Plausible</span><span>Implausible</span></div>
                 <p id="plaus_caption" class="est-hint" style="margin-top:6px;"></p>
               </div>
 
               <!-- Greyed-out placeholder until enough GA4 history exists -->
               <div id="plaus_empty">
                 <div class="plaus-bar plaus-empty"></div>
-                <div class="plaus-ends plaus-empty"><span>Plausible</span><span>Implausible</span></div>
+                <div class="plaus-ends plaus-empty"><span>Modest</span><span>Extreme</span></div>
                 <p id="plaus_empty_note" class="est-hint plaus-note" style="margin-top:6px;">
                   <i class="fa fa-lock"></i>Available with at least {{ plaus_min_weeks }} weeks
-                  (~{{ plaus_min_days }} days) of connected GA4 history for this lever — then an
-                  over-aggressive target auto-discounts the score.</p>
+                  (~{{ plaus_min_days }} days) of connected GA4 history for this lever — then a
+                  larger target auto-discounts the score.</p>
               </div>
 
               <!-- Evidence-backed target: anchor plausibility to an evidenced prior
@@ -380,14 +397,12 @@
               </div><!-- /est-body -->
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="row intake-actions">
-        <div class="col-md-12">
-          <button type="submit" class="btn btn-success"><i class="fa fa-check"></i>
-            {% if is_edit %}Save changes{% else %}Submit for approval{% endif %}</button>
-          <a href="{% if is_edit %}{{ next }}{% else %}{% url 'project:kanban' %}{% endif %}" class="btn btn-default">Cancel</a>
+          <!-- Primary submit sits below the estimator: complete it, then submit. -->
+          <div class="row intake-actions"><div class="col-md-12">
+            <button type="submit" class="btn btn-success btn-lg"><i class="fa fa-check"></i>
+              {% if is_edit %}Save changes{% else %}Submit for approval{% endif %}</button>
+            <a href="{% if is_edit %}{{ next }}{% else %}{% url 'project:kanban' %}{% endif %}" class="btn btn-default">Cancel</a>
+          </div></div>
         </div>
       </div>
     </form>
@@ -568,24 +583,49 @@
   // CURRENT LEVEL (baseline `center`, the volume-weighted rate shown in the form)
   // in units of weekly volatility, so the gauge references the same number as the
   // baseline field. `center` falls back to the weekly mean when not supplied.
-  function plausibility(target, levels, center) {
+  // Mean / weekly volatility of a lever's recent weekly history.
+  function leverStats(levels) {
     var vals = (levels || []).filter(function (x) { return x === x && isFinite(x); });
     if (vals.length < MIN_WEEKS) return null;
     var mean = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
-    var ref = (center != null && isFinite(center)) ? center : mean;   // reference = current level
     var v = vals.length > 1 ? vals.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0)
                               / (vals.length - 1) : 0;
-    var std = Math.sqrt(v) || 1e-9;                                    // weekly volatility
-    var z = (target - ref) / std;
-    var reached = vals.filter(function (x) { return x >= target; }).length;
+    return { vals: vals, mean: mean, std: Math.sqrt(v) || 1e-9, n: vals.length };
+  }
+
+  // Size-of-Impact bands, in weekly-swings (σ) above the baseline. The last is 6σ+.
+  var SOI_BANDS = [
+    { nm: 'Now', s: 0 }, { nm: 'Modest', s: 1 }, { nm: 'Moderate', s: 2 },
+    { nm: 'Strong', s: 3 }, { nm: 'Very strong', s: 4 }, { nm: 'Extreme', s: 6, plus: true }
+  ];
+  function soiPos(s) { return 4 + (s / 6) * 92; }   // σ -> % along the bar (inset)
+
+  function buildSoiMarks(center, std, unit) {
+    var host = $('soi_marks'); if (!host) return;
+    if (!(std > 0) || !isFinite(center)) { host.innerHTML = ''; return; }
+    host.innerHTML = SOI_BANDS.map(function (b) {
+      var val = center + b.s * std;
+      return '<div class="soi-mark" style="left:' + soiPos(b.s).toFixed(1) + '%">' +
+             '<div class="tk"></div><div class="nm">' + b.nm + '</div>' +
+             '<div class="vl">' + fmtLever(val, unit) + (b.plus ? '+' : '') + '</div></div>';
+    }).join('');
+  }
+
+  function plausibility(target, levels, center) {
+    var st = leverStats(levels);
+    if (!st) return null;
+    var ref = (center != null && isFinite(center)) ? center : st.mean;   // reference = current level
+    var z = (target - ref) / st.std;
+    var reached = st.vals.filter(function (x) { return x >= target; }).length;
     var band, color;
-    if (z <= 1) { band = 'Plausible'; color = '#2b83ba'; }
-    else if (z <= 2) { band = 'A stretch'; color = '#7fbf7b'; }
-    else if (z <= 3) { band = 'Aggressive'; color = '#fdae61'; }
-    else { band = 'Implausible'; color = '#d7191c'; }
-    return { z: z, ref: ref, mean: mean, n: vals.length, reached: reached, band: band, color: color,
+    if (z <= 1) { band = 'Modest'; color = '#2b83ba'; }
+    else if (z <= 2) { band = 'Moderate'; color = '#4CAF77'; }
+    else if (z <= 3) { band = 'Strong'; color = '#E4B93C'; }
+    else if (z <= 4) { band = 'Very strong'; color = '#EC8A3C'; }
+    else { band = 'Extreme'; color = '#d7191c'; }
+    return { z: z, ref: ref, mean: st.mean, std: st.std, n: st.n, reached: reached, band: band, color: color,
              factor: z <= 1 ? 1 : Math.max(0.15, 1 - (z - 1) / 3),
-             position: Math.min(1, Math.max(0, (z + 1) / 5)) };
+             position: Math.min(1, Math.max(0, z / 6)) };
   }
 
   function setEmptyNote(html) { var n = $('plaus_empty_note'); if (n) n.innerHTML = html; }
@@ -597,25 +637,34 @@
     var anchored = evidence && isFinite(evLevel);
     var center = anchored ? evLevel : parseFloat(HID.from.value);   // reference level
     var levels = (GA4 && GA4.weekly) ? GA4.weekly[lv] : null;
-    var pl = (levels && isFinite(t)) ? plausibility(t, levels, center) : null;
-    if (pl) {
+    var st = leverStats(levels);
+    if (st && isFinite(center)) {
+      // We have history + a baseline: show the scale + band markers (even before a
+      // target), so the user can see what Modest → Extreme targets look like.
+      buildSoiMarks(center, st.std, unit);
       $('plaus_live').style.display = '';
       $('plaus_empty').style.display = 'none';
-      $('plaus_marker').style.left = (pl.position * 100).toFixed(1) + '%';
-      var band = $('plaus_band');
-      band.textContent = (anchored ? 'Evidence-backed · ' : '') + pl.band + ' · ' +
-        (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ';
-      band.style.color = anchored ? '#55C892' : pl.color;
-      var ref = anchored ? 'evidenced ' + fmtLever(pl.ref, unit) + ' level' : 'your ' + fmtLever(pl.ref, unit) + ' current level';
-      $('plaus_caption').innerHTML = 'Target reached <strong>' + pl.reached + ' of the last ' + pl.n +
-        ' weeks</strong> (' + (pl.z >= 0 ? '+' : '') + pl.z.toFixed(1) + 'σ above ' + ref + '). ' +
-        (pl.factor < 1
-          ? 'Impact auto-discounted ×' + pl.factor.toFixed(2) + ' for the stretch.'
-          : (anchored ? 'No discount — anchored to your evidence.' : 'Within recent range — no discount.'));
-      if (pfactor) pfactor.value = pl.factor.toFixed(4);
+      var pl = isFinite(t) ? plausibility(t, levels, center) : null;
+      var band = $('plaus_band'), marker = $('plaus_marker');
+      if (pl) {
+        marker.style.display = '';
+        marker.style.left = soiPos(Math.min(6, Math.max(0, pl.z))).toFixed(1) + '%';
+        band.textContent = (anchored ? 'Evidence-backed · ' : '') + pl.band;
+        band.style.color = anchored ? '#55C892' : pl.color;
+        $('plaus_caption').innerHTML = 'Target reached <strong>' + pl.reached + ' of the last ' + pl.n +
+          ' weeks</strong>. ' + (pl.factor < 1
+            ? 'Impact auto-discounted to <strong>' + Math.round(pl.factor * 100) + '%</strong> for the size of the move.'
+            : (anchored ? 'No discount — anchored to your evidence.' : 'Within recent range — no discount.'));
+      } else {
+        marker.style.display = 'none';
+        band.textContent = 'Set a target to size the impact';
+        band.style.color = 'var(--text-muted)';
+        $('plaus_caption').innerHTML = 'Markers show a Modest → Extreme target for this lever, from its recent weekly swing.';
+      }
+      if (pfactor) pfactor.value = (pl ? pl.factor : 1).toFixed(4);
       return;
     }
-    // No live gauge -> show the greyed placeholder, with context-aware copy.
+    // No history/baseline -> show the greyed placeholder, with context-aware copy.
     $('plaus_live').style.display = 'none';
     $('plaus_empty').style.display = '';
     if (pfactor) pfactor.value = '1.0';
@@ -626,7 +675,7 @@
         MIN_WEEKS + ' weeks).');
     } else {
       setEmptyNote('<i class="fa fa-lock"></i>Available with at least ' + MIN_WEEKS +
-        ' weeks of connected GA4 history for the selected Business Unit — then an over-aggressive target auto-discounts the score.');
+        ' weeks of connected GA4 history for the selected Business Unit — then a larger target auto-discounts the score.');
     }
   }
 
