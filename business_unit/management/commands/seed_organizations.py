@@ -12,9 +12,13 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
-from business_unit.models import Organization, Company
+from business_unit.models import Organization, Company, Plan
 
 
+# Internal + demo orgs run on Enterprise so every feature stays visible (the
+# Belami demo is meant to showcase the whole product). Self-serve trial orgs get
+# their chosen plan instead. Requires seed_plans to have run first; if the plan
+# isn't found we just skip (the tier gate grandfathers no-plan orgs to full).
 ORG_SPECS = [
     # (org name, kind, is_platform_demo, admin username/email, [company names])
     ('Querybridge', 'agency', False, 'sherman@querybridge.com', ['VOLT Lighting', 'Autocado']),
@@ -34,12 +38,19 @@ class Command(BaseCommand):
                 or User.objects.filter(email__iexact=ident).first())
 
     def handle(self, *args, **opts):
+        enterprise = Plan.objects.filter(slug='enterprise').first()
+        if enterprise is None:
+            self.stdout.write(self.style.WARNING(
+                'enterprise Plan not found — run seed_plans first to set plans; '
+                'orgs will stay full-access via the no-plan grandfather rule.'))
+
         for name, kind, is_demo, admin_ident, companies in ORG_SPECS:
             admin = self._find_user(admin_ident)
             org, created = Organization.objects.get_or_create(
                 slug=slugify(name),
                 defaults={'name': name, 'kind': kind, 'is_platform_demo': is_demo,
-                          'org_admin': admin, 'plan_status': 'active', 'trial_started': None})
+                          'org_admin': admin, 'plan_status': 'active', 'trial_started': None,
+                          'plan': enterprise})
             # keep fields in sync on re-run
             changed = False
             for field, val in (('name', name), ('kind', kind),
@@ -48,6 +59,8 @@ class Command(BaseCommand):
                     setattr(org, field, val); changed = True
             if admin and org.org_admin_id != admin.id:
                 org.org_admin = admin; changed = True
+            if enterprise and org.plan_id != enterprise.id:
+                org.plan = enterprise; changed = True
             if changed:
                 org.save()
             self.stdout.write(f"{'created' if created else 'updated'} org: {org.name} "

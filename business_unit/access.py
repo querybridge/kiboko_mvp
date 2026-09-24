@@ -107,6 +107,54 @@ def can_manage_bigquery(user):
     return bool(prof and (prof.has_role('executive') or prof.has_role('developer')))
 
 
+# ---------------------------------------------------------------------------
+# Plan tier / feature gating
+#   Standard  -> Analytics + Insights
+#   Premium   -> + Project Prioritization (estimator, scoring, value pipeline,
+#                approvals incl. the Executive Approval greenlight)
+#   Enterprise-> + Project Control (Kanban / WIP / Backlog) and Project Review
+# BigQuery is never required — it's the optional "Premium Connection" speed /
+# data-integrity upgrade, independent of the plan tier gates below.
+# ---------------------------------------------------------------------------
+TIER_RANK = {'standard': 1, 'premium': 2, 'enterprise': 3}
+ENTERPRISE_FEATURES = frozenset({'project_control', 'project_review'})
+
+
+def _effective_org(user):
+    """The org whose plan governs this user's features: an org they administer,
+    else the org of a real company they belong to."""
+    org = user.administered_orgs.first()
+    if org is not None:
+        return org
+    c = real_companies(user).first()
+    return c.organization if c else None
+
+
+def plan_tier(user):
+    """The plan tier governing this user's feature access. Superusers, platform
+    demo orgs, and internal orgs with no explicit plan get full ('enterprise')
+    access; self-serve orgs get their chosen plan's tier."""
+    if not user or not user.is_authenticated:
+        return None
+    if user.is_superuser:
+        return 'enterprise'
+    org = _effective_org(user)
+    if org is None or org.is_platform_demo:
+        return 'enterprise'
+    plan = getattr(org, 'plan', None)
+    if plan is None:
+        return 'enterprise'                      # grandfather orgs with no plan
+    return plan.tier if plan.tier in TIER_RANK else 'enterprise'
+
+
+def has_plan_feature(user, feature):
+    """Whether the user's plan includes a gated feature (e.g. 'project_control').
+    Non-gated features are always available."""
+    if feature not in ENTERPRISE_FEATURES:
+        return True
+    return plan_tier(user) == 'enterprise'
+
+
 def allowed_bu_ids(user, company):
     """Set of BusinessUnit ids the user may see in the company, or None = all.
 

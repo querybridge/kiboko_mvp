@@ -34,6 +34,20 @@ def getting_started_banner(request):
                          'total': len(steps)}}
 
 
+def plan_features(request):
+    """Expose the viewer's plan tier + gated-feature flags so the sidebar can
+    hide Enterprise-only sections (Project Control, Project Review)."""
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return {}
+    from business_unit.access import has_plan_feature, plan_tier
+    return {
+        'plan_tier': plan_tier(user),
+        'feature_project_control': has_plan_feature(user, 'project_control'),
+        'feature_project_review': has_plan_feature(user, 'project_review'),
+    }
+
+
 def tenancy_selector(request):
     """Cascading Company -> BusinessUnit -> Website scope for the top bar.
 

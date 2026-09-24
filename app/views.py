@@ -29,6 +29,7 @@ from users.models import ROLE_CHOICES, UserProfile
 from app.models import MonthlyGoal, DailyActual
 from business_unit.models import Department, BusinessUnit
 from business_unit.scope import scoped_vertical_id, scoped_company_id
+from business_unit.feature_gate import feature_required
 from project.models import Action
 from strategy.models import Project, Objective, Metric, KPI
 from project.views import project_detail
@@ -1720,6 +1721,7 @@ def analytics_expand_purchases(request):
 
 
 @login_required
+@feature_required('project_control')
 def work_in_progress(request):
     """Work In Progress — the active-actions gantt (moved off the dashboard)."""
     vertical_id = scoped_vertical_id(request)

@@ -1,0 +1,24 @@
+{% extends "app/base_site.html" %}
+{% block title %} {{ feature_title }} {% endblock title %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="page-title"><div class="title_left"><h3>{{ feature_title }}</h3></div><div class="clearfix"></div></div>
+  <div class="row"><div class="col-md-8 col-sm-12">
+    <div class="x_panel">
+      <div class="x_content" style="padding:36px; text-align:center;">
+        <i class="fa fa-lock" style="font-size:40px; color:var(--purple-400,#8E6FE0); margin-bottom:14px;"></i>
+        <h3 style="margin-top:0;">{{ feature_title }} is an Enterprise feature</h3>
+        <p class="text-muted" style="max-width:520px; margin:8px auto 20px;">
+          Your current plan doesn’t include {{ unlocks }}. Upgrade to
+          <strong>Kiboko Enterprise</strong> to track what’s getting done and review whether it worked.
+        </p>
+        {% if user.is_superuser or user.administered_orgs.exists %}
+        <a href="{% url 'app:billing' %}" class="btn btn-primary"><i class="fa fa-arrow-up"></i> View plans &amp; upgrade</a>
+        {% else %}
+        <p class="text-muted" style="font-size:13px;">Ask your organization admin to upgrade the plan.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div></div>
+</div>
+{% endblock content %}

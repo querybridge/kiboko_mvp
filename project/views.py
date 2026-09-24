@@ -17,8 +17,9 @@ from business_unit.models import Department
 from .services.kanban import (
     LANES, LANE_STATUS, PIPELINE_STATUSES, get_lane, group_projects, compute_all_lane_totals,
     validate_move, apply_move, is_ready_for_review, can_approve, can_set_loe, can_set_revenue,
-    intake_ready,
+    intake_ready, is_executive,
 )
+from business_unit.feature_gate import feature_required
 
 # Statuses that are terminal / not represented as a Kanban lane. These never
 # appear in the Backlog -- they live in the Archive only.
@@ -49,6 +50,7 @@ def _scope(qs, vertical_id, company_id):
 # Backlog
 # ---------------------------------------------------------------------------
 @login_required
+@feature_required('project_control')
 def view(request):
     """Backlog of approved projects on the executive board, grouped by lane."""
     from project.project_field_options import AEE_ALIGNMENT_CHOICES
@@ -397,6 +399,43 @@ def approve_projects(request):
 
 
 @login_required
+def executive_approval(request):
+    """Board-free greenlight queue: scored projects awaiting an executive's
+    approval to On Deck. This is Premium's home for the weekly go/no-go decision
+    (the Kanban board, an Enterprise feature, is the other way to do this)."""
+    vertical_id = _get_vertical_id(request)
+    statuses = [LANE_STATUS['scored'], LANE_STATUS['executive_approval']]
+    qs = _scope(Project.objects.filter(archived=False, approved=True, status__in=statuses)
+                .select_related('owner', 'objective', 'vertical', 'department'),
+                vertical_id, _get_company_id(request))
+    projects = sorted(qs, key=lambda p: -(p.value or 0))
+    return render(request, 'project/executive_approval.html', {
+        'title': 'Executive Approval',
+        'projects': projects,
+        'can_greenlight': is_executive(request.user),
+        'total_value': sum((p.value or 0) for p in projects),
+    })
+
+
+@login_required
+@require_POST
+def approve_on_deck(request, project_id):
+    """Executive greenlight: move a scored / executive-approval project straight to
+    On Deck without the Kanban board (validation enforces executive-only)."""
+    project = get_object_or_404(Project, pk=project_id)
+    ok, err = apply_move(project, 'on_deck', user=request.user)
+    if ok:
+        who = request.user.get_full_name() or request.user.username
+        ProjectComment.objects.create(
+            project=project, author=request.user, approved_comment=True,
+            text=f'{who} approved this to On Deck.')
+        messages.success(request, f'Approved “{project.name}” to On Deck.')
+    else:
+        messages.error(request, err or 'Could not approve this project.')
+    return redirect('project:executive_approval')
+
+
+@login_required
 @require_POST
 def approve_action(request, project_id):
     """A business-unit lead approves a project into the pipeline (-> Pending LOE)."""
@@ -621,6 +660,7 @@ def _parse_ymd(s):
 
 
 @login_required
+@feature_required('project_review')
 def completed_projects(request):
     """Project Review: completed (non-archived) projects with a go-live date filter,
     paginated. Each shows its post-launch Realized Performance on the detail page
@@ -642,6 +682,7 @@ def completed_projects(request):
 
 
 @login_required
+@feature_required('project_review')
 def archive(request):
     """Project Review: archived projects (paginated)."""
     vertical_id = _get_vertical_id(request)
@@ -655,6 +696,7 @@ def archive(request):
 
 @login_required
 @require_POST
+@feature_required('project_review')
 def archive_project(request, project_id):
     """Archive a completed project. Anyone can archive; it then leaves Completed
     Projects for the Archive."""
@@ -668,6 +710,7 @@ def archive_project(request, project_id):
 # Kanban
 # ---------------------------------------------------------------------------
 @login_required
+@feature_required('project_control')
 def kanban_view(request):
     vertical_id = _get_vertical_id(request)
     projects = _scope(Project.objects.filter(archived=False, approved=True).exclude(
@@ -691,6 +734,7 @@ def kanban_view(request):
 
 @require_POST
 @login_required
+@feature_required('project_control')
 def kanban_move(request):
     try:
         data = json.loads(request.body)

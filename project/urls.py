@@ -14,6 +14,8 @@ urlpatterns = [
     path('<int:project_id>/archive/', views.archive_project, name='archive_project'),
     # Intake pipeline
     path('approve/', views.approve_projects, name='approve_projects'),
+    path('executive-approval/', views.executive_approval, name='executive_approval'),
+    path('<int:project_id>/approve-on-deck/', views.approve_on_deck, name='approve_on_deck'),
     path('<int:project_id>/approve-action/', views.approve_action, name='approve_action'),
     path('<int:project_id>/set-loe/', views.set_loe, name='set_loe'),
     path('<int:project_id>/analyst-review/', views.analyst_review, name='analyst_review'),

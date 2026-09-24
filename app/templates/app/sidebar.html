@@ -61,10 +61,12 @@
             <li><a href="/app/">Project Value Pipeline</a></li>
             <li><a href="{% url 'project:approve_projects' %}">Approve Projects</a></li>
             <li><a href="{% url 'app:score_projects' %}">Score Projects</a></li>
+            <li><a href="{% url 'project:executive_approval' %}">Executive Approval</a></li>
           </ul>
         </li>
 
-        <!-- Project Control -->
+        {% if feature_project_control %}
+        <!-- Project Control (Enterprise) -->
         <li><a><i class="fa fa-sliders"></i> Project Control <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
             <li><a href="{% url 'project:kanban' %}">Kanban</a></li>
@@ -72,14 +74,17 @@
             <li><a href="/project/view.html">Backlog</a></li>
           </ul>
         </li>
+        {% endif %}
 
-        <!-- Project Review -->
+        {% if feature_project_review %}
+        <!-- Project Review (Enterprise) -->
         <li><a><i class="fa fa-flag-checkered"></i> Project Review <span class="fa fa-chevron-down"></span></a>
           <ul class="nav child_menu">
             <li><a href="{% url 'project:completed_projects' %}">Completed Projects</a></li>
             <li><a href="{% url 'project:archive' %}">Archive</a></li>
           </ul>
         </li>
+        {% endif %}
 
         <!-- Add Project (elevated — a core Kiboko action) -->
         <li class="nav-add-project"><a href="/project/add.html"><i class="fa fa-plus-circle"></i> Add Project</a></li>

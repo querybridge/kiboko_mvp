@@ -47,8 +47,8 @@ real owner and `seed_tenancy_demo` grants that superuser admin access.
    $PY manage.py migrate --noinput
    $PY manage.py createsuperuser
    $PY manage.py seed_tenancy_demo            # companies / business units / websites + grant superuser admin
-   $PY manage.py seed_organizations           # organizations, links companies
-   $PY manage.py seed_plans                    # subscription plans (Get Started / Billing pricing)
+   $PY manage.py seed_plans                    # subscription plans (must precede seed_organizations)
+   $PY manage.py seed_organizations           # organizations, links companies, sets internal/demo orgs to Enterprise
    $PY manage.py seed_metric_recommendations  # Insights win/loss recommendations
    $PY manage.py seed_belami_demo             # Belami demo: projects, actions, actuals (bootstraps its own BUs/depts/objectives)
    $PY manage.py collectstatic --noinput

@@ -1,0 +1,73 @@
+{% extends "app/base_site.html" %}
+{% load humanize %}
+{% block title %} Executive Approval {% endblock title %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="page-title">
+    <div class="title_left"><h3>Executive Approval <small>Greenlight scored projects to On Deck</small></h3></div>
+    <div class="clearfix"></div>
+  </div>
+
+  {% if messages %}
+  <div class="row"><div class="col-md-12">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  <div class="row"><div class="col-md-12">
+    <div class="x_panel">
+      <div class="x_title">
+        <h2>Awaiting approval <small>{{ projects|length }} project{{ projects|length|pluralize }} &middot; ${{ total_value|intcomma }} projected value</small></h2>
+        <div class="clearfix"></div>
+      </div>
+      <div class="x_content">
+        <p class="text-muted" style="margin-bottom:16px;">
+          These projects are fully scored and ranked by projected value. An executive approves the
+          ones to take on now — each moves to <strong>On Deck</strong>, ready to be picked up.
+        </p>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Business Unit</th>
+              <th>Objective</th>
+              <th class="text-right">Score</th>
+              <th class="text-right">Projected value</th>
+              <th style="width:170px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in projects %}
+            <tr>
+              <td><a href="{% url 'project:project_detail' p.id %}">{{ p.name|default:"(untitled)" }}</a>
+                <div class="text-muted" style="font-size:12px;">{{ p.get_status_display|default:p.status }}</div>
+              </td>
+              <td>{{ p.vertical.name|default:"—" }}</td>
+              <td>{{ p.objective.name|default:"—" }}</td>
+              <td class="text-right">{{ p.score|floatformat:0|default:"—" }}</td>
+              <td class="text-right">${{ p.value|default:0|intcomma }}</td>
+              <td>
+                {% if can_greenlight %}
+                <form method="post" action="{% url 'project:approve_on_deck' p.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-success btn-sm btn-block"><i class="fa fa-check"></i> Approve &rarr; On Deck</button>
+                </form>
+                {% else %}
+                <span class="text-muted" style="font-size:12px;">Executive approval required</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted" style="padding:28px;">
+              No projects are awaiting approval. Scored projects appear here for greenlight.
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></div>
+</div>
+{% endblock content %}
