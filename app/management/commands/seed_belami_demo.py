@@ -184,9 +184,23 @@ class Command(BaseCommand):
                           f'({start} → {end}) with retail seasonality.')
 
     # ---- projects across all statuses ---------------------------------------
+    def _bu_real_s0(self, bu, today):
+        """Annualized actual revenue from the BU's DailyActuals (last 365 records),
+        matching impact.baselines_from_daily so the estimator/analyst screen show
+        consistent, believable numbers."""
+        from app.models import DailyActual
+        recs = list(DailyActual.objects.filter(vertical=bu, date__lte=today)
+                    .order_by('-date').values_list('revenue', flat=True)[:365])
+        if not recs:
+            return None
+        return round(float(sum(recs)) / len(recs) * 365.0, 2)
+
     def _seed_projects(self, belami, bus, rng):
         from project.services import impact
         today = date.today()
+        # Real annualized sales baseline per BU (from the seeded DailyActuals), used
+        # for every project's s0_annual instead of a hardcoded profile figure.
+        real_s0 = {name: self._bu_real_s0(bu, today) for name, bu in bus.items()}
         # Fix up any pre-existing completed projects: un-archive (they stay in
         # Completed until archived from the review) and give a past go-live so the
         # Realized Performance window has elapsed.
@@ -242,7 +256,7 @@ class Command(BaseCommand):
             bu = bus.get(bu_name)
             objective = obj.get(aee)
             lever, lo, hi = LEVER_SPEC[aee]
-            s0 = BU_PROFILE.get(bu_name, {'annual': 5_000_000})['annual']
+            s0 = real_s0.get(bu_name) or BU_PROFILE.get(bu_name, {'annual': 5_000_000})['annual']
             scored_now = status in ('Scored', 'Executive Approval', 'On Deck', 'WIP', 'Complete', 'Launched')
             approved = status != 'Incomplete Entry'
             has_estimate = status != 'Incomplete Entry'   # incomplete entries stay bare
@@ -280,7 +294,31 @@ class Command(BaseCommand):
                 p.evidence_note = 'Restoring the level sustained before the recent site regression.'
             p.save()   # explicit status is honored; save computes voted_score
             created += 1
-        self.stdout.write(f'  projects: {created} created across statuses / business units.')
+
+        # Backfill existing Belami projects — the create loop skips them, so older
+        # seeds left a hardcoded/inflated s0_annual and stale lever targets. Refresh
+        # s0_annual from the real baseline for all, and reset the lever + target
+        # levels for SPEC projects to the current definition, so values are
+        # believable. Re-save so value recomputes.
+        spec_aee = {row[0]: row[2] for row in SPEC}          # project name -> AEE
+        fixed = 0
+        for p in Project.objects.filter(vertical__company=belami).exclude(lever=''):
+            rs = real_s0.get(p.vertical.name) if p.vertical else None
+            changed = False
+            if rs and p.s0_annual != Decimal(str(rs)):
+                p.s0_annual = Decimal(str(rs)); changed = True
+            aee = spec_aee.get(p.name)
+            if aee in LEVER_SPEC:
+                lv, lo, hi = LEVER_SPEC[aee]
+                if p.lever != lv or float(p.target_from or 0) != lo or float(p.target_to or 0) != hi:
+                    p.lever = lv
+                    p.target_from, p.target_to = Decimal(str(lo)), Decimal(str(hi))
+                    changed = True
+            if changed:
+                p.save()                 # save() recomputes value from the estimate
+                fixed += 1
+        self.stdout.write(f'  projects: {created} created; {fixed} backfilled '
+                          f'(s0_annual from real baselines, SPEC lever targets refreshed).')
 
     # ---- execution tasks (Actions) for the WIP gantt ------------------------
     def _seed_actions(self, belami, rng):
