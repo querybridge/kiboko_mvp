@@ -69,20 +69,33 @@
           </div>
           <div class="x_content help-section">
             <p>
-              <strong>Kiboko Project Prioritization Manager (PPM)</strong> helps your team plan, prioritize, and
-              track ecommerce work against revenue goals. The platform connects annual
-              Objectives to quarterly Projects and individual Actions, then measures
-              their impact on revenue through budget goals, daily actuals, and forecasts.
+              <strong>Kiboko</strong> is a RevOps platform for ecommerce. It runs one repeatable loop:
+              <strong>see performance &rarr; propose the projects that move revenue &rarr; score them
+              objectively &rarr; execute &rarr; prove the impact.</strong> The hierarchy is
+              <strong>AEE</strong> (Attract / Engage / Expand) &rarr; <strong>Objective</strong> &rarr;
+              <strong>Project</strong> (the scored unit) &rarr; <strong>Action</strong> (the execution steps
+              a project contains).
             </p>
-            <p>Key areas of the application:</p>
+            <p>Key areas, in sidebar order:</p>
             <ul>
-              <li><strong>Dashboard</strong> &mdash; Month-to-date, quarter-to-date, and year-to-date revenue charts comparing actuals, forecasts, and budget targets.</li>
-              <li><strong>Kanban</strong> &mdash; A drag-and-drop board for tracking active actions across lanes (Blocked, Incomplete Entry, Ready to Score, Scored, On Deck, Active) with KPI rollups per lane.</li>
-              <li><strong>Actions</strong> &mdash; Submit, score, estimate, and approve actions. Each action is linked to a Project and can contribute projected revenue uplift to your forecast.</li>
-              <li><strong>Revenue</strong> &mdash; Set monthly budget goals per vertical and upload daily actual revenue from CSV files.</li>
-              <li><strong>Admin</strong> &mdash; Configure company structure (departments, verticals), objectives and projects, measurements, and users.</li>
+              <li><strong>Analytics</strong> &mdash; Performance Storyboard, Grow Sales, Attract Traffic,
+                Engage Customers, Expand Purchases. Decompose sales into levers and compare periods.</li>
+              <li><strong>Insights</strong> &mdash; Wins &amp; Losses that bridge Analytics to a proposed project.</li>
+              <li><strong>Project Prioritization</strong> &mdash; the <strong>Project Value Pipeline</strong>
+                (forecast + pipeline value), <strong>Approve Projects</strong>, and <strong>Score Projects</strong>.</li>
+              <li><strong>Project Control</strong> &mdash; <strong>Kanban</strong>, <strong>Work In Progress</strong>
+                (the gantt), and the <strong>Backlog</strong>.</li>
+              <li><strong>Project Review</strong> &mdash; <strong>Completed Projects</strong> (Realized
+                Performance) and the <strong>Archive</strong>.</li>
+              <li><strong>Add Project</strong> &mdash; the Project Intake Form with the Impact Estimator.</li>
+              <li><strong>Settings</strong> &mdash; Edit Budget, Edit Objectives, Data Connection, Manage Users,
+                Score Weights, Edit Estimator, Billing.</li>
             </ul>
-            <p><strong>Theme:</strong> Use the sun/moon icon at the bottom of the left sidebar to switch between dark and light modes. Your preference is remembered across sessions.</p>
+            <p><strong>Landing page:</strong> after sign-in you land on the page that fits your role
+              (developers on the Kanban, analysts on Grow Sales, executives/BU-leaders on the Performance
+              Storyboard). Change it any time in <strong>User Settings</strong>.</p>
+            <p><strong>Theme:</strong> Use the sun/moon icon at the bottom of the left sidebar to switch between
+              dark and light modes. Your preference is remembered across sessions.</p>
           </div>
         </div>
 
@@ -136,9 +149,9 @@
                 moving it to <strong>Ready to Score</strong>.</li>
               <li><span class="panel-name">Get it scored.</span> Ensure your unit's members and execs vote on
                 <strong>Score Projects</strong> so it advances to <strong>Scored</strong>.</li>
-              <li><span class="panel-name">Run the work.</span> Add execution tasks (Actions) on the project,
-                with dependencies and target dates; track them on <strong>Project Control &rarr; Work In
-                Progress</strong> (the gantt) and the <strong>Kanban</strong>.</li>
+              <li><span class="panel-name">Run the work.</span> Add the project's <strong>Actions</strong>
+                (the execution steps) with dependencies and target dates; track them on <strong>Project
+                Control &rarr; Work In Progress</strong> (the gantt) and the <strong>Kanban</strong>.</li>
               <li><span class="panel-name">Close the loop.</span> When a project is Complete/Launched, check its
                 <strong>Realized Performance</strong> under <strong>Project Review</strong> and archive it.</li>
             </ol>
@@ -152,35 +165,35 @@
             <div class="clearfix"></div>
           </div>
           <div class="x_content help-section">
-            <p>Complete these steps before adding actions or tracking revenue.</p>
+            <p>An administrator completes these once, under <strong>Settings</strong> (and Data Connection).</p>
             <ol>
               <li>
-                <span class="step-label">Create Departments</span> &mdash;
-                Go to <strong>Admin &rarr; Company</strong> and add each department (e.g., Marketing, Merchandising). Assign a department owner.
+                <span class="step-label">Connect your data</span> &mdash;
+                <strong>Settings &rarr; Data Connection</strong> imports your GA4 properties. Each account
+                becomes a <strong>Company</strong>, each property a <strong>Business Unit</strong>, and its
+                data streams <strong>Websites</strong>. (No GA4? Kiboko falls back to seeded/uploaded daily
+                actuals so the dashboards still work.)
               </li>
               <li>
-                <span class="step-label">Create Business Units</span> &mdash;
-                On the same Company page, add your revenue verticals (e.g., Lighting, Furniture). Assign a General Manager to each.
+                <span class="step-label">Set the objectives</span> &mdash;
+                <strong>Settings &rarr; Edit Objectives</strong> — create the year's Objectives, each aligned
+                to an AEE element (Attract / Engage / Expand). Every project inherits that alignment.
               </li>
               <li>
-                <span class="step-label">Add Objectives</span> &mdash;
-                Go to <strong>Admin &rarr; Rocks</strong> and create the Objectives for the current year. These represent your top annual priorities, each measured by a KPI.
+                <span class="step-label">Set the budget</span> &mdash;
+                <strong>Settings &rarr; Edit Budget</strong> — pick a Business Unit and enter monthly budget
+                targets. These drive the pipeline's Budget line and Delta-to-Budget.
               </li>
               <li>
-                <span class="step-label">Add Projects</span> &mdash;
-                Still on the Rocks page, create Projects linked to an Objective. Assign a department, year, and quarter. Each Project is measured by a Metric.
+                <span class="step-label">Add your people</span> &mdash;
+                <strong>Settings &rarr; Manage Users</strong> — add members and assign roles (Executive,
+                Business Unit Leader, Business Unit User, Analyst, Developer). New accounts get a temporary
+                password and are prompted to set their own on first sign-in.
               </li>
               <li>
-                <span class="step-label">Configure Measurements</span> &mdash;
-                Go to <strong>Admin &rarr; Measurements</strong> to define the Metrics and KPIs used when scoring actions.
-              </li>
-              <li>
-                <span class="step-label">Add Users</span> &mdash;
-                Go to <strong>Admin &rarr; Users</strong> to create accounts and assign roles (admin, senior_leadership, department_owner, or staff).
-              </li>
-              <li>
-                <span class="step-label">Set Budget</span> &mdash;
-                Go to <strong>Settings &rarr; Edit Budget</strong>, select a vertical, and enter monthly budget targets for the year.
+                <span class="step-label">Tune scoring (optional)</span> &mdash;
+                <strong>Settings &rarr; Score Weights</strong> and <strong>Edit Estimator</strong> set how
+                projects are scored and how impact is estimated, per company. Set them once and leave them.
               </li>
             </ol>
           </div>
@@ -247,96 +260,84 @@
           </div>
         </div>
 
-        <!-- Add a Action -->
+        <!-- Add a Project -->
         <div class="x_panel">
           <div class="x_title">
-            <h2>Workflow: Add a Action</h2>
+            <h2>Workflow: Add a Project</h2>
             <div class="clearfix"></div>
           </div>
           <div class="x_content help-section">
             <ol>
               <li>
-                <span class="step-label">Navigate to Add Project</span> &mdash;
-                In the left sidebar click <strong>Add Project &rarr; New Project</strong>.
+                <span class="step-label">Open the intake form</span> &mdash;
+                Click <strong>Add Project</strong> in the sidebar (or <strong>Add Project</strong> on an
+                Insights recommendation to pre-seed a draft).
               </li>
               <li>
-                <span class="step-label">Fill in Action Details</span> &mdash;
-                Enter the action name, select the linked Project, department, vertical, and provide a description. Set the estimated annual revenue value and planned launch date.
+                <span class="step-label">Fill in project details</span> &mdash;
+                Name, user story, definition of done, the Objective it supports, owner, Business Unit, and
+                target go-live (defaults to 30 business days out). Use <strong>Save progress</strong> to
+                store a draft and return to finish the estimate.
               </li>
               <li>
-                <span class="step-label">Submit for Scoring</span> &mdash;
-                Once submitted, the action enters the scoring pipeline where leadership can estimate value and level of effort (LOE).
+                <span class="step-label">Complete the Impact Estimator</span> &mdash;
+                Pick the sales lever (scoped to the objective's AEE), set current &rarr; target level
+                (auto-filled from analytics when available). The <strong>Size of Impact</strong> scale shows
+                what a Modest &rarr; Extreme target looks like and auto-discounts an over-reach. If the target
+                rests on evidence recent data can't see, mark it <strong>Evidence-backed</strong> with a note.
               </li>
               <li>
-                <span class="step-label">Estimate Value &amp; LOE</span> &mdash;
-                Authorized users go to <strong>Estimate Value &amp; LOE</strong> to score actions. Value estimates are set by senior leadership; LOE estimates can be provided by department owners.
+                <span class="step-label">Submit for approval</span> &mdash;
+                The project enters intake: <strong>BU Leader approval &rarr; developer sizes effort &amp;
+                capability &rarr; Ready to Score</strong>. Incomplete drafts wait under
+                <strong>Approve Projects &rarr; Incomplete Entries</strong>.
               </li>
               <li>
-                <span class="step-label">Approve</span> &mdash;
-                Go to <strong>Estimate Value &amp; LOE &rarr; Approve Projects</strong> to approve or reject scored actions. Approved actions become Active and appear on the Dashboard.
+                <span class="step-label">Score it</span> &mdash;
+                On <strong>Score Projects</strong>, eligible members vote across the BVM criteria. The final
+                score is the average of the anonymous vote and the algorithmic estimate.
               </li>
               <li>
-                <span class="step-label">Track on Dashboard</span> &mdash;
-                Active actions contribute a projected revenue uplift to the forecast charts, based on their estimated value and launch date.
+                <span class="step-label">Execute &amp; review</span> &mdash;
+                After executive approval the project moves to <strong>On Deck &rarr; WIP</strong> on the
+                Kanban. Add its <strong>Actions</strong> and track them on Work In Progress. When it's
+                Complete/Launched, open <strong>Realized Performance</strong> under Project Review.
               </li>
             </ol>
+            <p class="text-muted">Revenue actuals come from your connected GA4 property (or seeded/uploaded
+              daily actuals) &mdash; there's no manual "update actuals" step.</p>
           </div>
         </div>
 
-        <!-- Updating Actuals -->
+        <!-- The Value Pipeline -->
         <div class="x_panel">
           <div class="x_title">
-            <h2>Workflow: Updating Actuals</h2>
+            <h2>The Value Pipeline</h2>
             <div class="clearfix"></div>
           </div>
           <div class="x_content help-section">
-            <ol>
-              <li>
-                <span class="step-label">Prepare your CSV</span> &mdash;
-                Create a CSV file with two columns: <strong>Date</strong> and <strong>Actual Revenue</strong>.
-                Supported date formats include <code>YYYY-MM-DD</code>, <code>MM/DD/YYYY</code>, and <code>MM/DD/YY</code>.
-              </li>
-              <li>
-                <span class="step-label">Go to Update Actuals</span> &mdash;
-                In the left sidebar click <strong>Revenue &rarr; Update Actuals</strong>.
-              </li>
-              <li>
-                <span class="step-label">Select a Business Unit</span> &mdash;
-                Choose the vertical this revenue data belongs to from the dropdown.
-              </li>
-              <li>
-                <span class="step-label">Upload the File</span> &mdash;
-                Select your CSV file and click <strong>Upload</strong>. The system will create or update daily revenue records. Any parsing errors are reported after upload.
-              </li>
-              <li>
-                <span class="step-label">Verify on Dashboard</span> &mdash;
-                Return to the Dashboard to see updated actuals reflected in the MTD, QTD, and YTD charts. The forecast automatically adjusts based on new actual data.
-              </li>
-            </ol>
-            <p><strong>Tip:</strong> Re-uploading a date for the same vertical will overwrite the previous value, so you can correct mistakes by uploading a corrected CSV.</p>
-          </div>
-        </div>
-
-        <!-- Dashboard Panels -->
-        <div class="x_panel">
-          <div class="x_title">
-            <h2>Dashboard Panels</h2>
-            <div class="clearfix"></div>
-          </div>
-          <div class="x_content help-section">
-            <p>The dashboard is read top-to-bottom, with each panel zooming progressively from strategy to execution. The MTD / QTD / YTD buttons in the Revenue panel drive every panel below — switching the period updates Revenue, Performance, the Gantt timeline, and the Projects Summary in lockstep.</p>
+            <p>Read top-to-bottom, zooming from strategy to execution. The period pills drive every panel in
+              lockstep: <strong>This Month / This Quarter / This Year</strong>, plus a <strong>Look ahead</strong>
+              group — <strong>Next Month / Next Quarter / Next Year</strong> — for seeing whether the pipeline
+              (including On Deck projects) builds momentum.</p>
 
             <h4><span class="panel-name">Objective Tiles</span></h4>
-            <p>One tile per Objective for the current year. Each tile is a strategic scorecard: name and description across the top, then a count of Active actions driving that objective and the total Active action value. The smaller second line shows pre-Active pipeline (count and value) — i.e., what is queued up but not yet in flight. Each tile header is color-coded to its objective — <strong>Average Order Value = green</strong>, <strong>Close Rate = yellow</strong>, <strong>Shopper Volume (Visits) = blue</strong> — the same colors used by the Gantt bars. Tiles are ordered Shopper Volume &rarr; Close Rate &rarr; Average Order Value (drive more orders first, then grow order size).</p>
+            <p>One tile per Objective for the current year — a strategic scorecard: the count and value of
+              projects driving that objective, with the queued (On Deck) pipeline on the second line. Headers
+              are color-coded by AEE element, matching the gantt bars.</p>
 
             <h4><span class="panel-name">Revenue</span></h4>
-            <p>Period revenue chart with three stacked bar components:</p>
+            <p>Period revenue chart with stacked components:</p>
             <ul>
-              <li><strong>Actual</strong> (dark green) &mdash; real revenue from <code>DailyActual</code> records.</li>
-              <li><strong>Forecast</strong> (medium green) &mdash; day-of-week-weighted projection for the remainder of the period.</li>
-              <li><strong>Action Value Add</strong> (light green) &mdash; incremental uplift from Active actions (each action's annual value spread over 365 days, applied from launch date forward).</li>
+              <li><strong>Actual</strong> (dark green) &mdash; real revenue from your data tier (GA4 / BigQuery /
+                seeded daily actuals). Hidden on future days.</li>
+              <li><strong>Trending Forecast</strong> (medium green) &mdash; the end-of-period landing spot from
+                the current trend, excluding not-yet-live project impact.</li>
+              <li><strong>Project Value Add</strong> (light green) &mdash; the prorated value of projects that
+                launch within the period (each project's value spread from its go-live forward).</li>
             </ul>
-            <p>The line overlay is the Budget. The right-hand summary table shows Actual, Forecast, Action Value, End-of-Period Total, Budget, and Delta to Budget.</p>
+            <p>The line overlay is the Budget. The summary shows Actual, Trending Forecast,
+              <strong>Prorated Projected Value</strong>, Budget, and Delta to Budget.</p>
 
             <h4><span class="panel-name">Performance</span></h4>
             <p>Four scorecards in order: <strong>Sales</strong>, <strong>Visits</strong>, <strong>Close Rate</strong>, and <strong>Avg Order Value</strong>. Each card shows the period value plus two deltas in smaller font: <em>vs LY</em> (same calendar-day range last year) and <em>vs Budget</em>. Traffic-light coloring uses a <strong>±5% neutral band</strong>: green = better than +5%, red = worse than &minus;5%, amber = within the neutral band. Color-coded chevrons indicate direction (up / down). The card's left border picks the worse of the two deltas so you can scan the row at a glance.</p>
@@ -345,17 +346,19 @@
             <p>Active actions laid out on the period's date axis. Bars start at the date the action's status became <em>Active</em> and end at the planned launch date. Each bar is <strong>color-coded by the Objective its action supports</strong> — Average Order Value = green, Close Rate = yellow, Shopper Volume (Visits) = blue — with a darker fill of the same hue sized to the action's percent complete; the percentage is labeled at the bar's right edge. Open-ended (no launch) actions use a striped pattern in the objective color. Rows are grouped by <strong>Team</strong>, sorted with the densest team first, so you can see workload concentration at a glance. The vertical red line is today.</p>
 
             <h4><span class="panel-name">Projects Summary</span></h4>
-            <p>Forward-looking rollup of Projects and their pipeline actions. <strong>Excludes Complete and Launched actions</strong> — those are already producing value; this panel surfaces what <em>will</em>. Columns:</p>
+            <p>Rollup of the WIP + On Deck projects in scope. Columns:</p>
             <ul>
-              <li><strong>Project</strong> &mdash; composite cell with name, expand chevron, total Actions count, Active count, and a left accent bar color-coded by Purpose.</li>
-              <li><strong>Purpose</strong> badge &mdash; New Growth, Hold Position, Defend Position, Reverse Decay.</li>
-              <li><strong>Objective</strong> &mdash; the linked Objective (e.g., Increase Average Order Value).</li>
-              <li><strong>Avg Progress</strong> &mdash; mean percent complete across the project's pipeline actions.</li>
-              <li><strong>Active Value</strong> / <strong>Inactive Value</strong> &mdash; sum of action values currently Active vs in pre-Active pipeline.</li>
-              <li><strong>Level</strong> &mdash; Corporate / Department / Team scope.</li>
-              <li><strong>Business Unit</strong> &mdash; owning department.</li>
+              <li><strong>Project</strong> &mdash; name, expand chevron, and the count of its Actions (and how many are active).</li>
+              <li><strong>AEE</strong> &mdash; the project's Attract / Engage / Expand element.</li>
+              <li><strong>Objective</strong> &mdash; the annual objective it supports.</li>
+              <li><strong>Score</strong> &mdash; the blended 0–10 priority (vote + algorithm); "—" until scored.</li>
+              <li><strong>Status</strong> &mdash; its Kanban status.</li>
+              <li><strong>Expected Go-Live</strong> &mdash; the project's target completion date.</li>
+              <li><strong>Avg Progress</strong> &mdash; mean percent complete across its Actions.</li>
+              <li><strong>Total Project Value</strong> &mdash; the project's estimated annual value.</li>
+              <li><strong>Business Unit</strong> &mdash; the BU it rolls up to.</li>
             </ul>
-            <p>Click the chevron in any row to expand and see the underlying actions with score, progress, value, launch date, and status.</p>
+            <p>Expand any row to see its Actions with team, progress, and launch date. A TOTAL row sums the columns.</p>
           </div>
         </div>
 
@@ -388,17 +391,22 @@
               </tbody>
             </table>
 
-            <h4>Action Status Flow</h4>
-            <p>A action moves through these states in order. Only <strong>Active</strong> actions contribute Action Value Add to the Revenue forecast and appear on the Gantt.</p>
+            <h4>Project Status Flow</h4>
+            <p>A <strong>Project</strong> (the scored unit) moves through the intake and delivery pipeline in
+              order. <strong>WIP</strong> and <strong>On Deck</strong> projects appear on the Value Pipeline;
+              the gantt shows their Actions.</p>
             <table class="dict-table">
               <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
               <tbody>
-                <tr><td>Pending Approval</td><td>Submitted; awaiting executive approval.</td></tr>
-                <tr><td>Pending Assignment</td><td>Approved; needs an owner.</td></tr>
-                <tr><td>On Deck</td><td>Assigned but not yet started.</td></tr>
-                <tr><td><strong>Active</strong></td><td>In flight. Stamps <code>active_date</code> on first transition. Drives Gantt bar and forecast uplift.</td></tr>
-                <tr><td>Complete</td><td>Finished but not yet launched to production. Excluded from the Projects Summary.</td></tr>
-                <tr><td>Launched</td><td>Live and producing value. Auto-archives. Excluded from the Projects Summary.</td></tr>
+                <tr><td>Incomplete Entry</td><td>Draft — details and/or the impact estimate aren't finished yet.</td></tr>
+                <tr><td>Pending Approval</td><td>Complete entry awaiting Business-Unit-Leader approval.</td></tr>
+                <tr><td>Pending LOE</td><td>Approved; a developer is sizing effort + capability.</td></tr>
+                <tr><td>Ready to Score</td><td>Sized; waiting for the team vote.</td></tr>
+                <tr><td>Scored</td><td>Voted + algorithmically scored; a single blended priority is set.</td></tr>
+                <tr><td>Executive Approval</td><td>Top-scored; an executive decides whether it ships.</td></tr>
+                <tr><td>On Deck</td><td>Approved and queued — counts toward the forward-looking pipeline.</td></tr>
+                <tr><td><strong>WIP</strong></td><td>In flight. Drives the gantt and the pipeline's Project Value Add.</td></tr>
+                <tr><td>Complete / Launched</td><td>Done. Shows Realized Performance under Project Review until archived.</td></tr>
               </tbody>
             </table>
 
@@ -437,7 +445,7 @@
               <dt>Department / Business Unit</dt><dd>Owning organizational unit (Marketing, IT, Merchandising, etc.).</dd>
               <dt>Team</dt><dd>Functional execution unit; distinct from Department. Multiple teams can sit inside a single department.</dd>
               <dt>Business Unit</dt><dd>A revenue line of business with its own GM and budget targets (Lighting, Patio, Bailey Street Home).</dd>
-              <dt>User Roles</dt><dd><code>admin</code>, <code>senior_leadership</code>, <code>department_owner</code>, <code>staff</code>. Roles control which edit affordances appear.</dd>
+              <dt>User Roles</dt><dd><code>Executive</code>, <code>Business Unit Leader</code>, <code>Business Unit User</code>, <code>Analyst</code>, <code>Developer</code>. A user may hold several; roles control edit affordances and the default landing page. (Account Owner is the Organization admin; Super User is Django-level.)</dd>
             </dl>
 
             <h4>Revenue Data</h4>
@@ -467,20 +475,20 @@
 
             <h4>Periods</h4>
             <dl class="field-list">
-              <dt>MTD</dt><dd>First of current month through end of current month.</dd>
-              <dt>QTD</dt><dd>First day of current quarter (Jan&nbsp;1 / Apr&nbsp;1 / Jul&nbsp;1 / Oct&nbsp;1) through last day of current quarter.</dd>
-              <dt>YTD</dt><dd>January&nbsp;1 through December&nbsp;31 of the current year.</dd>
+              <dt>This Month / This Quarter / This Year</dt><dd>The current month, quarter, or calendar year to date.</dd>
+              <dt>Next Month / Next Quarter / Next Year</dt><dd>The "Look ahead" group — pure projection (no actuals yet), including On Deck projects, to gauge upcoming momentum.</dd>
             </dl>
-            <p>For "vs Last Year" comparisons the same calendar-day range is used in the prior year (e.g., MTD May&nbsp;1&ndash;May&nbsp;7 of 2026 vs May&nbsp;1&ndash;May&nbsp;7 of 2025).</p>
+            <p>Analytics comparisons respect the comparison selector: choose <em>prior period</em> (e.g. Last
+              Month) or <em>same period prior year</em>. Charts and readouts name whichever you pick.</p>
 
             <h4>Computed &amp; Derived Values</h4>
             <dl class="field-list">
-              <dt>Forecast (base)</dt><dd>Day-of-week-weighted projection of remaining-month revenue plus actuals to date. For future months with no actuals, falls back to prior-year same-month scaled by <em>(this year's budget &divide; last year's actual)</em>.</dd>
-              <dt>Action Value Add</dt><dd>For each Active action, daily uplift = annual value &divide; 365, applied from launch date forward and summed across all Active actions.</dd>
-              <dt>End of Period Total</dt><dd>Forecast + Action Value Add.</dd>
-              <dt>Delta to Budget</dt><dd>Budget &minus; End of Period Total. Positive (red) = forecasted miss; negative (green) = beat.</dd>
-              <dt>Avg Progress (Projects)</dt><dd>Mean of <code>progress</code> across the project's pipeline actions, excluding Launched and Complete.</dd>
-              <dt>Active / Inactive Value (Projects)</dt><dd>Sum of <code>value</code> for actions in <em>Active</em> status vs in pre-Active pipeline (Pending Approval, Pending Assignment, On Deck).</dd>
+              <dt>Trending Forecast</dt><dd>Day-of-week (median) projection of remaining-period revenue plus actuals to date. For future months with no actuals, falls back to prior-year same period scaled by <em>(this year's budget &divide; last year's actual)</em>.</dd>
+              <dt>Project Value Add</dt><dd>For each launching project, daily uplift = annual value &divide; 365, applied from its go-live forward and summed. Forward periods include On Deck projects.</dd>
+              <dt>Prorated Projected Value</dt><dd>Trending Forecast + Project Value Add.</dd>
+              <dt>Delta to Budget</dt><dd>Budget &minus; Prorated Projected Value. Shown green when the projection <strong>beats</strong> budget; a shortfall shows in red parentheses.</dd>
+              <dt>Avg Progress (Projects)</dt><dd>Mean of <code>progress</code> across the project's Actions.</dd>
+              <dt>Total Project Value</dt><dd>The project's estimated annual value (from the Impact Estimator).</dd>
               <dt>Performance Sales</dt><dd>Sum of <code>DailyActual.revenue</code> for the period.</dd>
               <dt>Performance Visits</dt><dd>Sum of <code>DailyActual.visits</code>.</dd>
               <dt>Performance Close Rate</dt><dd>Sum of orders &divide; sum of visits.</dd>
