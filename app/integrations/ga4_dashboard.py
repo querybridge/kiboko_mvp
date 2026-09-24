@@ -1214,6 +1214,23 @@ def realized_perf_for_project(request, project, measure_days=30):
     rp.update({'delta_disp': _usd_fin(rp['delta']), 'lever_contrib_disp': _usd_fin(rp['lever_contrib']),
                'predicted_disp': _usd_fin(rp['predicted']) if rp['predicted'] is not None else None,
                'residual_disp': _usd_fin(rp['residual'])})
+
+    # Plain-English one-liner for business users (analyst detail lives below it).
+    delta = rp['delta']
+    verb = 'rose' if delta > 0 else ('fell' if delta < 0 else 'was flat')
+    mag = f"${abs(round(delta)):,}"
+    summary = f"Sales {verb} {mag} in the {measure_days} days after launch"
+    annual = float(getattr(project, 'value', 0) or 0)
+    if annual > 0:
+        window_proj = annual / 365.0 * measure_days
+        if window_proj:
+            summary += f" — about {round(delta / window_proj * 100)}% of the ${round(annual):,}/yr projection for that window"
+    summary += '. ' + {
+        'meaningful': "This project's targeted lever was the main driver.",
+        'not_mainly': "But the improvement came mostly from other levers, not this project.",
+        'offset': "The targeted lever moved, but other levers offset it — overall sales were flat or down.",
+    }.get(rp['verdict'], "The signal is mixed — see the breakdown below.")
+    rp['plain_summary'] = summary
     return rp
 
 

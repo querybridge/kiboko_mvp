@@ -8,6 +8,13 @@
   .rp-cap { font-size: 11px; color: var(--text-muted); text-align: center; margin: 6px 2px 0; line-height: 1.4; }
   #realized .tile_stats_count .count { color: var(--text-primary); font-size: 24px; }
   #realized .tile_stats_count .count_top, #realized .tile_stats_count .count_bottom { color: var(--text-muted); }
+  #realized .rp-lead { font-size: 15px; line-height: 1.5; }
+  #realized details.rp-detail { margin: 10px 0 2px; border-top: 1px solid var(--card-edge); padding-top: 8px; }
+  #realized details.rp-detail > summary { cursor: pointer; color: var(--text-secondary); font-size: 13px;
+    font-weight: 600; list-style: none; padding: 4px 0; outline: none; }
+  #realized details.rp-detail > summary::-webkit-details-marker { display: none; }
+  #realized details.rp-detail > summary::before { content: "\f0da"; font-family: FontAwesome; margin-right: 8px; }
+  #realized details.rp-detail[open] > summary::before { content: "\f0d7"; }
 </style>
 {% endblock stylesheets %}
 {% block content %}
@@ -104,36 +111,38 @@
           vs pre-launch <strong>{{ r.base_start|date:"M j, Y" }} → {{ r.base_end|date:"M j, Y" }}</strong>.</p>
 
         {% if r.verdict == 'meaningful' %}
-        <div class="alert alert-success"><strong>✅ Meaningful.</strong> {{ r.lever_label }} drove {{ r.share_disp|floatformat:0 }}% of a
-          {{ r.perf_pct_disp|floatformat:1 }}% sales move, and the lever rose {{ r.actual_lever_disp|floatformat:1 }}%.</div>
+        <div class="alert alert-success rp-lead">✅ {{ r.plain_summary }}</div>
         {% elif r.verdict == 'not_mainly' %}
-        <div class="alert alert-warning"><strong>⚠️ Performance improved, but not mainly from this project</strong> — the gain came from other levers (see below).</div>
+        <div class="alert alert-warning rp-lead">⚠️ {{ r.plain_summary }}</div>
         {% elif r.verdict == 'offset' %}
-        <div class="alert alert-info"><strong>↔️ The targeted lever moved, but performance was flat/down</strong> — its gain was offset by other levers.</div>
+        <div class="alert alert-info rp-lead">↔️ {{ r.plain_summary }}</div>
         {% else %}
-        <div class="alert alert-info"><strong>❔ Mixed signal</strong> — read the decomposition below.</div>
+        <div class="alert alert-info rp-lead">❔ {{ r.plain_summary }}</div>
         {% endif %}
 
-        <div class="row">
-          <div class="col-md-4"><div class="tile_stats_count">
-            <span class="count_top">Sales change (post vs baseline)</span>
-            <div class="count">{{ r.delta_disp }}</div>
-            <span class="count_bottom">{{ r.perf_pct_disp|floatformat:1 }}% vs baseline</span></div></div>
-          <div class="col-md-4"><div class="tile_stats_count">
-            <span class="count_top">{{ r.lever_label }} contribution</span>
-            <div class="count">{{ r.lever_contrib_disp }}</div>
-            <span class="count_bottom">{{ r.share_disp|floatformat:0 }}% of the total change</span></div></div>
-          <div class="col-md-4"><div class="tile_stats_count">
-            <span class="count_top">{{ r.lever_label }} actual move</span>
-            <div class="count">{{ r.actual_lever_disp|floatformat:1 }}%</div>
-            <span class="count_bottom">{% if r.planned_disp != None %}planned {{ r.planned_disp|floatformat:1 }}%{% else %}vs baseline{% endif %}</span></div></div>
-        </div>
+        <details class="rp-detail">
+          <summary>How we know — the numbers</summary>
+          <div class="row" style="margin-top:10px;">
+            <div class="col-md-4"><div class="tile_stats_count">
+              <span class="count_top">Sales change (post vs baseline)</span>
+              <div class="count">{{ r.delta_disp }}</div>
+              <span class="count_bottom">{{ r.perf_pct_disp|floatformat:1 }}% vs baseline</span></div></div>
+            <div class="col-md-4"><div class="tile_stats_count">
+              <span class="count_top">{{ r.lever_label }} contribution</span>
+              <div class="count">{{ r.lever_contrib_disp }}</div>
+              <span class="count_bottom">{{ r.share_disp|floatformat:0 }}% of the total change</span></div></div>
+            <div class="col-md-4"><div class="tile_stats_count">
+              <span class="count_top">{{ r.lever_label }} actual move</span>
+              <div class="count">{{ r.actual_lever_disp|floatformat:1 }}%</div>
+              <span class="count_bottom">{% if r.planned_disp != None %}planned {{ r.planned_disp|floatformat:1 }}%{% else %}vs baseline{% endif %}</span></div></div>
+          </div>
 
-        {% if r.predicted != None %}
-        <p style="margin-top:10px;"><strong>Estimate vs actual:</strong> estimator predicted
-          <strong>{{ r.predicted_disp }}</strong> from this lever; LMDI attributes
-          <strong>{{ r.lever_contrib_disp }}</strong> to it.</p>
-        {% endif %}
+          {% if r.predicted != None %}
+          <p style="margin-top:10px;"><strong>Estimate vs actual:</strong> estimator predicted
+            <strong>{{ r.predicted_disp }}</strong> from this lever; LMDI (a standard way to split a
+            change across factors) attributes <strong>{{ r.lever_contrib_disp }}</strong> to it.</p>
+          {% endif %}
+        </details>
 
         <div class="row" style="margin-top:16px;">
           <div class="col-md-5">
