@@ -385,4 +385,11 @@ class Command(BaseCommand):
                     active_date=created_dt + timedelta(days=rng.randint(3, 12)))
                 prev = a
             made += 1
-        self.stdout.write(f'  actions: seeded step chains for {made} WIP projects.')
+        # Sync each action's objective to its project's — actions seeded before the
+        # project was linked to an objective kept objective=None, which renders the
+        # WIP gantt bars grey instead of AEE-colored.
+        synced = 0
+        for p in Project.objects.filter(vertical__company=belami).exclude(objective=None):
+            synced += p.actions.exclude(objective_id=p.objective_id).update(objective=p.objective)
+        self.stdout.write(f'  actions: seeded step chains for {made} WIP projects; '
+                          f'{synced} action objectives synced.')
