@@ -65,8 +65,22 @@ def profile(request):
                 request.user.save(update_fields=['username'])
                 messages.success(request, 'Username updated.')
                 return redirect('users:profile')
+        elif action == 'set_lander':
+            from users.models import LANDER_CHOICES
+            valid = {k for k, _ in LANDER_CHOICES}
+            choice = (request.POST.get('default_lander') or '').strip()
+            if prof is not None and choice in valid:
+                prof.default_lander = choice
+                prof.save(update_fields=['default_lander'])
+                messages.success(request, 'Landing page updated.')
+                return redirect('users:profile')
+            messages.error(request, 'Pick a valid landing page.')
 
+    from users.models import LANDER_CHOICES
     for f in pw_form.fields.values():
         f.widget.attrs['class'] = 'form-control'
     return render(request, 'users/profile.html', {
-        'title': 'User Settings', 'pw_form': pw_form, 'must_change': must_change})
+        'title': 'User Settings', 'pw_form': pw_form, 'must_change': must_change,
+        'lander_choices': LANDER_CHOICES,
+        'current_lander': (prof.default_lander if prof else ''),
+        'resolved_lander': (prof.resolved_lander_key() if prof else 'pipeline')})

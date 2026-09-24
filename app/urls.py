@@ -34,5 +34,6 @@ urlpatterns = [
     path('analytics/attract-traffic/', views.analytics_attract_traffic, name='analytics_attract_traffic'),
     path('analytics/engage-customers/', views.analytics_engage_customers, name='analytics_engage_customers'),
     path('analytics/expand-purchases/', views.analytics_expand_purchases, name='analytics_expand_purchases'),
+    path('home/', views.home, name='home'),
     path('', views.index, name='index'),
 ]

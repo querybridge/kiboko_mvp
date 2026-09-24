@@ -33,6 +33,26 @@ _LEGACY_ROLE_MAP = {
     'staff': 'business_unit_user',
 }
 
+# Post-login landing pages. Different roles log in with different intent, so the
+# default lands them where they work; any user can override it in User Settings.
+LANDER_CHOICES = [
+    ('', 'Use my role default'),
+    ('pipeline', 'Project Value Pipeline'),
+    ('kanban', 'Kanban'),
+    ('grow_sales', 'Grow Sales (Analytics)'),
+    ('storyboard', 'Performance Storyboard'),
+]
+_LANDER_BY_ROLE = {
+    'executive': 'storyboard',
+    'business_unit_leader': 'storyboard',
+    'analyst': 'grow_sales',
+    'developer': 'kanban',
+    'business_unit_user': 'kanban',
+}
+# When a user holds several roles, the highest-priority one wins the default.
+_LANDER_ROLE_PRIORITY = ['executive', 'business_unit_leader', 'analyst',
+                         'developer', 'business_unit_user']
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -42,12 +62,29 @@ class UserProfile(models.Model):
     # Set when an admin creates the account with a temporary password; forces a
     # password change on first login (Google accounts never need one).
     must_change_password = models.BooleanField(default=False)
+    # Blank = use the role-based default (resolved_lander_key).
+    default_lander = models.CharField(max_length=20, choices=LANDER_CHOICES,
+                                      blank=True, default='')
 
     def has_role(self, key):
         """True if the user holds this Kiboko role (falls back to the legacy role)."""
         if key in (self.roles or []):
             return True
         return _LEGACY_ROLE_MAP.get(self.role) == key
+
+    def resolved_lander_key(self):
+        """The landing-page key for this user: explicit override, else the
+        highest-priority role's default, else the pipeline."""
+        if self.default_lander:
+            return self.default_lander
+        held = set(self.roles or [])
+        legacy = _LEGACY_ROLE_MAP.get(self.role)
+        if legacy:
+            held.add(legacy)
+        for r in _LANDER_ROLE_PRIORITY:
+            if r in held:
+                return _LANDER_BY_ROLE[r]
+        return 'pipeline'
 
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"

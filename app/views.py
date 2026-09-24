@@ -632,6 +632,27 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
     }
 
 
+# Post-login landing keys -> the route to redirect to.
+LANDER_ROUTES = {
+    'pipeline': 'app:index',
+    'kanban': 'project:kanban',
+    'grow_sales': 'app:analytics_grow_sales',
+    'storyboard': 'app:analytics_performance_story',
+}
+
+
+@login_required
+def home(request):
+    """Post-login dispatcher: send the user to their preferred (or role-default)
+    landing page. LOGIN_REDIRECT_URL points here."""
+    prof = getattr(request.user, 'profile', None)
+    key = prof.resolved_lander_key() if prof else 'pipeline'
+    try:
+        return redirect(LANDER_ROUTES.get(key, 'app:index'))
+    except Exception:
+        return redirect('app:index')
+
+
 # View All Projects Page
 @login_required
 def index(request):

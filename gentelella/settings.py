@@ -141,8 +141,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATIC_URL = '/static/'
 STATIC_ROOT = 'static'
 LOGIN_URL = '/users/login/'
-# Home page: land on the Grow Sales analytics dashboard after login.
-LOGIN_REDIRECT_URL = '/app/analytics/grow-sales/'
+# Post-login dispatcher picks the landing page by role (or the user's override).
+LOGIN_REDIRECT_URL = '/app/home/'
 
 # --- Google OAuth / GA4 Data API -----------------------------------------
 # Real credentials live in gitignored local_settings.py. When the client id +
