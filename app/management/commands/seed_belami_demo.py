@@ -107,9 +107,17 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         rng = random.Random(1128)
-        belami = Company.objects.filter(slug='belami').first()
-        if not belami:
-            raise CommandError('Belami company not found.')
+        # Bootstrap the pieces this demo needs so it works on a fresh database
+        # (a new MySQL DB has no Belami company, an incomplete BU set, and no
+        # departments — MySQL then rejects the null business_unit SQLite allowed).
+        belami, _ = Company.objects.get_or_create(slug='belami', defaults={'name': 'Belami'})
+        for bu_name in BU_PROFILE:
+            bu, _ = BusinessUnit.objects.get_or_create(name=bu_name, defaults={'company': belami})
+            if bu.company_id is None:
+                bu.company = belami
+                bu.save(update_fields=['company'])
+        for dept_name in ('Marketing', 'Merchandising', 'IT', 'Operations', 'Analytics'):
+            Department.objects.get_or_create(name=dept_name)
         bus = {b.name: b for b in belami.verticals.all()}
         try:
             start = date.fromisoformat(opts['start'])
