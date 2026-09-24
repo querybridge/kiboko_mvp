@@ -165,16 +165,17 @@
           </div>
 
           {% if r.predicted != None %}
-          <p style="margin-top:10px;"><strong>Estimate vs actual:</strong> estimator predicted
-            <strong>{{ r.predicted_disp }}</strong> from this lever; LMDI (a standard way to split a
-            change across factors) attributes <strong>{{ r.lever_contrib_disp }}</strong> to it.</p>
+          <p style="margin-top:10px;">This project was estimated to produce
+            <strong>{{ r.predicted_disp }}</strong> in value by increasing the
+            <strong>{{ r.lever_label }}</strong> lever by <strong>{{ r.planned_disp|floatformat:1 }}%</strong>.
+            We can attribute <strong>{{ r.lever_contrib_disp }}</strong> in Sales to {{ r.lever_label }}.</p>
           {% endif %}
         </div>
 
         <div class="row" style="margin-top:16px;">
           <div class="col-md-5">
             <div class="rp-chart"><canvas id="rpContribChart" height="240"></canvas></div>
-            <p class="rp-cap">Per-lever contribution to the sales change (LMDI · sums to total, residual ${{ r.residual|floatformat:0 }})</p>
+            <p class="rp-cap">Per-lever contribution to the sales change (sums to the total; residual ${{ r.residual|floatformat:0 }})</p>
           </div>
           <div class="col-md-7">
             <div class="rp-chart"><canvas id="rpSalesChart" height="240"></canvas></div>
@@ -232,7 +233,7 @@
   var usd = function (v) { v = Math.round(v);
     return v < 0 ? '($' + Math.abs(v).toLocaleString() + ')' : '$' + v.toLocaleString(); };
 
-  // 1) Per-lever LMDI contribution — horizontal bar, coloured by AEE.
+  // 1) Per-lever contribution to the sales change — horizontal bar, coloured by AEE.
   new Chart(document.getElementById('rpContribChart').getContext('2d'), {
     type: 'horizontalBar',
     data: {
