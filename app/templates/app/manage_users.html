@@ -171,6 +171,17 @@ You’ll be asked to set your own password the first time you sign in.</textarea
 {% endblock content %}
 {% block javascripts %}
 {{ block.super }}
+<script>
+  // Require at least one role before a Save (roles) form submits.
+  jQuery(function () {
+    jQuery('form[id^="roles-"]').on('submit', function (e) {
+      if (jQuery(this).find('input[name="roles"]:checked').length === 0) {
+        e.preventDefault();
+        alert('Define at least one role before saving.');
+      }
+    });
+  });
+</script>
 {% if new_user_creds %}
 <script>
   jQuery(function () {

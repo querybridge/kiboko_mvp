@@ -2045,7 +2045,9 @@ def manage_users(request):
             if member and CompanyMembership.objects.filter(company=company, user=member).exists():
                 roles_list = [r for r in request.POST.getlist('roles') if r in ROLE_KEYS]
                 elevated = any(r in ADMIN_ROLES for r in roles_list)
-                if not elevated and _is_last_admin(company, member):
+                if not roles_list:
+                    messages.error(request, 'Define at least one role before saving.')
+                elif not elevated and _is_last_admin(company, member):
                     messages.error(request, f'{company.name} must keep at least one admin '
                                             '(Executive or Business Unit Leader).')
                 else:
