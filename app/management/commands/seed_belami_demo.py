@@ -218,8 +218,22 @@ class Command(BaseCommand):
                 upd['target_completion'] = today - timedelta(days=rng.randint(120, 220))
             Project.objects.filter(pk=p.pk).update(**upd)
 
-        obj = {o.aee_alignment: o for o in Objective.objects.all() if o.aee_alignment}
-        # a couple of engage objectives exist; prefer "Close Rate"/"Shopping Activity"
+        # Ensure one AEE-aligned objective per element exists (existing seeded
+        # objectives may have a blank aee_alignment, which left every project
+        # unlinked and the pipeline's objective tiles showing 0).
+        AEE_OBJECTIVES = {
+            'attract_traffic': 'Increase Shopper Volume',
+            'engage_customers': 'Increase Close Rate',
+            'expand_purchase': 'Increase Average Order Value',
+        }
+        obj = {}
+        for aee, oname in AEE_OBJECTIVES.items():
+            o, _ = Objective.objects.get_or_create(
+                name=oname, defaults={'aee_alignment': aee, 'year': today.year})
+            if o.aee_alignment != aee:
+                o.aee_alignment = aee
+                o.save(update_fields=['aee_alignment'])
+            obj[aee] = o
         depts = list(Department.objects.all())
         from django.contrib.auth.models import User
         owners = list(User.objects.filter(is_superuser=True)) or list(User.objects.all()[:3])
@@ -308,6 +322,7 @@ class Command(BaseCommand):
         # s0_annual from the real baseline for all, and reset the lever + target
         # levels for SPEC projects to the current definition, so values are
         # believable. Re-save so value recomputes.
+        from project.services import impact
         spec_aee = {row[0]: row[2] for row in SPEC}          # project name -> AEE
         fixed = 0
         for p in Project.objects.filter(vertical__company=belami).exclude(lever=''):
@@ -322,6 +337,11 @@ class Command(BaseCommand):
                     p.lever = lv
                     p.target_from, p.target_to = Decimal(str(lo)), Decimal(str(hi))
                     changed = True
+            # Link to the AEE-aligned objective (create loop skips existing projects,
+            # so their objective would otherwise stay unset -> empty pipeline tiles).
+            lever_aee = impact.LEVERS.get(p.lever, ('', ''))[1]
+            if lever_aee in obj and p.objective_id != obj[lever_aee].id:
+                p.objective = obj[lever_aee]; changed = True
             if changed:
                 p.save()                 # save() recomputes value from the estimate
                 fixed += 1
