@@ -1,5 +1,5 @@
 {% extends "app/base_site.html" %}
-{% load humanize %}
+{% load humanize user_extras %}
 {% block title %} {{ project.name }} {% endblock title %}
 {% block stylesheets %}{{ block.super }}
 <style>
@@ -75,7 +75,7 @@
         <div class="x_content">
           <table class="table">
             <tr><th>Status</th><td>{{ project.status|default:"—" }}</td></tr>
-            <tr><th>Score</th><td>{{ project.normalized_score|default:"0.0" }} / 10</td></tr>
+            <tr><th>Score</th><td>{{ project.normalized_score|score100 }} / 100</td></tr>
             <tr><th>Projected revenue</th><td>${{ project.value|default:0|intcomma }}</td></tr>
             <tr><th>Level of effort</th><td>{{ project.level_of_effort|default:"—" }}</td></tr>
             <tr><th>Owner</th><td>{{ project.owner|default:"—" }}</td></tr>

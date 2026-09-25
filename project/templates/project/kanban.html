@@ -1,5 +1,5 @@
 {% extends "app/base_site.html" %}
-{% load humanize %}
+{% load humanize user_extras %}
 {% block title %} Kanban Board {% endblock title %}
 
 {% block stylesheets %}
@@ -256,7 +256,7 @@
               <a href="{% url 'project:project_detail' project.pk %}">{{ project.name }}</a>
             </div>
             {% if project.normalized_score and project.normalized_score > 0 %}
-              <div class="card-score">{{ project.normalized_score|floatformat:0 }}</div>
+              <div class="card-score">{{ project.normalized_score|score100 }}</div>
             {% else %}
               <div class="card-score na">n/a</div>
             {% endif %}

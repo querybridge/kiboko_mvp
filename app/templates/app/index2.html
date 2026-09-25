@@ -1,5 +1,5 @@
 {% extends "app/base_site.html" %}
-{% load humanize %}
+{% load humanize user_extras %}
 {% block title %} Dashboard {% endblock title %}
 
 {% block stylesheets %}
@@ -562,7 +562,7 @@
                         {% endif %}
                       </td>
                       <td>{{ init.objective|default:"—" }}</td>
-                      <td style="font-weight:700;">{% if init.scored %}{{ init.score|floatformat:1 }}{% else %}<span class="zero" title="Not scored yet">—</span>{% endif %}</td>
+                      <td style="font-weight:700;">{% if init.scored %}{{ init.score|score100 }}{% else %}<span class="zero" title="Not scored yet">—</span>{% endif %}</td>
                       <td><span class="status-pill status-{{ init.status|lower|cut:' ' }}">{{ init.status|default:"—" }}</span></td>
                       <td>{{ init.go_live|default:"—" }}</td>
                       <td class="avg-progress-cell">

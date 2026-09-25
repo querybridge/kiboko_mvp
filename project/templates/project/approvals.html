@@ -1,4 +1,5 @@
 {% extends "app/base_site.html" %}
+{% load user_extras %}
 {% block title %} Action Needing Approved {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
@@ -70,7 +71,7 @@
                           <td><a href="{{ project.id }}" class="">{{ project.operational_cost|default:"0" }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.business_risk|default:"0" }}</a></td>
                           <td><a href="{{ project.id }}" class="">{{ project.level_of_effort|default:"0" }}</a></td>
-                          <td><a href="{{ project.id }}" class="">{{ project.normalized_score }}</a></td>
+                          <td><a href="{{ project.id }}" class="">{{ project.normalized_score|score100 }}</a></td>
                           <!--<td> <div class="icheckbox_flat-green" style="position: relative;">
                               <input type="checkbox" id="check-all" class="flat" style="position: absolute; opacity: 0;">
                               <ins class="iCheck-helper" style="position: absolute; top: 0%; left: 0%; display: block; width: 100%; height: 100%; margin: 0px; padding: 0px; background: rgb(255, 255, 255); border: 0px; opacity: 0;">

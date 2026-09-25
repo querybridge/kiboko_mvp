@@ -1,5 +1,5 @@
 {# One Backlog table. Expects: table_id, heading, projects, empty_msg #}
-{% load humanize %}
+{% load humanize user_extras %}
 <div class="row">
   <div class="col-md-12 col-sm-12 col-xs-12">
     <div class="x_panel">
@@ -54,7 +54,7 @@
               <td><a href="/project/{{ project.id }}/" class="">{{ project.operational_cost|default:"0" }}</a></td>
               <td><a href="/project/{{ project.id }}/" class="">{{ project.business_risk|default:"0" }}</a></td>
               <td><a href="/project/{{ project.id }}/" class="">{{ project.level_of_effort|default:"0" }}</a></td>
-              <td><a href="/project/{{ project.id }}/" class="">{{ project.normalized_score }}</a></td>
+              <td><a href="/project/{{ project.id }}/" class="">{{ project.normalized_score|score100 }}</a></td>
               <td><a href="/project/{{ project.id }}/" class="">{{ project.progress }}%</a></td>
               <td>{% if project.kanban_lane_key == 'active' %}<a href="{% url 'app:work_in_progress' %}?focus={{ project.id }}" title="See this action on the Work In Progress timeline">{{ project.kanban_lane_label }}</a>{% else %}{{ project.kanban_lane_label }}{% endif %}</td>
               <td>

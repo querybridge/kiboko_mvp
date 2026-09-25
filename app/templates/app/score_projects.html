@@ -137,7 +137,7 @@
           {% endfor %}
         </div>
         <div class="sc-foot">
-          <div class="wscore">Your weighted score: <span class="n">0.0</span> <span style="color:var(--text-muted);">/ 10</span></div>
+          <div class="wscore">Your weighted score: <span class="n">0</span> <span style="color:var(--text-muted);">/ 100</span></div>
           <div class="sc-progress">
             <div class="pgt">{{ p.progress.voted }} of {{ p.progress.total }} voted &middot; {{ p.progress.pct }}%</div>
             <div class="pgbar"><div class="pgfill" style="width:{{ p.progress.pct }}%;"></div></div>
@@ -173,9 +173,9 @@
       var v = r.dataset.invert ? (10 - raw) : raw;
       total += v * parseFloat(r.dataset.weight);
     });
-    // Match the server's ROUND_HALF_UP to one decimal (Math.round rounds .5 up).
-    var score = anyRated ? Math.round(total / 10) / 10 : 0;
-    form.querySelector('.wscore .n').textContent = score.toFixed(1);
+    // 0-100 scale, no decimals (the 0-10 weighted score x10).
+    var score = anyRated ? Math.round(total / 10) : 0;
+    form.querySelector('.wscore .n').textContent = score;
   }
   document.querySelectorAll('form.score-card').forEach(scWeighted);
 </script>
