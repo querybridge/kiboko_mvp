@@ -37,7 +37,7 @@ _LEGACY_ROLE_MAP = {
 # default lands them where they work; any user can override it in User Settings.
 LANDER_CHOICES = [
     ('', 'Use my role default'),
-    ('pipeline', 'Project Value Pipeline'),
+    ('pipeline', 'Project Pipeline Value'),
     ('kanban', 'Kanban'),
     ('grow_sales', 'Grow Sales (Analytics)'),
     ('storyboard', 'Performance Storyboard'),

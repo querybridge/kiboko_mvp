@@ -159,7 +159,7 @@ class ProjectLink(models.Model):
 
 ## 7. UX / surfaces
 
-1. **Value Pipeline** — a small "Portfolio" card: `Σ standalone → Portfolio value
+1. **Pipeline Value** — a small "Portfolio" card: `Σ standalone → Portfolio value
    (▲ +$bonus compounding)`, with a tooltip explaining cross-lever vs overlap.
 2. **Project detail** — a "Synergy" panel: *Compounds with / Overlaps with /
    Enables / Depends on*, each with the $ effect and a note; an "add link" control.

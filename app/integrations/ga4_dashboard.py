@@ -1012,7 +1012,7 @@ def _accumulate_daily(out, by_day):
 def ga4_daily_actuals(request, start, end):
     """{'YYYY-MM-DD': {'revenue': float, 'visits': int, 'orders': int}} of actual
     daily performance for the scoped company over [start, end], or None when the
-    scope isn't connected. Used by the Project Value Pipeline so actual revenue
+    scope isn't connected. Used by the Project Pipeline Value so actual revenue
     comes from live analytics instead of uploaded DailyActual rows.
 
     Source by tier: **Premium -> BigQuery** (faster, no API rate limits; and later

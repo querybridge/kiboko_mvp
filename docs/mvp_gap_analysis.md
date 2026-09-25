@@ -36,7 +36,7 @@ describe.
 | Attract / Engage / Expand analytics; 3 objectives → 6 levers; decompose sales | Grow Sales + Attract/Engage/Expand dashboards |
 | Performance Story (auto narrative), scorecards, trend graphs, date+comparison selector | Performance Storyboard, scorecards (vs-LY & vs-Budget), period/compare selector |
 | "Analytics Centrifuge" mix-impact decomposition (device/channel, product category) | Changeplot / segment decomposition on Engage & Expand |
-| Home: actual vs budget vs run-rate vs run-rate+project-impact graph + **beat/miss** table | Value Pipeline revenue chart (Budget/Actual/Forecast/Project Value) + Delta-to-Budget (red parens on a miss) |
+| Home: actual vs budget vs run-rate vs run-rate+project-impact graph + **beat/miss** table | Pipeline Value revenue chart (Budget/Actual/Forecast/Project Value) + Delta-to-Budget (red parens on a miss) |
 | Active/inactive project counts + expected revenue by Objective | Objective tiles (WIP / On Deck counts + potential revenue) |
 | Initiatives table (Purpose/Objective/revenue/BU/counts); Gantt of active projects | Projects Summary + WIP Gantt |
 | Kanban PPO with statuses; backlog sorted by score | Kanban (intake → score → exec approval → on deck → WIP) |

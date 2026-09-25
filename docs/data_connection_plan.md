@@ -1,7 +1,7 @@
 # Data Connection — Design Plan (GA4)
 
 Status: **In build (Increment 1 done)** · Scope: connect real GA4 data into Kiboko
-Analytics, Storyboard, and the Project Value Pipeline. Author: Sherman.
+Analytics, Storyboard, and the Project Pipeline Value. Author: Sherman.
 
 ## v1 — locked decisions (speed to market)
 
@@ -198,7 +198,7 @@ rendered back to the page (show "•••• saved").
 - Unique on `(vertical, date)` → **idempotent upserts** so re-syncs and gap-fills are
   safe. `source`/`provider` column records which tier produced the row (for
   reconciliation on tier changes).
-- `DailyActual` (existing, used by the Project Value Pipeline) becomes a thin
+- `DailyActual` (existing, used by the Project Pipeline Value) becomes a thin
   rollup/compat view of this store.
 
 ---

@@ -31,7 +31,7 @@ Leader, BUU=Business Unit User, Ana=Analyst, Dev=Developer, Sup=Super User.)
 
 | Permission | Owner | Exec | BUL | BUU | Ana | Dev | Sup | Scope |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|---|
-| View Project Value Pipeline | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Business Unit |
+| View Project Pipeline Value | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Business Unit |
 | View Analytics (all dashboards) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Business Unit |
 | View Insights | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Business Unit |
 | View Projects | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Business Unit |
