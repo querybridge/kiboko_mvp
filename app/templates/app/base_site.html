@@ -53,6 +53,26 @@
 
   <body class="{% block body_class %}nav-md {% endblock body_class %}">
     {% block body %}
+      <!-- Global long-load overlay: tinted screen + spinner during page navigations/submits -->
+      <div id="kb-loading" class="kb-loading" aria-hidden="true" role="status">
+        <div class="kb-loading-box">
+          <div class="kb-loading-spinner"></div>
+          <div class="kb-loading-text">Loading…</div>
+        </div>
+      </div>
+      <style>
+        .kb-loading { position: fixed; inset: 0; z-index: 100000; display: none;
+          align-items: center; justify-content: center;
+          background: rgba(18, 11, 33, 0.55); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+        .kb-loading.show { display: flex; }
+        .kb-loading-box { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+        .kb-loading-spinner { width: 54px; height: 54px; border-radius: 50%;
+          border: 5px solid rgba(214, 197, 247, 0.25); border-top-color: var(--purple-400, #8E6FE0);
+          animation: kb-spin 0.8s linear infinite; }
+        .kb-loading-text { color: #f2edff; font-size: 13px; font-weight: 600; letter-spacing: .04em; }
+        @keyframes kb-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .kb-loading-spinner { animation-duration: 1.6s; } }
+      </style>
       <div class="container body">
         <div class="main_container">
 
@@ -118,6 +138,50 @@
       {% endblock %}
       <!-- Custom Theme Scripts -->
       <script src="/static/build/js/custom.js"></script>
+      <!-- Global long-load overlay controller (vanilla; runs on every page) -->
+      <script>
+        (function () {
+          var overlay = document.getElementById('kb-loading');
+          if (!overlay) return;
+          var timer = null, safety = null;
+          function show() {
+            // brief delay so instant loads don't flash the overlay
+            if (timer) return;
+            timer = setTimeout(function () {
+              overlay.classList.add('show');
+              // safety: never leave it stuck if navigation didn't happen (e.g. an AJAX form)
+              safety = setTimeout(hide, 15000);
+            }, 150);
+          }
+          function hide() {
+            if (timer) { clearTimeout(timer); timer = null; }
+            if (safety) { clearTimeout(safety); safety = null; }
+            overlay.classList.remove('show');
+          }
+          // Full-page navigations via internal links
+          document.addEventListener('click', function (e) {
+            var a = e.target.closest ? e.target.closest('a') : null;
+            if (!a) return;
+            var href = a.getAttribute('href');
+            if (!href) return;                                   // menu labels, buttons
+            if (a.target === '_blank' || a.hasAttribute('download')) return;
+            if (a.hasAttribute('data-no-loader')) return;
+            if (href.charAt(0) === '#' || href.lastIndexOf('javascript:', 0) === 0) return;
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;  // new-tab / middle-click
+            if (a.origin && a.origin !== window.location.origin) return;  // external
+            show();
+          }, true);
+          // Form submits (filters, saves)
+          document.addEventListener('submit', function (e) {
+            var f = e.target;
+            if (!f || f.hasAttribute('data-no-loader')) return;
+            show();
+          }, true);
+          // Hide when the page is shown (incl. back/forward bfcache restore)
+          window.addEventListener('pageshow', hide);
+          window.addEventListener('pagehide', hide);
+        })();
+      </script>
     {% endblock body %}
   </body>
 </html>

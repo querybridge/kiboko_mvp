@@ -1961,7 +1961,15 @@ def manage_users(request):
             memberships__user=user, memberships__role='admin',
         ).distinct().order_by('name')
     if not is_global_admin and not companies.exists():
-        return HttpResponseForbidden('You do not have permission to manage users.')
+        from business_unit.access import contact_admin
+        admin = contact_admin(user)
+        return render(request, 'app/access_denied.html', {
+            'title': 'Manage Users', 'page_heading': 'Manage Users',
+            'heading': 'Managing users is limited to admins',
+            'message': 'Only organization admins, executives, and company admins can add '
+                       'people and set their roles. You still have full access to your own work.',
+            'contact_name': (admin.get_full_name() or admin.username) if admin else None,
+        }, status=403)
 
     def _set_roles(member, roles_list):
         """Set the user's Kiboko roles; mirror company-admin membership from them."""
