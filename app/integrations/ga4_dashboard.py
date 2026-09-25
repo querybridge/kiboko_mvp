@@ -1202,6 +1202,7 @@ def realized_perf_for_project(request, project, measure_days=30):
         'labels': [d[5:] for d in dates],                        # MM-DD
         'sales': [round(x) for x in roll],
         'baseline': round(before['sales'] / measure_days),       # per-day pre-launch avg
+        'post_avg': round(after['sales'] / measure_days),        # per-day post-launch avg
         'base_s_i': _idx(base[0]), 'base_e_i': _idx(base[1]),    # baseline (pre-launch) period
         'launch_i': _idx(launch),                                # go-live
         'ramp_i': _idx(ramp_end),                                # full-ramp

@@ -217,7 +217,7 @@
               <span class="rp-avg"><span class="rp-avg-label" style="color:#55C892;">Post-launch daily avg</span> <span class="rp-avg-val">{{ r.post_avg_disp }}</span></span>
             </div>
             <div class="rp-chart"><canvas id="rpSalesChart" height="240"></canvas></div>
-            <p class="rp-cap">Daily sales (7-day avg) · <span style="color:#A493C4;">▮</span> Baseline and <span style="color:#55C892;">▮</span> Post-launch periods · <span style="color:#55C892;">▲</span> launch · dashed = full ramp / baseline level</p>
+            <p class="rp-cap">Daily sales (7-day avg) · <span style="color:#A493C4;">▮</span> Baseline and <span style="color:#55C892;">▮</span> Post-launch periods · <span style="color:#55C892;">▲</span> launch · dashed line = each period's daily average</p>
           </div>
         </div>
         {{ r.chart|json_script:"rp-data" }}
@@ -313,12 +313,20 @@
       band(d.post_s_i, d.post_e_i, 'rgba(85,200,146,0.16)');    // post-ramp window
       tag(d.base_s_i, d.base_e_i, 'Baseline', MUTED);
       tag(d.post_s_i, d.post_e_i, 'Post-launch', '#55C892');
-      // ramp-end (full ramp) — dashed
-      ctx.strokeStyle = MUTED; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(px(d.ramp_i), top); ctx.lineTo(px(d.ramp_i), bot); ctx.stroke();
+      // Each period's DAILY AVERAGE as a dashed segment spanning only that period,
+      // so the higher/lower/equal comparison reads at a glance.
+      ctx.lineWidth = 1.75; ctx.setLineDash([5, 4]);
+      function avgLine(a, b, value, color) {
+        var y = ya.getPixelForValue(value);
+        ctx.strokeStyle = color;
+        ctx.beginPath(); ctx.moveTo(px(a), y); ctx.lineTo(px(b), y); ctx.stroke();
+      }
+      avgLine(d.base_s_i, d.base_e_i, d.baseline, MUTED);       // baseline daily avg
+      avgLine(d.post_s_i, d.post_e_i, d.post_avg, '#55C892');   // post-launch daily avg
+      ctx.setLineDash([]);
       // launch — solid green line + label
       var lx = px(d.launch_i);
-      ctx.setLineDash([]); ctx.strokeStyle = '#55C892'; ctx.lineWidth = 2;
+      ctx.strokeStyle = '#55C892'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(lx, top); ctx.lineTo(lx, bot); ctx.stroke();
       ctx.fillStyle = '#55C892'; ctx.font = '700 10px Inter, sans-serif'; ctx.textAlign = 'left';
       ctx.fillText('▲ Launch ' + d.launch_date, lx + 4, bot - 6);
@@ -331,9 +339,7 @@
       labels: d.labels,
       datasets: [
         { label: 'Daily sales (7-day avg)', data: d.sales, borderColor: '#9B7FE0',
-          backgroundColor: 'rgba(155,127,224,0.10)', borderWidth: 2, pointRadius: 0, fill: true },
-        { label: 'Pre-launch baseline', data: d.labels.map(function () { return d.baseline; }),
-          borderColor: MUTED, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
+          backgroundColor: 'rgba(155,127,224,0.10)', borderWidth: 2, pointRadius: 0, fill: true }
       ]
     },
     options: {
