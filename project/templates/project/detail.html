@@ -6,6 +6,11 @@
   .rp-chart { background: var(--card-fill); border: 1px solid var(--card-edge);
     border-radius: var(--radius-card); padding: 10px 12px; }
   .rp-cap { font-size: 11px; color: var(--text-muted); text-align: center; margin: 6px 2px 0; line-height: 1.4; }
+  .rp-chart-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 2px 2px 4px; }
+  .rp-chart-title small { font-weight: 500; color: var(--text-muted); }
+  .rp-avgs { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0 2px 8px; }
+  .rp-avg-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .rp-avg-val { font-size: 15px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; margin-left: 6px; }
   #realized .tile_stats_count .count { color: var(--text-primary); font-size: 24px; }
   #realized .tile_stats_count .count_top, #realized .tile_stats_count .count_bottom { color: var(--text-muted); }
   #realized .rp-lead { font-size: 15px; line-height: 1.5; }
@@ -174,10 +179,16 @@
 
         <div class="row" style="margin-top:16px;">
           <div class="col-md-5">
+            <div class="rp-chart-title">Per-lever contribution</div>
             <div class="rp-chart"><canvas id="rpContribChart" height="240"></canvas></div>
             <p class="rp-cap">Per-lever contribution to the sales change (sums to the total; residual ${{ r.residual|floatformat:0 }})</p>
           </div>
           <div class="col-md-7">
+            <div class="rp-chart-title">Daily sales <small>7-day avg</small></div>
+            <div class="rp-avgs">
+              <span class="rp-avg"><span class="rp-avg-label" style="color:#A493C4;">Baseline daily avg</span> <span class="rp-avg-val">{{ r.pre_avg_disp }}</span></span>
+              <span class="rp-avg"><span class="rp-avg-label" style="color:#55C892;">Post-launch daily avg</span> <span class="rp-avg-val">{{ r.post_avg_disp }}</span></span>
+            </div>
             <div class="rp-chart"><canvas id="rpSalesChart" height="240"></canvas></div>
             <p class="rp-cap">Daily sales (7-day avg) · <span style="color:#A493C4;">▮</span> Baseline and <span style="color:#55C892;">▮</span> Post-launch periods · <span style="color:#55C892;">▲</span> launch · dashed = full ramp / baseline level</p>
           </div>

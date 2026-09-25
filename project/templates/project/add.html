@@ -146,6 +146,16 @@
   .intake-actions { margin-top: 8px; }
   .col-half { padding-right: 6px; }
   .col-half + .col-half { padding-right: 15px; padding-left: 6px; }
+  /* Tidy, consistent labels + control heights across the estimator so paired
+     inputs (current/target, ramp/expense) line up regardless of crispy vs
+     hand-built markup. */
+  .est-body .form-group > label, .est-body .control-label {
+    display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    margin-bottom: 5px; min-height: 17px; line-height: 1.4;
+  }
+  .est-body .form-group > label small { font-weight: 400; color: var(--text-muted); }
+  .est-body .form-control { height: 38px; }
+  .est-body textarea.form-control { height: auto; }
 
   /* Toast (success on submit) */
   .kb-toast-wrap { position: fixed; top: 20px; right: 20px; z-index: 1080; display: flex;
@@ -291,10 +301,15 @@
 
               <div class="est-section-label">Timing &amp; cost</div>
               <div class="row">
-                <div class="col-half col-sm-6">{{ form.ramp_days|as_crispy_field }}</div>
                 <div class="col-half col-sm-6">
                   <div class="form-group">
-                    <label for="disp_de">Direct expense</label>
+                    <label for="id_ramp_days">Ramp to full effect <small class="text-muted">(days)</small></label>
+                    {{ form.ramp_days }}
+                  </div>
+                </div>
+                <div class="col-half col-sm-6">
+                  <div class="form-group">
+                    <label for="disp_de">Direct expense <small class="text-muted">(one-time)</small></label>
                     <div class="input-group est-ig">
                       <span class="input-group-addon ig-pre">$</span>
                       <input type="text" class="form-control" id="disp_de" autocomplete="off" inputmode="decimal">

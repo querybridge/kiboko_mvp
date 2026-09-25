@@ -186,7 +186,7 @@ class ProjectForm(ModelForm):
             'target_to': forms.HiddenInput(),
             's0_annual': forms.HiddenInput(),
             'direct_expense': forms.HiddenInput(),
-            'ramp_days': NumberInput(attrs={'min': 1}),
+            'ramp_days': NumberInput(attrs={'min': 1, 'class': 'form-control'}),
             'plausibility_factor': forms.HiddenInput(),
             'evidence_backed': forms.CheckboxInput(),
             'evidence_kind': Select(),

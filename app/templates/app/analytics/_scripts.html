@@ -116,10 +116,10 @@
     });
   });
 
-  // ---- Scatter changeplots ------------------------------------------------
+  // ---- Scatter changeplots (raw-value axes, ITG-faithful readout) ----------
   function cpFmtDelta(delta, label) {
-    // Mirrors the ITG changeplot readout: "N more Orders" / "(N) fewer Units" /
-    // "$N lower Sales". Sales is currency and says "lower" for a decline.
+    // "N more Orders" / "(N) fewer Units" / "$N lower Sales" — Sales is currency
+    // and says "lower" for a decline. (Mirrors the ITG changeplot readout.)
     var isSales = (label === 'Sales');
     var absv = Math.abs(delta);
     var absStr = isSales ? '$' + absv.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
@@ -132,6 +132,12 @@
     var s = Math.abs(change).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%';
     return change >= 0 ? s : '(' + s + ')';
   }
+  // Raw-number axis tick (ITG): "-" at zero, (n) for negatives, thousands sep.
+  function cpAxisTick(v) {
+    if (v === 0) return '-';
+    var s = Math.abs(v).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
+    return v < 0 ? '(' + s + ')' : s;
+  }
   if (window.ANALYTICS_SCATTER) Object.keys(ANALYTICS_SCATTER).forEach(function(wid) {
     var widget = ANALYTICS_SCATTER[wid];
     var col = GROUP_COLORS[widget.group] || GROUP_COLORS.engage;
@@ -141,18 +147,33 @@
     widget.charts.forEach(function(ch, ci) {
       var el = document.getElementById('scatter-' + wid + '-' + ci);
       if (!el) return;
-      var pts = ch.points.map(function(pt) { return { x: pt.x, y: pt.y }; });
+      // Plot the RAW change on each axis (x_delta, y_delta) instead of a %, so a
+      // dot's position matches the readout's "There were N more … / N fewer …"
+      // and the ITG changeplot. Zero lines form the crosshair.
+      var pts = ch.points.map(function(pt) { return { x: pt.x_delta, y: pt.y_delta }; });
       var ptColors = ch.points.map(function(pt) { return pt.color || col.line; });
       var readout = document.getElementById('readout-' + wid + '-' + ci);
+      var lever = ch.heading.replace('Change in ', '');
+
+      function setReadout(i) {
+        if (!readout) return;
+        if (i == null) { readout.textContent = 'Hover over a point to see details.'; return; }
+        var pt = ch.points[i];
+        var dir = pt.change >= 0 ? 'up' : 'down';
+        var sign = pt.change >= 0 ? 'increase' : 'decrease';
+        var s = lever + ' for ' + pt.label + ' was ' + pt.primary + ', ' + dir +
+                ' from ' + pt.secondary + ' (' + cmp + '), a ' + cpPctStr(pt.change) + ' ' + sign + '.';
+        if (pt.x_delta !== undefined && pt.y_delta !== undefined) {
+          s += ' There were ' + cpFmtDelta(pt.x_delta, ch.x_label) + ' and ' +
+               cpFmtDelta(pt.y_delta, ch.y_label) + ' than ' + cmp + '.';
+        }
+        readout.textContent = s;
+      }
 
       new Chart(el.getContext('2d'), {
         type: 'scatter',
         data: {
           datasets: [
-            { label: 'Trend', type: 'line', data: [ch.trend ? { x: ch.trend.x1, y: ch.trend.y1 } : null,
-                                                     ch.trend ? { x: ch.trend.x2, y: ch.trend.y2 } : null],
-              borderColor: 'rgba(120,120,120,0.7)', borderWidth: 1, borderDash: [5, 4],
-              fill: false, pointRadius: 0, showLine: true },
             { label: ch.heading, data: pts, backgroundColor: ptColors,
               pointBackgroundColor: ptColors, borderColor: 'rgba(255,255,255,0.55)',
               borderWidth: 1, pointRadius: 6, pointHoverRadius: 8, showLine: false }
@@ -163,39 +184,18 @@
           legend: { display: false },
           tooltips: {
             callbacks: { label: function(item) {
-              if (item.datasetIndex === 0) return null;
               var pt = ch.points[item.index];
-              return pt.label + ':  ' + cpPctStr(pt.change) + '  (' + pt.secondary + ' → ' + pt.primary + ')';
+              return pt.label + ':  ' + cpFmtDelta(pt.x_delta, ch.x_label) + ',  ' + cpFmtDelta(pt.y_delta, ch.y_label);
             } }
           },
-          onHover: function(e, els) {
-            if (!readout) return;
-            if (!els || !els.length) {           // mouse left all points — reset
-              readout.textContent = 'Hover over a point to see details.';
-              return;
-            }
-            if (els && els.length) {
-              var i = els[0]._index, di = els[0]._datasetIndex;
-              if (di === 1) {
-                var pt = ch.points[i];
-                var lever = ch.heading.replace('Change in ', '');
-                var dir = pt.change >= 0 ? 'up' : 'down';
-                var sign = pt.change >= 0 ? 'increase' : 'decrease';
-                var s = lever + ' for ' + pt.label + ' was ' + pt.primary + ', ' + dir +
-                        ' from ' + pt.secondary + ' (' + cmp + '), a ' + cpPctStr(pt.change) + ' ' + sign + '.';
-                if (pt.x_delta !== undefined && pt.y_delta !== undefined) {
-                  s += ' There were ' + cpFmtDelta(pt.x_delta, ch.x_label) + ' and ' +
-                       cpFmtDelta(pt.y_delta, ch.y_label) + ' vs ' + cmp + '.';
-                }
-                readout.textContent = s;
-              }
-            }
-          },
+          onHover: function(e, els) { setReadout(els && els.length ? els[0]._index : null); },
           scales: {
-            xAxes: [{ scaleLabel: { display: true, labelString: ch.x_label + ' vs ' + cmp, fontSize: 10 },
-                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.14)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }],
-            yAxes: [{ scaleLabel: { display: true, labelString: ch.y_label + ' vs ' + cmp, fontSize: 10 },
-                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.14)' }, ticks: { fontSize: 10, callback: function(v){ return v + '%'; } } }]
+            xAxes: [{ scaleLabel: { display: true, labelString: 'Change in ' + ch.x_label + ' vs ' + cmp, fontSize: 10 },
+                      gridLines: { color: 'rgba(0,0,0,0)', zeroLineColor: 'rgba(255,255,255,0.45)', zeroLineWidth: 1.5 },
+                      ticks: { fontSize: 10, callback: cpAxisTick } }],
+            yAxes: [{ scaleLabel: { display: true, labelString: 'Change in ' + ch.y_label + ' vs ' + cmp, fontSize: 10 },
+                      gridLines: { color: 'rgba(0,0,0,0)', zeroLineColor: 'rgba(255,255,255,0.45)', zeroLineWidth: 1.5 },
+                      ticks: { fontSize: 10, callback: cpAxisTick } }]
           }
         }
       });

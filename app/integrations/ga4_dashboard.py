@@ -1216,6 +1216,9 @@ def realized_perf_for_project(request, project, measure_days=30):
     rp.update({'delta_disp': _usd_fin(rp['delta']), 'lever_contrib_disp': _usd_fin(rp['lever_contrib']),
                'predicted_disp': _usd_fin(rp['predicted']) if rp['predicted'] is not None else None,
                'residual_disp': _usd_fin(rp['residual'])})
+    # Pre- vs post-launch daily sales averages, shown under the sales chart title.
+    rp['pre_avg_disp'] = _usd_fin(before['sales'] / measure_days)
+    rp['post_avg_disp'] = _usd_fin(after['sales'] / measure_days)
 
     # Plain-English one-liner anyone can read to tell if the project worked.
     delta = rp['delta']
