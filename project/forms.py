@@ -224,13 +224,13 @@ class ActionTaskForm(ModelForm):
                   'depends_on': 'Depends on'}
         help_texts = {'depends_on': "Other tasks that must finish first; this task can't start until they end."}
         widgets = {
-            'name': TextInput(attrs={}),
-            'owner': Select(attrs={}),
-            'launch': DateInput(attrs={'class': 'datepicker', 'type': 'date'}),
-            'progress': NumberInput(attrs={'min': 0, 'max': 100}),
-            'team': Select(attrs={}),
-            'measure': Select(attrs={}),
-            'depends_on': SelectMultiple(attrs={'size': 4}),
+            'name': TextInput(attrs={'class': 'form-control'}),
+            'owner': Select(attrs={'class': 'form-control'}),
+            'launch': DateInput(attrs={'class': 'form-control datepicker', 'type': 'date'}),
+            'progress': NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 100}),
+            'team': Select(attrs={'class': 'form-control'}),
+            'measure': Select(attrs={'class': 'form-control'}),
+            'depends_on': SelectMultiple(attrs={'class': 'form-control', 'size': 4}),
         }
 
 

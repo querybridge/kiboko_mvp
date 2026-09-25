@@ -20,6 +20,16 @@
   #realized .rp-proj tr.rp-actual td { font-weight: 700; border-top: 2px solid var(--border-strong, #cbb8ea); }
   #realized .rp-detail { margin: 10px 0 2px; border-top: 1px solid var(--card-edge); padding-top: 8px; }
   #realized .rp-detail-head { color: var(--text-secondary); font-size: 13px; font-weight: 600; padding: 4px 0; }
+  /* Add Action: labels in a fixed left column so every input's left edge lines
+     up (varied space after the field name, inputs form a straight left line). */
+  .af-grid { max-width: 540px; margin: 4px 0 12px; }
+  .af-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+  .af-label { flex: 0 0 104px; width: 104px; padding-top: 8px; text-align: left;
+    color: var(--text-secondary); font-weight: 600; font-size: 13px; line-height: 1.3; }
+  .af-input { flex: 1 1 auto; min-width: 0; }
+  .af-input .form-control, .af-input input, .af-input select, .af-input textarea { width: 100%; }
+  .af-help { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+  .af-input .errorlist { color: var(--status-danger, #E74C3C); font-size: 11px; margin: 3px 0 0; padding-left: 16px; }
 </style>
 {% endblock stylesheets %}
 {% block content %}
@@ -109,7 +119,24 @@
           <h4 style="margin-top:18px;">Add Action</h4>
           <form method="post" action="{% url 'project:add_action' project.id %}">
             {% csrf_token %}
-            {{ action_form.as_p }}
+            {{ action_form.non_field_errors }}
+            <div class="af-grid">
+              {% for field in action_form %}
+              <div class="af-row">
+                <label class="af-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                <div class="af-input">
+                  {% if field.name == 'depends_on' and not action_form.fields.depends_on.queryset.exists %}
+                    {# No other actions yet — show an inert inline dropdown with a placeholder. #}
+                    <select class="form-control" disabled><option>----</option></select>
+                  {% else %}
+                    {{ field }}
+                    {% if field.help_text %}<div class="af-help">{{ field.help_text }}</div>{% endif %}
+                  {% endif %}
+                  {{ field.errors }}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
             <button type="submit" class="btn btn-success btn-sm">Add Action</button>
           </form>
           {% endif %}
