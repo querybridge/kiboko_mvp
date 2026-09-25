@@ -138,6 +138,42 @@
     var s = Math.abs(v).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
     return v < 0 ? '(' + s + ')' : s;
   }
+  // Least-squares trend through the plotted (raw-delta) points; endpoints span x.
+  function cpTrend(pts) {
+    var n = pts.length; if (n < 2) return null;
+    var mx = 0, my = 0, i;
+    for (i = 0; i < n; i++) { mx += pts[i].x; my += pts[i].y; }
+    mx /= n; my /= n;
+    var num = 0, den = 0;
+    for (i = 0; i < n; i++) { num += (pts[i].x - mx) * (pts[i].y - my); den += (pts[i].x - mx) * (pts[i].x - mx); }
+    if (!den) return null;
+    var slope = num / den, b = my - slope * mx, xs = pts.map(function(p){ return p.x; });
+    var x1 = Math.min.apply(null, xs), x2 = Math.max.apply(null, xs), pad = (x2 - x1) * 0.08 || 1;
+    x1 -= pad; x2 += pad;
+    return [{ x: x1, y: slope * x1 + b }, { x: x2, y: slope * x2 + b }];
+  }
+  // The plain-English ITG sentence for a point.
+  function cpSentence(pt, lever, ch, cmp) {
+    var dir = pt.change >= 0 ? 'up' : 'down', sign = pt.change >= 0 ? 'increase' : 'decrease';
+    var s = lever + ' for ' + pt.label + ' was ' + pt.primary + ', ' + dir +
+            ' from ' + pt.secondary + ' (' + cmp + '), a ' + cpPctStr(pt.change) + ' ' + sign + '.';
+    if (pt.x_delta !== undefined && pt.y_delta !== undefined) {
+      s += ' There were ' + cpFmtDelta(pt.x_delta, ch.x_label) + ' and ' +
+           cpFmtDelta(pt.y_delta, ch.y_label) + ' than ' + cmp + '.';
+    }
+    return s;
+  }
+  // Word-wrap a sentence into short lines so the tooltip stays readable.
+  function cpWrap(text, max) {
+    max = max || 44;
+    var words = text.split(' '), lines = [], cur = '';
+    words.forEach(function(w) {
+      if ((cur + ' ' + w).trim().length > max) { if (cur) lines.push(cur); cur = w; }
+      else cur = cur ? cur + ' ' + w : w;
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
   if (window.ANALYTICS_SCATTER) Object.keys(ANALYTICS_SCATTER).forEach(function(wid) {
     var widget = ANALYTICS_SCATTER[wid];
     var col = GROUP_COLORS[widget.group] || GROUP_COLORS.engage;
@@ -147,33 +183,20 @@
     widget.charts.forEach(function(ch, ci) {
       var el = document.getElementById('scatter-' + wid + '-' + ci);
       if (!el) return;
-      // Plot the RAW change on each axis (x_delta, y_delta) instead of a %, so a
-      // dot's position matches the readout's "There were N more … / N fewer …"
-      // and the ITG changeplot. Zero lines form the crosshair.
+      // Plot the RAW change on each axis (x_delta, y_delta) instead of a %.
       var pts = ch.points.map(function(pt) { return { x: pt.x_delta, y: pt.y_delta }; });
       var ptColors = ch.points.map(function(pt) { return pt.color || col.line; });
       var readout = document.getElementById('readout-' + wid + '-' + ci);
       var lever = ch.heading.replace('Change in ', '');
-
-      function setReadout(i) {
-        if (!readout) return;
-        if (i == null) { readout.textContent = 'Hover over a point to see details.'; return; }
-        var pt = ch.points[i];
-        var dir = pt.change >= 0 ? 'up' : 'down';
-        var sign = pt.change >= 0 ? 'increase' : 'decrease';
-        var s = lever + ' for ' + pt.label + ' was ' + pt.primary + ', ' + dir +
-                ' from ' + pt.secondary + ' (' + cmp + '), a ' + cpPctStr(pt.change) + ' ' + sign + '.';
-        if (pt.x_delta !== undefined && pt.y_delta !== undefined) {
-          s += ' There were ' + cpFmtDelta(pt.x_delta, ch.x_label) + ' and ' +
-               cpFmtDelta(pt.y_delta, ch.y_label) + ' than ' + cmp + '.';
-        }
-        readout.textContent = s;
-      }
+      var trend = cpTrend(pts);
 
       new Chart(el.getContext('2d'), {
         type: 'scatter',
         data: {
           datasets: [
+            { label: 'Trend', type: 'line', data: trend || [],
+              borderColor: 'rgba(120,120,120,0.7)', borderWidth: 1, borderDash: [5, 4],
+              fill: false, pointRadius: 0, showLine: true },
             { label: ch.heading, data: pts, backgroundColor: ptColors,
               pointBackgroundColor: ptColors, borderColor: 'rgba(255,255,255,0.55)',
               borderWidth: 1, pointRadius: 6, pointHoverRadius: 8, showLine: false }
@@ -184,17 +207,25 @@
           legend: { display: false },
           tooltips: {
             callbacks: { label: function(item) {
+              if (item.datasetIndex === 0) return null;        // trend line
               var pt = ch.points[item.index];
-              return pt.label + ':  ' + cpFmtDelta(pt.x_delta, ch.x_label) + ',  ' + cpFmtDelta(pt.y_delta, ch.y_label);
+              // Previous rollover data + the ITG sentence beneath it.
+              var head = pt.label + ':  ' + cpPctStr(pt.change) + '  (' + pt.secondary + ' → ' + pt.primary + ')';
+              return [head, ''].concat(cpWrap(cpSentence(pt, lever, ch, cmp)));
             } }
           },
-          onHover: function(e, els) { setReadout(els && els.length ? els[0]._index : null); },
+          onHover: function(e, els) {
+            if (!readout) return;
+            if (!els || !els.length) { readout.textContent = 'Hover over a point to see details.'; return; }
+            var el0 = els[0];
+            if (el0._datasetIndex === 1) readout.textContent = cpSentence(ch.points[el0._index], lever, ch, cmp);
+          },
           scales: {
             xAxes: [{ scaleLabel: { display: true, labelString: 'Change in ' + ch.x_label + ' vs ' + cmp, fontSize: 10 },
-                      gridLines: { color: 'rgba(0,0,0,0)', zeroLineColor: 'rgba(255,255,255,0.45)', zeroLineWidth: 1.5 },
+                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.28)', zeroLineWidth: 1.2 },
                       ticks: { fontSize: 10, callback: cpAxisTick } }],
             yAxes: [{ scaleLabel: { display: true, labelString: 'Change in ' + ch.y_label + ' vs ' + cmp, fontSize: 10 },
-                      gridLines: { color: 'rgba(0,0,0,0)', zeroLineColor: 'rgba(255,255,255,0.45)', zeroLineWidth: 1.5 },
+                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.28)', zeroLineWidth: 1.2 },
                       ticks: { fontSize: 10, callback: cpAxisTick } }]
           }
         }
