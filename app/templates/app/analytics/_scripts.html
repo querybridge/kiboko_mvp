@@ -163,17 +163,6 @@
     }
     return s;
   }
-  // Word-wrap a sentence into short lines so the tooltip stays readable.
-  function cpWrap(text, max) {
-    max = max || 44;
-    var words = text.split(' '), lines = [], cur = '';
-    words.forEach(function(w) {
-      if ((cur + ' ' + w).trim().length > max) { if (cur) lines.push(cur); cur = w; }
-      else cur = cur ? cur + ' ' + w : w;
-    });
-    if (cur) lines.push(cur);
-    return lines;
-  }
   if (window.ANALYTICS_SCATTER) Object.keys(ANALYTICS_SCATTER).forEach(function(wid) {
     var widget = ANALYTICS_SCATTER[wid];
     var col = GROUP_COLORS[widget.group] || GROUP_COLORS.engage;
@@ -206,13 +195,20 @@
           responsive: true, maintainAspectRatio: false,
           legend: { display: false },
           tooltips: {
-            callbacks: { label: function(item) {
-              if (item.datasetIndex === 0) return null;        // trend line
-              var pt = ch.points[item.index];
-              // Previous rollover data + the ITG sentence beneath it.
-              var head = pt.label + ':  ' + cpPctStr(pt.change) + '  (' + pt.secondary + ' → ' + pt.primary + ')';
-              return [head, ''].concat(cpWrap(cpSentence(pt, lever, ch, cmp)));
-            } }
+            callbacks: {
+              title: function() { return ''; },
+              label: function(item) {
+                if (item.datasetIndex === 0) return null;      // trend line
+                var pt = ch.points[item.index];
+                // Exactly three lines (three icons): rollover head + the two deltas.
+                // The full plain-English sentence stays in the readout below.
+                return [
+                  pt.label + ':  ' + cpPctStr(pt.change) + '  (' + pt.secondary + ' → ' + pt.primary + ')',
+                  cpFmtDelta(pt.x_delta, ch.x_label) + ' than ' + cmp,
+                  cpFmtDelta(pt.y_delta, ch.y_label) + ' than ' + cmp
+                ];
+              }
+            }
           },
           onHover: function(e, els) {
             if (!readout) return;
