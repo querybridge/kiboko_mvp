@@ -602,6 +602,23 @@ def _bq_today(bq, today):
     return today
 
 
+def _da_today(verticals, today):
+    """Anchor 'today' to the latest DailyActual date (+1) for the scoped verticals,
+    so the seeded/uploaded (DailyActual) tier always shows its most recent data
+    month as the current period instead of drifting onto empty (dummy) ranges as
+    the real calendar advances. Mirrors _bq_today for the BigQuery tier. Every
+    DailyActual-backed provider anchors the same way, so cards and changeplots
+    read the same period."""
+    from app.models import DailyActual
+    if not verticals:
+        return today
+    latest = (DailyActual.objects.filter(vertical__in=verticals)
+              .order_by('-date').values_list('date', flat=True).first())
+    if latest is None:
+        return today
+    return min(today, latest + datetime.timedelta(days=1))
+
+
 def ga4_rows(request, primary_code, compare_code, today=None):
     today = today or datetime.date.today()
     custom = _custom_dates(request) if primary_code == 'CUSTOM' else None
@@ -612,6 +629,7 @@ def ga4_rows(request, primary_code, compare_code, today=None):
     if sc is None:
         # DailyActual fallback (seeded/uploaded actuals) before dummy.
         verts = _scoped_verticals(request)
+        today = _da_today(verts, today)          # anchor to the latest actual day
         p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
         by_p = _actual_by_day(verts, p_start, p_end)
         if by_p is None:
@@ -665,6 +683,7 @@ def ga4_splits(request, primary_code, compare_code, today=None):
     if sc is None:
         # DailyActual fallback (best-effort device/channel mix) before dummy.
         verts = _scoped_verticals(request)
+        today = _da_today(verts, today)          # anchor to the latest actual day
         p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
         if _actual_by_day(verts, p_start, p_end) is None:
             return None
@@ -763,7 +782,7 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
     if sc is None:
         # DailyActual fallback (best-effort funnel) before dummy.
         verts = _scoped_verticals(request)
-        today = today or datetime.date.today()
+        today = _da_today(verts, today or datetime.date.today())   # anchor to the latest actual day
         p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
         by_p = _actual_by_day(verts, p_start, p_end)
         if by_p is None:
@@ -919,6 +938,7 @@ def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
         # DailyActual fallback (seeded/uploaded actuals) before dummy, mirroring
         # ga4_rows so the Storyboard matches Grow Sales / Pipeline for the same scope.
         verts = _scoped_verticals(request)
+        today = _da_today(verts, today)          # anchor to the latest actual day
         p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
         by_p = _actual_by_day(verts, p_start, p_end)
         if by_p is None:
@@ -973,7 +993,19 @@ def ga4_segments(request, primary_code, compare_code, today=None):
         return _bq_segments(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
     if sc is None:
-        return None
+        # DailyActual fallback (best-effort device/channel mix), anchored to the
+        # latest actual day — so the changeplots read the SAME actuals as the
+        # Grow Sales / Engage cards instead of independent dummy data.
+        verts = _scoped_verticals(request)
+        today = _da_today(verts, today or datetime.date.today())
+        p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
+        if _actual_by_day(verts, p_start, p_end) is None:
+            return None
+        out = {}
+        for split, disp in (('device', DEVICE_DISPLAY), ('channel', CHANNEL_DISPLAY)):
+            prim, sec, _ = _actual_split(verts, p_start, p_end, s_start, s_end, split)
+            out[split] = {disp[b]: {'p': prim[b], 's': sec[b]} for b in SPLIT_BUCKETS[split]}
+        return out
     identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
