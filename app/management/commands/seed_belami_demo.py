@@ -31,7 +31,7 @@ from strategy.models import Objective, Project
 BU_PROFILE = {
     'Lighting':            {'cat': 'lighting', 'annual': 12_000_000},
     'Patio':               {'cat': 'patio',    'annual': 6_000_000},
-    'Bailey Street Home':  {'cat': 'home',     'annual': 8_000_000},
+    'Home Decor':          {'cat': 'home',     'annual': 8_000_000},
     'Heating':             {'cat': 'heating',  'annual': 4_000_000},
 }
 
@@ -110,7 +110,7 @@ class Command(BaseCommand):
         # Bootstrap the pieces this demo needs so it works on a fresh database
         # (a new MySQL DB has no Belami company, an incomplete BU set, and no
         # departments — MySQL then rejects the null business_unit SQLite allowed).
-        belami, _ = Company.objects.get_or_create(slug='belami', defaults={'name': 'Belami'})
+        belami, _ = Company.objects.get_or_create(slug='belami', defaults={'name': 'Home Products Company'})
         for bu_name in BU_PROFILE:
             bu, _ = BusinessUnit.objects.get_or_create(name=bu_name, defaults={'company': belami})
             if bu.company_id is None:
@@ -251,22 +251,22 @@ class Command(BaseCommand):
             ('Fixture finder quiz (guided selling)', 'Lighting', 'engage_customers', 'WIP', 'XL', 'stretch', 35, False),
             ('One-page checkout redesign', 'Lighting', 'engage_customers', 'Executive Approval', 'L', 'mostly', 0, False),
             ('Bundle shades + bulbs at the PDP', 'Lighting', 'expand_purchase', 'Scored', 'S', 'fully', 0, False),
-            ('Free-shipping threshold at $99', 'Bailey Street Home', 'expand_purchase', 'WIP', 'M', 'fully', 45, False),
+            ('Free-shipping threshold at $99', 'Home Decor', 'expand_purchase', 'WIP', 'M', 'fully', 45, False),
             ('Heating pre-season email/SMS win-back', 'Heating', 'engage_customers', 'Scored', 'M', 'mostly', 0, True),
             ('Outdoor lighting how-to content hub', 'Patio', 'attract_traffic', 'Ready to Score', 'L', 'stretch', 0, False),
-            ('Restore PDP reviews after the migration', 'Bailey Street Home', 'engage_customers', 'Executive Approval', 'S', 'fully', 0, True),
+            ('Restore PDP reviews after the migration', 'Home Decor', 'engage_customers', 'Executive Approval', 'S', 'fully', 0, True),
             ('Cart abandonment retargeting', 'Lighting', 'engage_customers', 'On Deck', 'M', 'mostly', 0, False),
             ('Patio heater cross-sell on cart', 'Patio', 'expand_purchase', 'Scored', 'S', 'mostly', 0, False),
             ('Live chat for high-consideration fixtures', 'Lighting', 'engage_customers', 'Ready to Score', 'M', 'stretch', 0, False),
             ('Ceiling-fan configurator', 'Lighting', 'expand_purchase', 'Pending LOE', '', '', 0, False),
-            ('Bailey Street loyalty program', 'Bailey Street Home', 'expand_purchase', 'Pending LOE', '', '', 0, False),
+            ('Home Decor loyalty program', 'Home Decor', 'expand_purchase', 'Pending LOE', '', '', 0, False),
             ('Heating buyer’s guide SEO push', 'Heating', 'attract_traffic', 'Incomplete Entry', '', '', 0, False),
             ('AR “see the light in your room”', 'Lighting', 'engage_customers', 'Incomplete Entry', '', '', 0, False),
-            ('Same-day-ship badge on eligible SKUs', 'Bailey Street Home', 'engage_customers', 'Blocked', 'L', 'new', 20, False),
+            ('Same-day-ship badge on eligible SKUs', 'Home Decor', 'engage_customers', 'Blocked', 'L', 'new', 20, False),
             ('Warehouse relight energy retrofit', 'Lighting', 'expand_purchase', 'Complete', 'L', 'fully', 100, False),
-            ('Lighting.com nav & search relaunch', 'Lighting', 'attract_traffic', 'Complete', 'XL', 'mostly', 100, False),
+            ('Lighting Store nav & search relaunch', 'Lighting', 'attract_traffic', 'Complete', 'XL', 'mostly', 100, False),
             ('Winter pre-order flow for heaters', 'Heating', 'engage_customers', 'Complete', 'M', 'fully', 100, False),
-            ('Bundle & save on designer shades', 'Bailey Street Home', 'expand_purchase', 'Launched', 'L', 'fully', 100, False),
+            ('Bundle & save on designer shades', 'Home Decor', 'expand_purchase', 'Launched', 'L', 'fully', 100, False),
             ('Launched Q2 patio clearance engine', 'Patio', 'expand_purchase', 'Launched', 'XL', 'fully', 100, True),
         ]
 
@@ -297,7 +297,7 @@ class Command(BaseCommand):
             p = Project(
                 name=name, owner=(rng.choice(owners) if owners else None), vertical=bu,
                 department=rng.choice(depts) if depts else None, objective=objective,
-                why=f'As a shopper, I want {name.lower()}, so that Belami {bu_name} grows.'[:400],
+                why=f'As a shopper, I want {name.lower()}, so that Home Products Company {bu_name} grows.'[:400],
                 definition_of_done='Shipped to all users; success metric tracked; no P1 defects.',
                 status=status, approved=approved, archived=False,   # stays until archived from the review
                 target_completion=go, year=go.year,

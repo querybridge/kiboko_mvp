@@ -32,12 +32,12 @@ SPEC = [
     ('Site-wide search relevance tuning', 'Lighting', 'attract_traffic', 'Scored', False),
     ('Paid-social prospecting for patio', 'Patio', 'attract_traffic', 'Executive Approval', False),
     ('Guided fixture comparison tool', 'Lighting', 'engage_customers', 'Scored', True),
-    ('Express guest checkout', 'Bailey Street Home', 'engage_customers', 'Executive Approval', False),
+    ('Express guest checkout', 'Home Decor', 'engage_customers', 'Executive Approval', False),
     ('PDP financing badge (Affirm)', 'Lighting', 'expand_purchase', 'Scored', False),
     ('Volume discount on bulk bulb orders', 'Lighting', 'expand_purchase', 'Executive Approval', False),
     ('Heating install-service attach at cart', 'Heating', 'expand_purchase', 'Scored', True),
     ('Category quiz for first-time visitors', 'Patio', 'attract_traffic', 'Executive Approval', False),
-    ('Post-purchase review incentive', 'Bailey Street Home', 'engage_customers', 'Scored', False),
+    ('Post-purchase review incentive', 'Home Decor', 'engage_customers', 'Scored', False),
     ('Warranty upsell on checkout', 'Heating', 'expand_purchase', 'Executive Approval', True),
     ('Editorial buying-guide hub', 'Lighting', 'attract_traffic', 'Scored', False),
     ('Saved-cart reminder push', 'Patio', 'engage_customers', 'Executive Approval', False),
@@ -57,13 +57,13 @@ class Command(BaseCommand):
         from strategy.models import Objective, Project
         from project.services import impact
 
-        belami = Company.objects.filter(slug='belami').first() or Company.objects.filter(name='Belami').first()
+        belami = Company.objects.filter(slug='belami').first() or Company.objects.filter(name='Home Products Company').first()
         if belami is None:
-            self.stderr.write(self.style.ERROR('Belami company not found — run seed_belami_demo first.'))
+            self.stderr.write(self.style.ERROR('Home Products Company not found — run seed_belami_demo first.'))
             return
         bus = {b.name: b for b in belami.verticals.all()}
         if not bus:
-            self.stderr.write(self.style.ERROR('Belami has no business units — run seed_belami_demo first.'))
+            self.stderr.write(self.style.ERROR('Home Products Company has no business units — run seed_belami_demo first.'))
             return
 
         # AEE-aligned objectives (reuse/create).
@@ -91,7 +91,7 @@ class Command(BaseCommand):
             p = Project(
                 name=name, owner=(rng.choice(owners) if owners else None), vertical=bu,
                 department=rng.choice(depts) if depts else None, objective=obj.get(aee),
-                why=f'As a shopper, I want {name.lower()}, so that Belami {bu_name} grows.'[:400],
+                why=f'As a shopper, I want {name.lower()}, so that Home Products Company {bu_name} grows.'[:400],
                 definition_of_done='Shipped to all users; success metric tracked; no P1 defects.',
                 status=status, approved=True, archived=False,
                 target_completion=date(today.year, rng.randint(1, 12), rng.randint(1, 28)),

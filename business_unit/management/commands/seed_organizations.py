@@ -2,7 +2,7 @@
 
 Creates the Organization tenant layer and slots the existing companies under it:
   * Querybridge (agency) -> VOLT Lighting, Autocado         admin: sherman
-  * Belami (direct)      -> Belami                          admin: belami
+  * Home Products Company (direct) -> Home Products Company  admin: belami
   * Demo (platform)      -> Demo Account (visible to trials)
   * VW Group             -> DELETED (company + everything exclusive to it)
 
@@ -22,10 +22,12 @@ from business_unit.models import Organization, Company, Plan
 ORG_SPECS = [
     # (org name, kind, is_platform_demo, admin username/email, [company names])
     ('Querybridge', 'agency', False, 'sherman@querybridge.com', ['VOLT Lighting', 'Autocado']),
-    ('Belami', 'direct', False, 'belami', ['Belami']),
+    ('Home Products Company', 'direct', False, 'belami', ['Home Products Company']),
     ('Demo', 'direct', True, None, ['Demo Account']),
 ]
 DELETE_COMPANIES = ['VW Group']
+# Orgs renamed after creation keep their original slug so re-runs find them.
+SLUGS = {'Home Products Company': 'belami'}
 
 
 class Command(BaseCommand):
@@ -47,7 +49,7 @@ class Command(BaseCommand):
         for name, kind, is_demo, admin_ident, companies in ORG_SPECS:
             admin = self._find_user(admin_ident)
             org, created = Organization.objects.get_or_create(
-                slug=slugify(name),
+                slug=SLUGS.get(name, slugify(name)),
                 defaults={'name': name, 'kind': kind, 'is_platform_demo': is_demo,
                           'org_admin': admin, 'plan_status': 'active', 'trial_started': None,
                           'plan': enterprise})

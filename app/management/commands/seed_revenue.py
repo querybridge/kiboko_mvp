@@ -211,7 +211,7 @@ def _generate_daily(year, end_date, annual_total):
 VERTICAL_SPLITS = {
     'Lighting': Decimal('0.45'),
     'Patio': Decimal('0.35'),
-    'Bailey Street Home': Decimal('0.20'),
+    'Home Decor': Decimal('0.20'),
 }
 
 

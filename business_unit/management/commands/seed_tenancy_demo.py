@@ -12,16 +12,18 @@ from django.utils.text import slugify
 from business_unit.models import Company, CompanyMembership, BusinessUnit, Website
 
 DEMO = {
-    'Belami': [
-        ('Lighting', [('Lighting.com', 'lighting.example.com'),
-                      ('Lighting Canada', 'ca.lighting.example.com')]),
-        ('Heating', [('Heating.com', 'heating.example.com')]),
+    'Home Products Company': [
+        ('Lighting', [('Lighting Store', 'lighting.example.com'),
+                      ('Lighting Store Canada', 'ca.lighting.example.com')]),
+        ('Heating', [('Heating Store', 'heating.example.com')]),
     ],
     'VW Group': [
         ('Lamborghini', [('Lamborghini.com', 'lamborghini.example.com')]),
         ('Audi', [('Audi.com', 'audi.example.com')]),
     ],
 }
+# Companies renamed after creation keep their original slug so re-runs find them.
+SLUGS = {'Home Products Company': 'belami'}
 
 
 class Command(BaseCommand):
@@ -31,7 +33,7 @@ class Command(BaseCommand):
         companies = {}
         for company_name, verticals in DEMO.items():
             company, _ = Company.objects.get_or_create(
-                slug=slugify(company_name), defaults={'name': company_name})
+                slug=SLUGS.get(company_name, slugify(company_name)), defaults={'name': company_name})
             companies[company_name] = company
             for vert_name, websites in verticals:
                 vert, _ = BusinessUnit.objects.get_or_create(
@@ -45,7 +47,7 @@ class Command(BaseCommand):
             self.stdout.write(f'  {company_name}: {len(verticals)} verticals')
 
         # Fold any orphan (company-less) verticals into the first demo company.
-        default_company = companies['Belami']
+        default_company = companies['Home Products Company']
         orphans = BusinessUnit.objects.filter(company__isnull=True)
         n = orphans.update(company=default_company)
         if n:
