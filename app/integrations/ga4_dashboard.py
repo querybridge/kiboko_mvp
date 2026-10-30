@@ -589,13 +589,26 @@ def _actual_split(verts, p_start, p_end, s_start, s_end, split):
     return prim, sec, by_day
 
 
+# Typical cart creation (carts / visits) on the DailyActual tier; the engagement
+# estimates below scale off a period's ratio to it.
+DA_BASE_CART_CREATION = 0.04
+
+
 def _actual_engage_raw(t):
-    """Best-effort Engage raw counts from a DailyActual fundamentals total."""
+    """Best-effort Engage raw counts from a DailyActual fundamentals total.
+
+    DailyActual has no engagement data, so sessions engaged, engagement time and
+    page/PDP/category views are estimates. They scale with the period's cart
+    creation relative to DA_BASE_CART_CREATION -- shoppers who add to cart more
+    also browse more and bounce less -- so the cards trend with the funnel
+    instead of reading the same every period."""
     v, o, carts = t['visits'], t['orders'], t['carts']
-    return {'sessions': v, 'engagedSessions': v * 0.58, 'userEngagementDuration': v * 95.0,
-            'screenPageViews': v * 4.6, 'addToCarts': carts, 'ecommercePurchases': o,
-            'view_item': v * 1.15, 'view_item_list': v * 0.85, 'view_cart': carts * 0.85,
-            'begin_checkout': carts * 0.55, 'add_shipping_info': o * 1.2}
+    cc = (carts / v / DA_BASE_CART_CREATION) if v else 1.0
+    return {'sessions': v, 'engagedSessions': v * min(0.95, 0.58 * cc),
+            'userEngagementDuration': v * 95.0 * cc,
+            'screenPageViews': v * 4.6 * cc, 'addToCarts': carts, 'ecommercePurchases': o,
+            'view_item': v * 1.15 * cc, 'view_item_list': v * 0.85 * cc,
+            'view_cart': carts * 0.85, 'begin_checkout': carts * 0.55, 'add_shipping_info': o * 1.2}
 
 
 # --------------------------------------------------------------------------
@@ -796,8 +809,11 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
         if by_p is None:
             return None
         by_s = _actual_by_day(verts, s_start, s_end) or {}
+        history = _engage_history(
+            lambda a, b: _actual_engage_raw(_period_totals(_actual_by_day(verts, a, b))), today)
         return _engage_payload(_engage_compute(_actual_engage_raw(_period_totals(by_p))),
-                               _engage_compute(_actual_engage_raw(_period_totals(by_s))))
+                               _engage_compute(_actual_engage_raw(_period_totals(by_s))),
+                               history)
     identity, property_ids, stream_id = sc
     today = today or datetime.date.today()
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
@@ -822,20 +838,40 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
             return acc
 
         return _engage_payload(_engage_compute(raw(p_start, p_end)),
-                               _engage_compute(raw(s_start, s_end)))
+                               _engage_compute(raw(s_start, s_end)),
+                               _engage_history(raw, today))
     except Exception as e:
         logger.warning('GA4 CONNECTED but engage metrics unavailable (%s: %s) -- showing zeros',
                        type(e).__name__, e)
         return zeros()
 
 
-def _engage_payload(p_c, s_c):
-    """{key: value, key_delta: pct} for every _ENGAGE_KEYS from two computed periods."""
+def _engage_payload(p_c, s_c, history=None):
+    """{key: value, key_delta: pct} for every _ENGAGE_KEYS from two computed periods,
+    plus 'history' ({key: [last 4, 8, 13 wks]}) when given."""
     out = {}
     for k in _ENGAGE_KEYS:
         out[k] = p_c[k]
         out[k + '_delta'] = round(((p_c[k] - s_c[k]) / s_c[k] * 100) if s_c[k] else 0.0, 2)
+    if history is not None:
+        out['history'] = history
     return out
+
+
+# Engage history cards: each shows its value over these trailing week windows.
+HISTORY_WEEKS = (4, 8, 13)
+_HISTORY_KEYS = ['bounce_rate', 'visit_duration', 'shopper_activity', 'pages_per_visit',
+                 'cat_pdp_per_visit', 'pdp_per_visit']
+
+
+def _engage_history(raw, today):
+    """{key: [value over the last N wks for N in HISTORY_WEEKS]} for the history
+    cards. `raw(start, end)` returns one window's Engage raw counts; windows end
+    the day before `today` (the provider's anchor)."""
+    end = today - datetime.timedelta(days=1)
+    windows = [_engage_compute(raw(end - datetime.timedelta(weeks=w) + datetime.timedelta(days=1), end))
+               for w in HISTORY_WEEKS]
+    return {k: [c[k] for c in windows] for k in _HISTORY_KEYS}
 
 
 # Period-totals keys the Engage cards need (subset of BigQuery totals).
@@ -855,7 +891,10 @@ def _bq_engage_metrics(request, bqp, primary_code, compare_code, today):
     try:
         p_c = _engage_compute(_bq_period_totals(bq, property_ids, p_start, p_end, _ENGAGE_TOTALS_KEYS))
         s_c = _engage_compute(_bq_period_totals(bq, property_ids, s_start, s_end, _ENGAGE_TOTALS_KEYS))
-        return _engage_payload(p_c, s_c)
+        history = _engage_history(
+            lambda a, b: _bq_period_totals(bq, property_ids, a, b, _ENGAGE_TOTALS_KEYS),
+            _bq_today(bq, today or datetime.date.today()))
+        return _engage_payload(p_c, s_c, history)
     except Exception as e:
         logger.warning('Premium (BigQuery) engage metrics unavailable (%s: %s) -- showing zeros',
                        type(e).__name__, e)

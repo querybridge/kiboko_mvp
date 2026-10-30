@@ -978,7 +978,8 @@ def build_engage_customer(primary_code, compare_code, rows=None, eng=None,
     for cid, title, kind, rev in HISTORY_SPECS:
         if eng:  # real, computed from GA4 session metrics/events
             base, delta = eng[cid], eng[cid + '_delta']
-            weeks = [(lbl, fmt(base, kind)[0]) for lbl in ('Last 4 wks', 'Last 8 wks', 'Last 13 wks')]
+            hist = eng.get('history', {}).get(cid) or [base] * 3
+            weeks = [(f'Last {w} wks', fmt(v, kind)[0]) for w, v in zip((4, 8, 13), hist)]
         else:
             base = HISTORY_DEFAULT[cid]
             delta = dd(sd(cid))
