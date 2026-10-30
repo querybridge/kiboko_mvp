@@ -5,6 +5,7 @@
     <span class="ins-value">{{ item.value }}</span>
     <span class="ins-delta">{% if item.delta > 0 %}+{% endif %}{{ item.delta }}%</span>
   </div>
+  {% if item.z is not None %}<div class="ins-swing" title="The move divided by this lever's normal week-to-week variation over the last 52 weeks">{{ item.z }}&times; its normal weekly swing</div>{% endif %}
   <ol class="ins-recs" type="A">
     {% for rec in item.recommendations %}
     <li>

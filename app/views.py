@@ -2521,15 +2521,19 @@ def feedback(request):
 
 @login_required
 def insights(request):
-    """Wins & Losses: metrics up/down >=10% vs the comparison period, each with
+    """Wins & Losses: levers whose move vs the comparison period is unusual for
+    them (beyond one normal weekly swing; see app.insights), each with
     recommended actions (admin-editable) that can be promoted to projects. Bridges
     Analytics and Project Prioritization; honors the current scope + period."""
     from app import analytics_data as ad, insights as I
+    from app.integrations import ga4_dashboard
     primary, compare, ctx = _analytics_filter(request)
     rows = _ga4_rows(request, primary, compare)
     metrics = ad.build_metrics(primary, compare, rows=rows)
-    wins, losses = I.classify(metrics)
+    weekly = ga4_dashboard.scope_weekly_levers(request)
+    wins, losses = I.classify(metrics, weekly)
     ctx.update({'title': 'Insights', 'wins': wins, 'losses': losses,
+                'has_history': weekly is not None,
                 'win_threshold': int(I.WIN_THRESHOLD)})
     return render(request, 'app/insights.html', ctx)
 

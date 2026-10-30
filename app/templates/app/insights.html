@@ -12,6 +12,7 @@
     .ins-card.ins-win { border-left: 4px solid #2ecc71; }
     .ins-card.ins-loss { border-left: 4px solid #e74c3c; }
     .ins-card-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+    .ins-swing { font-size: 12px; color: var(--ac-secondary, #C8BCDF); margin: -6px 0 10px; }
     .ins-metric { font-weight: 700; font-size: 15px; flex: 1; }
     .ins-value { font-variant-numeric: tabular-nums; opacity: .9; }
     .ins-delta { font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -34,7 +35,9 @@
   {% endif %}
 
   {% include "app/analytics/_filter.html" %}
-  <p class="ins-intro">Metrics that moved more than {{ win_threshold }}% versus the comparison period.
+  <p class="ins-intro">The six sales levers (Visitors, Visits per Visitor, Cart Creation, Cart Completion,
+     Units per Order, Average Unit Price) whose move versus the comparison period is
+     {% if has_history %}bigger than that lever's normal week-to-week swing{% else %}more than {{ win_threshold }}%{% endif %}.
      Each comes with ideas to keep a win going or turn a loss around — click <strong>Add Project</strong>
      to drop any into the backlog and prioritize it.</p>
 
@@ -43,14 +46,14 @@
       <div class="ins-col ins-wins">
         <h4><i class="fa fa-arrow-up"></i> Wins</h4>
         {% for w in wins %}{% include "app/_insight_card.html" with item=w %}
-        {% empty %}<p class="text-muted">No metric is up more than {{ win_threshold }}% this period.</p>{% endfor %}
+        {% empty %}<p class="text-muted">No lever is up {% if has_history %}more than its normal weekly swing{% else %}more than {{ win_threshold }}%{% endif %} this period.</p>{% endfor %}
       </div>
     </div>
     <div class="col-md-6">
       <div class="ins-col ins-losses">
         <h4><i class="fa fa-arrow-down"></i> Losses</h4>
         {% for l in losses %}{% include "app/_insight_card.html" with item=l %}
-        {% empty %}<p class="text-muted">No metric is down more than {{ win_threshold }}% this period.</p>{% endfor %}
+        {% empty %}<p class="text-muted">No lever is down {% if has_history %}more than its normal weekly swing{% else %}more than {{ win_threshold }}%{% endif %} this period.</p>{% endfor %}
       </div>
     </div>
   </div>

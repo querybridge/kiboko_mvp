@@ -1158,6 +1158,22 @@ def baseline_status(request, business_unit):
     return 'not-signed-in'
 
 
+def scope_weekly_levers(request, days=365):
+    """{lever: [weekly levels, oldest->newest]} over the last `days` for the top-bar
+    scope (its business units' daily fundamentals summed), or None without data.
+    Same weekly buckets the estimator's plausibility gauge uses; Insights measures
+    each lever's move against them."""
+    from project.services import impact
+    daily = {}
+    for bu in _scoped_verticals(request):
+        for day, rec in (baseline_daily_for_bu(request, bu, days) or {}).items():
+            acc = daily.setdefault(day, dict.fromkeys(rec, 0.0))
+            for k, v in rec.items():
+                acc[k] = acc.get(k, 0.0) + float(v or 0)
+    b = impact.baselines_from_daily(daily, days) if daily else None
+    return b['weekly'] if b else None
+
+
 def baseline_daily_for_bu(request, business_unit, days, end=None):
     """{'YYYY-MM-DD': fundamentals} summed for ONE business unit over the last
     `days` (through `end`, default yesterday), or None when it isn't connected /
