@@ -45,13 +45,6 @@
       <div class="alert alert-danger" style="margin-bottom:14px;">Your username and password didn't match. Please try again.</div>
     {% endif %}
 
-    {% if google_oauth_enabled %}
-    <a href="{% url 'google_login' %}" class="btn btn-primary btn-block" style="margin-bottom:14px;">
-      <i class="fa fa-google"></i>&nbsp; Sign in with Google
-    </a>
-    <div style="text-align:center; color:var(--text-muted,#8b7fa6); margin-bottom:12px; font-size:12px;">— or —</div>
-    {% endif %}
-
     <form method="post" action="{% url 'users:login' %}" id="login-form">
       {% csrf_token %}
       {{ form.as_p }}
@@ -59,6 +52,13 @@
       {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
     </form>
     <div class="login-help">Sign in with the username your administrator gave you.</div>
+    {% if google_oauth_enabled %}
+    <div style="text-align:center; color:var(--text-muted,#8b7fa6); margin:14px 0 10px; font-size:12px;">— or —</div>
+    <div class="login-help" style="margin:0 0 10px;">If you have a Google account, sign in here.</div>
+    <a href="{% url 'google_login' %}" class="btn btn-default btn-block">
+      <i class="fa fa-google"></i>&nbsp; Sign in with Google
+    </a>
+    {% endif %}
     <div class="login-help" style="margin-top:8px;">
       New to Kiboko? <a href="{% url 'users:get_started' %}" style="color:var(--purple-400,#8E6FE0); font-weight:600;">Create a new account</a>
     </div>
