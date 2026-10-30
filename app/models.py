@@ -321,6 +321,11 @@ class DailyActual(models.Model):
     revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     visits = models.IntegerField(default=0)
     orders = models.IntegerField(default=0)
+    # Optional funnel counts. When blank, analytics estimate them from visits and
+    # orders with fixed retail ratios (ga4_dashboard.DA_*).
+    visitors = models.IntegerField(null=True, blank=True)
+    carts = models.IntegerField(null=True, blank=True)
+    units = models.IntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ['date']

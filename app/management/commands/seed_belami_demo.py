@@ -45,6 +45,21 @@ CATEGORY_MONTHLY = {
 YOY_GROWTH = {2024: 1.00, 2025: 1.08, 2026: 1.16, 2027: 1.24}
 DOW_MULT = {0: 1.05, 1: 1.10, 2: 1.10, 3: 1.05, 4: 0.95, 5: 0.85, 6: 0.90}
 AOV, CLOSE_RATE = 460.0, 0.0152
+# Funnel ratios behind the six levers; each drifts month to month (see _drift) so
+# every lever card moves, not just visitors and sales.
+VISITS_PER_VISITOR, CART_COMPLETION, UNITS_PER_ORDER = 1.30, 0.35, 1.8
+DRIFT_KEYS = ('close_rate', 'aov', 'vpv', 'cart_completion', 'upo')
+
+
+def _drift(rng, months, step=0.03, pull=0.35, lo=0.88, hi=1.12):
+    """{(y, m): multiplier} -- a mean-reverting random walk around 1.0, so a ratio
+    wanders a few % month to month without trending away."""
+    out, x = {}, 1.0
+    for ym in months:
+        x += rng.gauss(0, step) - pull * (x - 1.0)
+        x = min(hi, max(lo, x))
+        out[ym] = x
+    return out
 
 
 def _norm(seq):
@@ -127,10 +142,28 @@ class Command(BaseCommand):
 
         self._seed_performance(belami, bus, start, end, rng)
         self._seed_projects(belami, bus, rng)
+        self._apply_project_effects(belami)
         self._seed_actions(belami, rng)
         from project.services import impact
         impact.recompute_scores(company=belami)
+        self._freeze_terminal_scores(belami)
         self.stdout.write(self.style.SUCCESS('seed_belami_demo: done.'))
+
+    def _freeze_terminal_scores(self, belami):
+        """Give seeded Complete/Launched projects the final score they would have
+        carried out of Executive Approval. recompute_scores leaves terminal projects
+        untouched (their score freezes at completion), and these were seeded straight
+        into a terminal status, so they would otherwise read 0 / 100."""
+        from project.services import impact
+        projs = list(Project.objects.filter(vertical__company=belami, archived=False))
+        raws = [p.algo_raw for p in projs if p.algo_raw is not None]
+        n = 0
+        for p in projs:
+            if p.status in ('Complete', 'Launched') and not p.normalized_score and p.algo_raw is not None:
+                score = impact.blended_score(p.voted_score, impact.algo_score_0_10(p.algo_raw, raws))
+                Project.objects.filter(pk=p.pk).update(normalized_score=score)
+                n += 1
+        self.stdout.write(f'  scores: set final scores on {n} completed projects.')
 
     # ---- performance: budgets + seasonal daily actuals ----------------------
     def _seed_performance(self, belami, bus, start, end, rng):
@@ -161,7 +194,10 @@ class Command(BaseCommand):
         MonthlyGoal.objects.bulk_create(goals)
 
         actuals = []
+        # Separate stream for the funnel drift + noise, so revenue keeps its draws.
+        frng = random.Random(2611)
         for name, bu in bus.items():
+            drift = {k: _drift(frng, months) for k in DRIFT_KEYS}
             # distribute each month's budget across its days, weighted by DOW x event.
             for (yy, mm) in months:
                 dim = calendar.monthrange(yy, mm)[1]
@@ -177,16 +213,23 @@ class Command(BaseCommand):
                 weights = [DOW_MULT[d.weekday()] * retail_event_mult(d) for d in days]
                 # actuals land ~97% of budget with mild noise
                 month_actual = float(budgets[(bu.id, yy, mm)]) * 0.97
+                dm = {k: drift[k][(yy, mm)] for k in DRIFT_KEYS}
                 for d, w in zip(days, weights):
                     rev = month_actual * (w / wsum) * rng.uniform(0.93, 1.07)
-                    orders = max(0, int(round(rev / (AOV * rng.uniform(0.95, 1.05)))))
-                    visits = int(round(orders / CLOSE_RATE)) if orders else 0
+                    aov = AOV * dm['aov'] * rng.uniform(0.95, 1.05)
+                    orders = max(0, int(round(rev / aov)))
+                    visits = int(round(orders / (CLOSE_RATE * dm['close_rate']))) if orders else 0
                     # engagement spikes a touch harder than sales on event days
                     ev = retail_event_mult(d)
                     if ev > 1.0:
                         visits = int(round(visits * (1 + (ev - 1) * 0.45)))
+                    visitors = int(round(visits / (VISITS_PER_VISITOR * dm['vpv'] * frng.uniform(0.97, 1.03))))
+                    carts = max(orders, int(round(orders / (CART_COMPLETION * dm['cart_completion']
+                                                            * frng.uniform(0.95, 1.05)))))
+                    units = max(orders, int(round(orders * UNITS_PER_ORDER * dm['upo'] * frng.uniform(0.96, 1.04))))
                     actuals.append(DailyActual(date=d, vertical=bu, revenue=Decimal(str(round(rev, 2))),
-                                               visits=visits, orders=orders))
+                                               visits=visits, orders=orders,
+                                               visitors=visitors, carts=carts, units=units))
         DailyActual.objects.bulk_create(actuals, batch_size=2000)
         self.stdout.write(f'  performance: {len(goals)} monthly budgets, {len(actuals)} daily actuals '
                           f'({start} → {end}) with retail seasonality.')
@@ -268,7 +311,20 @@ class Command(BaseCommand):
             ('Winter pre-order flow for heaters', 'Heating', 'engage_customers', 'Complete', 'M', 'fully', 100, False),
             ('Bundle & save on designer shades', 'Home Decor', 'expand_purchase', 'Launched', 'L', 'fully', 100, False),
             ('Launched Q2 patio clearance engine', 'Patio', 'expand_purchase', 'Launched', 'XL', 'fully', 100, True),
+            # Recent intake: submitted this month, heading into the holiday season.
+            ('Holiday gift guide landing pages', 'Lighting', 'attract_traffic', 'Ready to Score', 'M', 'fully', 0, False),
+            ('Restore mobile add-to-cart after the theme update', 'Home Decor', 'engage_customers', 'Ready to Score', 'S', 'fully', 0, True),
+            ('Winter clearance hub', 'Lighting', 'attract_traffic', 'WIP', 'M', 'fully', 40, False),
+            ('Gift-wrap & gift-message option at checkout', 'Home Decor', 'expand_purchase', 'On Deck', 'S', 'fully', 0, False),
         ]
+        # Go-live (days from today) for the recent-intake rows, so they land in the
+        # coming weeks instead of a random month of the year.
+        RECENT_GO_LIVE = {
+            'Holiday gift guide landing pages': 60,
+            'Restore mobile add-to-cart after the theme update': 30,
+            'Winter clearance hub': 35,
+            'Gift-wrap & gift-message option at checkout': 50,
+        }
 
         today = date.today()
         created = 0
@@ -291,6 +347,8 @@ class Command(BaseCommand):
             # window has elapsed and Realized Performance can be computed.
             if status in ('Complete', 'Launched'):
                 go = today - timedelta(days=rng.randint(120, 220))
+            elif name in RECENT_GO_LIVE:
+                go = today + timedelta(days=RECENT_GO_LIVE[name])
             else:
                 go = date(today.year, rng.randint(1, 12), rng.randint(1, 28))
 
@@ -347,6 +405,44 @@ class Command(BaseCommand):
                 fixed += 1
         self.stdout.write(f'  projects: {created} created; {fixed} backfilled '
                           f'(s0_annual from real baselines, SPEC lever targets refreshed).')
+
+    # ---- completed projects that worked: lift their lever after go-live ------
+    # Share of each project's planned lever move that actually lands, so Realized
+    # Performance shows a mix: these read "it worked", the rest stay mixed/offset.
+    EFFECTS = {
+        'Lighting Store nav & search relaunch': 0.85,
+        'Bundle & save on designer shades': 0.75,
+    }
+    # Each lever and every count downstream of it (sales = their product), so
+    # lifting a lever scales exactly the fields it feeds.
+    LEVER_FIELDS = {
+        'visitors':           ('visitors', 'visits', 'carts', 'orders', 'units', 'revenue'),
+        'visits_per_visitor': ('visits', 'carts', 'orders', 'units', 'revenue'),
+        'cart_creation':      ('carts', 'orders', 'units', 'revenue'),
+        'cart_completion':    ('orders', 'units', 'revenue'),
+        'units_per_order':    ('units', 'revenue'),
+        'avg_unit_price':     ('revenue',),
+    }
+
+    def _apply_project_effects(self, belami):
+        lifted = 0
+        for name, realized in self.EFFECTS.items():
+            p = Project.objects.filter(vertical__company=belami, name=name).first()
+            if not p or not p.target_completion or p.lever not in self.LEVER_FIELDS or not p.target_from:
+                continue
+            lift = (float(p.target_to) / float(p.target_from) - 1.0) * realized
+            ramp = int(p.ramp_days or 30)
+            fields = self.LEVER_FIELDS[p.lever]
+            rows = list(DailyActual.objects.filter(vertical=p.vertical, date__gte=p.target_completion))
+            for a in rows:
+                f = 1.0 + lift * min(1.0, (a.date - p.target_completion).days / ramp)
+                for fld in fields:
+                    v = getattr(a, fld)
+                    setattr(a, fld, Decimal(str(round(float(v) * f, 2))) if fld == 'revenue'
+                            else int(round(v * f)))
+            DailyActual.objects.bulk_update(rows, list(fields), batch_size=2000)
+            lifted += 1
+        self.stdout.write(f'  effects: lifted the lever after go-live for {lifted} completed projects.')
 
     # ---- execution tasks (Actions) for the WIP gantt ------------------------
     def _seed_actions(self, belami, rng):

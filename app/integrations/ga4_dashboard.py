@@ -510,12 +510,19 @@ DA_CHANNEL_MIX = {'direct': 0.26, 'organic': 0.34, 'paid': 0.18, 'social': 0.10,
                   'referral': 0.08, 'others': 0.04}
 
 
-def _fund_from_actual(revenue, visits, orders):
+def _fund_from_actual(revenue, visits, orders, visitors=None, carts=None, units=None):
+    """Fundamentals from one DailyActual row. visitors / carts / units are used
+    when recorded, else estimated from visits / orders with the fixed DA_ ratios."""
     visits = float(visits or 0); orders = float(orders or 0); revenue = float(revenue or 0)
-    visitors = visits / DA_SESSIONS_PER_VISITOR if visits else 0.0
-    carts = orders / DA_CART_COMPLETION if orders else 0.0
+    if visitors is None:
+        visitors = visits / DA_SESSIONS_PER_VISITOR if visits else 0.0
+    if carts is None:
+        carts = orders / DA_CART_COMPLETION if orders else 0.0
+    if units is None:
+        units = orders * DA_UNITS_PER_ORDER
+    visitors, carts, units = float(visitors), float(carts), float(units)
     return {'visits': visits, 'visitors': visitors, 'new_visitors': visitors * DA_NEW_VISITOR_SHARE,
-            'carts': carts, 'orders': orders, 'units': orders * DA_UNITS_PER_ORDER, 'sales': revenue}
+            'carts': carts, 'orders': orders, 'units': units, 'sales': revenue}
 
 
 def _scoped_verticals(request):
@@ -547,11 +554,12 @@ def _actual_by_day(verticals, start, end):
         return None
     agg = {}
     for a in DailyActual.objects.filter(vertical__in=verticals, date__range=(start, end)):
-        acc = agg.setdefault(a.date.strftime('%Y%m%d'), {'r': 0.0, 'v': 0, 'o': 0})
-        acc['r'] += float(a.revenue or 0); acc['v'] += int(a.visits or 0); acc['o'] += int(a.orders or 0)
-    if not agg:
-        return None
-    return {k: _fund_from_actual(v['r'], v['v'], v['o']) for k, v in agg.items()}
+        # Per row, so a unit with recorded funnel counts and one without still sum right.
+        f = _fund_from_actual(a.revenue, a.visits, a.orders, a.visitors, a.carts, a.units)
+        acc = agg.setdefault(a.date.strftime('%Y%m%d'), dict.fromkeys(_FUND_KEYS, 0.0))
+        for k in _FUND_KEYS:
+            acc[k] += f[k]
+    return agg or None
 
 
 def _scope_has_actuals(request):
@@ -885,21 +893,20 @@ def _story_fundamentals(t):
 STORY_TOTALS_KEYS = STORY_GA4_METRICS + STORY_EVENT_NAMES
 
 
-def _story_totals_from_actual(r, v, o):
-    """STORY totals dict from DailyActual (revenue, visits, orders), using the SAME
-    ratios as the analytics DailyActual tier so the Storyboard's Sales / Visits /
-    Close Rate / AOV match Grow Sales exactly. Engagement/funnel views are
-    best-effort approximations (item/event-level data needs GA4 or BigQuery)."""
-    v = float(v or 0); o = float(o or 0); r = float(r or 0)
-    visitors = v / DA_SESSIONS_PER_VISITOR if v else 0.0
-    carts = o / DA_CART_COMPLETION if o else 0.0
+def _story_totals_from_actual(t):
+    """STORY totals dict from summed DailyActual fundamentals (_period_totals), so
+    the Storyboard's Sales / Visits / Close Rate / AOV and lever rows match Grow
+    Sales exactly. Engagement/funnel views are best-effort approximations
+    (item/event-level data needs GA4 or BigQuery)."""
+    v, o, r = t['visits'], t['orders'], t['sales']
+    visitors, carts = t['visitors'], t['carts']
     return {
         'sessions': v, 'totalUsers': visitors, 'newUsers': visitors * DA_NEW_VISITOR_SHARE,
         'engagedSessions': v * DA_ENGAGED_SESSION_SHARE,
         'userEngagementDuration': v * DA_ENGAGEMENT_SECS,
         'screenPageViews': v * DA_PAGES_PER_SESSION,
         'addToCarts': carts, 'ecommercePurchases': o,
-        'itemsPurchased': o * DA_UNITS_PER_ORDER, 'purchaseRevenue': r,
+        'itemsPurchased': t['units'], 'purchaseRevenue': r,
         'view_item': v * DA_PDP_PER_SESSION, 'view_item_list': v * DA_PLP_PER_SESSION,
         'view_cart': carts * DA_CARTVIEW_PER_CART, 'begin_checkout': o * DA_CHECKOUT_PER_ORDER,
         'add_shipping_info': o * DA_SHIPPING_PER_ORDER,
@@ -944,16 +951,9 @@ def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
         if by_p is None:
             return None
 
-        def _sum_actual(by):
-            tr = tv = to = 0.0
-            for f in (by or {}).values():
-                tr += f.get('sales', 0.0); tv += f.get('visits', 0.0); to += f.get('orders', 0.0)
-            return tr, tv, to
-
-        pr, pv, po = _sum_actual(by_p)
-        sr, sv, so = _sum_actual(_actual_by_day(verts, s_start, s_end) or {})
-        return (_story_fundamentals(_story_totals_from_actual(pr, pv, po)),
-                _story_fundamentals(_story_totals_from_actual(sr, sv, so)))
+        by_s = _actual_by_day(verts, s_start, s_end) or {}
+        return (_story_fundamentals(_story_totals_from_actual(_period_totals(by_p))),
+                _story_fundamentals(_story_totals_from_actual(_period_totals(by_s))))
     identity, property_ids, stream_id = sc
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
 

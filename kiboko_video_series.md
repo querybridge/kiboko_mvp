@@ -30,7 +30,29 @@ There are six videos: an intro, then one per core loop step (See, Propose, Score
 
 ## Video 0: Intro, what Kiboko is
 
-The intro runs about 90 seconds. It stops once on each loop step and does not explain any of them in depth. Start on any Kiboko page with Company = Home Products Company applied.
+The intro runs about four minutes with two voices. The **primary voice** introduces each screen in one or two sentences. Then a second **guide voice** explains what the viewer should take from that screen and how to use it. Start on any Kiboko page with Company = Home Products Company applied, logged in as `admin`.
+
+### Fixes from the Oct 23 test recording
+
+- **Login:** the take was logged in as `method`, who isn't a voter, so Score Projects showed "0 awaiting your score". Log in as `admin` to get the four-project queue. If you keep that take, use the alternate scene 5 line below.
+- **Pre-roll:** the first 20 seconds sit on the Help page. Trim them, or start the prompt from the Pipeline page.
+- **Claude in Chrome overlay:** the "Stop Claude" button at the bottom centre and the orange border around the page are in every frame. Crop them out in your editor, or frame the recording just inside the border.
+- **Holds:** the holds below are sized for both voices. The test take's holds were too short for scenes 1 to 7 (see the timing table).
+
+### Timing
+
+Estimates assume about 150 words a minute, a 1-second lead-in and a 1.5-second gap between the two voices.
+
+| Scene | Screen | Test take (s) | Primary (s) | Guide (s) | Needed (s) |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Pipeline, top | 18 | 12 | 18 | 32 |
+| 2 | Pipeline, Revenue chart | 20 | 10 | 20 | 33 |
+| 3 | Performance Storyboard | 28 | 9 | 20 | 32 |
+| 4 | Project Intake Form | 21 | 6 | 19 | 28 |
+| 5 | Score Projects | 21 | 8 | 17 | 28 |
+| 6 | Kanban | 12 | 6 | 16 | 24 |
+| 7 | Realized Performance | 18 | 9 | 16 | 27 |
+| 8 | Pipeline, close | 55 | 9 | 11 | 22 |
 
 ### Browser prompt
 
@@ -45,50 +67,104 @@ Rules:
 - If a page doesn't match these instructions, stop and tell me instead of improvising.
 - Before scene 1: confirm the top bar shows Company = Home Products Company and Business Unit = All Business Units. If not, set them, click Apply, and wait for the page to reload.
 
-Scene 1: Go to http://localhost:8082/app/ (Project Pipeline Value). Scroll to the very top. Hold 14 seconds.
-Scene 2: Scroll down slowly until the "Revenue" chart and its summary (Actual, Trending Forecast, Prorated Projected Value, Budget, Delta to Budget) fill the screen. Hold 12 seconds.
-Scene 3: In the sidebar, expand Analytics and click Performance Storyboard. Hold 10 seconds.
-Scene 4: Click the purple "Add Project" button in the sidebar. Hold 9 seconds.
-Scene 5: In the sidebar under Project Prioritization, click Score Projects. Hold 10 seconds.
-Scene 6: In the sidebar under Project Control, click Kanban. Hold 10 seconds.
-Scene 7: Go to http://localhost:8082/project/19/#realized and scroll so the "Realized Performance" panel and its verdict banner are on screen. Hold 11 seconds.
-Scene 8: Go back to http://localhost:8082/app/ and scroll to the top. Hold 14 seconds.
+Scene 1: Go to http://localhost:8082/app/ (Project Pipeline Value). Scroll to the very top. Hold 32 seconds.
+Scene 2: Scroll down slowly until the "Revenue" chart and its summary (Actual, Trending Forecast, Prorated Projected Value, Budget, Delta to Budget) fill the screen. Hold 33 seconds.
+Scene 3: In the sidebar, expand Analytics and click Performance Storyboard. Hold 8 seconds on the Brief view. Then click the "Detail" button at the top right of the table (next to "Brief") so the expanded rows appear. Hold 24 seconds.
+Scene 4: Click the purple "Add Project" button in the sidebar. Hold 28 seconds.
+Scene 5: In the sidebar under Project Prioritization, click Score Projects. Hold 28 seconds.
+Scene 6: In the sidebar under Project Control, click Kanban. Hold 24 seconds.
+Scene 7: Go to http://localhost:8082/project/19/#realized and scroll so the "Realized Performance" panel and its verdict banner are on screen. Hold 27 seconds.
+Scene 8: Go back to http://localhost:8082/app/ and scroll to the top. Hold 22 seconds.
 Then tell me "Recording complete".
 ```
 
 ### Narration
 
+Generate the primary and guide lines with two different ElevenLabs voices. In the edit, play the primary line first, leave about a 1.5-second gap, then the guide line. The guide voice works best a little slower and more conversational: stability around 60%, style 0%.
+
 **Scene 1** (Project Pipeline Value)
+
+Primary:
 
 > Every eCommerce team has more ideas than it has time to build. <break time="0.6s" /> So which one goes next? And once it ships, did it actually work? <break time="0.8s" /> Kiboko answers both questions.
 
+Guide:
+
+> This is Project Pipeline Value, the executive home screen. Each tile across the top is one of this year's objectives, with the number of projects behind it and the value they're expected to add. Use the Period buttons to switch between month, quarter and year.
+
 **Scene 2** (Revenue chart)
+
+Primary:
 
 > Kiboko is a RevOps platform for eCommerce. It turns your store analytics into a prioritized, defensible project pipeline, and then tracks whether the work moved revenue.
 
+Guide:
+
+> The Revenue chart shows sales to date in dark green, the trending forecast for the rest of the month in light green, and the budget line above. <break time="0.4s" /> Delta to Budget, on the right, is the gap still to close. Here it's in red, so the team needs more from the pipeline.
+
 **Scene 3** (Performance Storyboard)
+
+Primary:
 
 > It isn't another analytics dashboard, and it isn't a project tool. It sits between the two, as one connected loop. <break time="0.5s" /> Step one: see.
 
+Guide:
+
+> The Performance Storyboard turns the numbers into sentences. Each row shows the current period, the percent change, and what it means in plain English. <break time="0.4s" /> Click Detail, at the top right, to open every supporting metric. The bottom line tells you how total sales moved, here up four point three percent.
+
 **Scene 4** (Add Project)
+
+Primary:
 
 > Step two: propose. Anyone can submit a project, and Kiboko estimates the revenue it could add.
 
+Guide:
+
+> New ideas start here. Fill in the project details on the left: a name, a user story, what done looks like, the objective and the business unit. <break time="0.4s" /> That unlocks the Impact estimator on the right, where you pick the one lever the project moves and set a target.
+
 **Scene 5** (Score Projects)
+
+Primary:
 
 > Step three: score. A team vote and the math combine into one score, so the strongest ideas rise to the top.
 
+Guide (recorded as `admin`, queue showing):
+
+> Score Projects is each person's voting queue. Every project waiting on you appears with its estimate, and you rate it on five criteria with sliders. <break time="0.4s" /> The summary at the top shows how many are waiting, and how much value is at stake.
+
+Guide (alternate, for the Oct 23 take with the empty queue):
+
+> Score Projects is each person's voting queue. When a project is ready, it shows up here with its estimate, and you rate it on five criteria with sliders. <break time="0.4s" /> This user's queue is empty, so nothing is waiting on their vote right now.
+
 **Scene 6** (Kanban)
+
+Primary:
 
 > Step four: execute. Approved work moves from intake to approval to delivery, in one place.
 
+Guide:
+
+> Each column is a stage, from Ready to Score through On Deck to WIP. <break time="0.4s" /> Every card shows its score out of a hundred and its projected value, and the totals at the top show the value sitting in each stage.
+
 **Scene 7** (Realized Performance)
+
+Primary:
 
 > And step five: prove. After launch, Kiboko measures what actually happened, and tells you whether this project is what moved the number.
 
+Guide:
+
+> Open any completed project to find this panel. The green banner is the verdict in one sentence. <break time="0.4s" /> Below it, the projection sits next to actual sales for the same thirty days, and the per-lever chart shows which levers really moved.
+
 **Scene 8** (back to Pipeline)
 
+Primary:
+
 > For eCommerce brands, and for the agencies and consultants who run their growth. <break time="0.6s" /> Kiboko: know what to do next, and prove it worked.
+
+Guide:
+
+> To get started, connect your data under Settings, Data Connection. <break time="0.4s" /> Then set your objectives and budget, invite your team under Manage Users, and add your first project.
 
 ## Video 1: See
 
@@ -111,7 +187,7 @@ Scene 1: Go to http://localhost:8082/app/analytics/grow-sales/. Make sure the Pe
 Scene 2: Scroll down slowly until "The Three Levers" panel (ATTRACT, ENGAGE, EXPAND cards) fills the screen. Hold 13 seconds.
 Scene 3: Scroll down until the six lever cards are visible: VISITORS, VISITS PER VISITOR, CART CREATION, CART COMPLETION, UNITS PER ORDER, AVG UNIT PRICE. Hold 8 seconds. Then hover the mouse over the card glowing green and hold 5 seconds, then over the card glowing red and hold 5 seconds.
 Scene 4: Scroll back to the top. Open the Comparison period dropdown and select "Same Month prior year". Wait for the page to reload and the cards to render. Hold 11 seconds.
-Scene 5: In the sidebar, expand Analytics and click Performance Storyboard. Click the "Detail" toggle so all rows show. Hold 6 seconds. Then scroll down slowly through the ATTRACT, ENGAGE and EXPAND sections, about one section every 4 seconds, and stop on the large "GROW / Total Sales" row at the bottom. Hold 10 seconds.
+Scene 5: In the sidebar, expand Analytics and click Performance Storyboard. Hold 4 seconds on the Brief view. Then click the "Detail" button at the top right of the table (next to "Brief"). The expanded rows open under each lever, for example "New Visitor Visits" and "Returning Visitor Visits" under ATTRACT. Hold 8 seconds. Then scroll down slowly through the ATTRACT, ENGAGE and EXPAND sections, about one section every 4 seconds, and stop on the large "GROW / Total Sales" row at the bottom. Hold 10 seconds.
 Scene 6: In the sidebar under Analytics, click Engage Customers. Scroll down to the "Device Close Rate Changeplot". Hold 6 seconds. Hover over one dot in the "Change in Close Rate" chart so the tooltip and the readout below the chart fill in. Hold 9 seconds.
 Then tell me "Recording complete".
 ```
@@ -136,7 +212,7 @@ Then tell me "Recording complete".
 
 **Scene 5** (Performance Storyboard)
 
-> The Performance Storyboard reads the same levers top to bottom, as a story. <break time="1.0s" /> Attract. Engage. Expand. <break time="1.5s" /> And at the bottom, total sales, with a plain-language sentence on what drove the change.
+> The Performance Storyboard reads the same levers top to bottom, as a story. <break time="1.0s" /> Switch to Detail, and every supporting metric opens up under its lever: new visitors, returning visitors, cart and checkout steps. <break time="1.0s" /> Attract. Engage. Expand. <break time="1.5s" /> And at the bottom, total sales, with a plain-language sentence on what drove the change.
 
 **Scene 6** (Device Close Rate Changeplot)
 
@@ -144,7 +220,13 @@ Then tell me "Recording complete".
 
 ## Video 2: Propose
 
-Video 2 fills in the Project Intake Form and lets the Kiboko Effect estimate the project's value. It runs about two and a half minutes. Claude stops before clicking Submit, so nothing is saved. The impact estimator stays locked until the project details are complete, and the Objective field controls which levers appear in the list.
+Video 2 fills in the Project Intake Form, lets the Kiboko Effect estimate the project's value, then pushes the target too far so viewers see the automatic discount. It runs about three minutes. Claude stops before clicking Submit, so nothing is saved. The project moves Units per Order for Lighting, whose baseline is about 1.83 in the seeded data:
+
+| Target | Change | Size of Impact band | What the form shows |
+| --- | --- | --- | --- |
+| 1.87 | about +2% | Modest | "Within recent range — no discount." Expected = gross x 1.00 |
+| 1.98 | about +8% | Strong | "Impact auto-discounted to 52%." Expected = gross x 0.52 |
+| 2.11 | about +15% | Extreme | "Impact auto-discounted to 15%." Expected = gross x 0.15 |
 
 ### Browser prompt
 
@@ -161,21 +243,22 @@ Rules:
 
 Scene 1: Click the purple "Add Project" button in the sidebar. Scroll to the top so the "Project Intake Form" header, the "Project details" panel and the locked "Impact estimator" panel are all visible. Hold 11 seconds.
 Scene 2: Fill in Project details, one field at a time:
-  - Name: Free-shipping threshold nudge in cart
-  - User Story: As a shopper close to the free-shipping threshold, I want to see how much more to add, so I can add one more item and save on shipping.
-  - Definition of Done: Cart shows a progress bar to the free-shipping threshold on desktop and mobile, with a recommended add-on item.
+  - Name: Complete-the-look add-ons in cart
+  - User Story: As a shopper buying a light fixture, I want matching bulbs, dimmers and mounting kits suggested in my cart, so I get everything I need in one order.
+  - Definition of Done: Cart suggests up to three compatible add-ons for every fixture, on desktop and mobile, with one-click add.
   - Objective: Increase Average Order Value
   - Owner: choose the first available option
   - Business Unit: Lighting
   - Department: choose the first available option
-  - Target go-live date: 12/01/2026
+  - Target go-live date: 11/16/2026
 After the last field, wait for the Impact estimator to unlock. Hold 6 seconds.
-Scene 3: In the Impact estimator, set "Lever it moves" to Units per Order. Wait for the baseline source badge and the "Current level (baseline)" value to load. Hold 13 seconds.
+Scene 3: In the Impact estimator, set "Lever it moves" to Units per Order. Wait for the baseline source badge, the "Current level (baseline)" value and the "Annual sales baseline" to fill in. Hold 14 seconds.
 Scene 4: Click the Window toggle "90d", wait 3 seconds, then click "365d · 52wk" again. Hold 8 seconds.
-Scene 5: Read the Current level (baseline) value. Enter a Target level about 5% higher (baseline x 1.05, rounded to 2 decimals). Click outside the field so the tiles recalculate. Scroll so the "Estimated impact" tiles (% Δ Lever, Gross impact / yr, Expected (risk-adjusted), Realized this yr) are visible. Hold 16 seconds.
-Scene 6: Scroll so the "Size of Impact" gauge is visible. Hold 5 seconds. Change the Target level to about 40% above baseline (baseline x 1.40), click outside the field, and watch the gauge move. Hold 10 seconds. Then set the Target level back to the 5% value and click outside. Hold 4 seconds.
-Scene 7: Tick the "Evidence-backed target" checkbox so the Evidence type, Evidenced prior level and Evidence note fields appear. Hold 11 seconds. Untick it.
-Scene 8: Scroll to the bottom so the Kiboko Effect footnote and the "Submit for approval" button are visible. Hover over "Submit for approval" without clicking. Hold 10 seconds.
+Scene 5: Type 1.87 in "Target level" and click outside the field so everything recalculates. (If the baseline is not about 1.83, use baseline x 1.02 instead, rounded to 2 decimals.) Scroll so the "Estimated impact" tiles (% Δ Lever, Gross impact / yr, Expected (risk-adjusted), Realized this yr) and the "Size of Impact" gauge with its caption are visible together. Hold 24 seconds.
+Scene 6: Change "Target level" to 1.98 (or baseline x 1.08) and click outside the field. Watch the gauge marker move to Strong, the caption change to "Impact auto-discounted to ...", and Expected (risk-adjusted) drop below Gross impact. Hold 22 seconds.
+Scene 7: Change "Target level" to 2.11 (or baseline x 1.15) and click outside the field. The gauge moves to Extreme. Hold 14 seconds. Then set "Target level" back to 1.87 (or baseline x 1.02) and click outside. Hold 4 seconds.
+Scene 8: Tick the "Evidence-backed target" checkbox so the Evidence type, Evidenced prior level and Evidence note fields appear. Hold 11 seconds. Untick it.
+Scene 9: Scroll to the bottom so the Kiboko Effect footnote and the "Submit for approval" button are visible. Hover over "Submit for approval" without clicking. Hold 10 seconds.
 Then tell me "Recording complete". Do not submit the form.
 ```
 
@@ -187,35 +270,39 @@ Then tell me "Recording complete". Do not submit the form.
 
 **Scene 2** (details being typed)
 
-> First, the basics. What it is, who it's for, what done looks like, and which objective it serves. <break time="1.0s" /> Here, a free-shipping nudge in the cart, aimed at bigger orders.
+> First, the basics. What it is, who it's for, what done looks like, and which objective it serves. <break time="1.0s" /> Here, complete-the-look add-ons in the cart, aimed at bigger orders.
 
 **Scene 3** (lever chosen, baseline loads)
 
-> Then the Kiboko Effect takes over. Pick the lever, units per order, and Kiboko pulls its current level straight from your store's history. No one types in a baseline by hand.
+> Then the Kiboko Effect takes over. Pick the lever, units per order, and Kiboko pulls its current level and the annual sales baseline straight from your store's history. No one types in a guess.
 
 **Scene 4** (window toggle)
 
 > The baseline can look back ninety days, half a year, or a full year, so seasonality doesn't skew it.
 
-**Scene 5** (target set, impact tiles)
+**Scene 5** (modest target, value estimate)
 
-> Set a target, here five percent higher, and Kiboko works out the value. <break time="0.5s" /> Gross impact over a year. A risk-adjusted expected value. And how much of it lands this year, after the ramp-up. <break time="0.5s" /> This replaces the old step where an analyst typed in a guess.
+> Set a modest target: about two percent more units per order. <break time="0.5s" /> Because sales is the product of the six levers, a two percent lift in one lever is a two percent lift in sales. Kiboko turns that into dollars: gross impact over a year, a risk-adjusted expected value, and how much lands this year after the ramp-up. <break time="0.5s" /> This target sits inside the lever's normal range, so there's no discount.
 
-**Scene 6** (Size of Impact gauge)
+**Scene 6** (aggressive target, discounted)
 
-> The Size of Impact gauge checks the target against the lever's own history. <break time="1.0s" /> Push it to forty percent and the gauge swings to extreme. Over-aggressive targets get discounted automatically, so no one can talk a vanity project up.
+> Now say someone gets ambitious, and pushes the target to eight percent. <break time="0.5s" /> The Size of Impact gauge measures that against the lever's own weekly swings. This lever rarely moves that far, so Kiboko automatically cuts the expected value to about half. The gross number stays on screen, so everyone can see the discount.
 
-**Scene 7** (Evidence-backed target)
+**Scene 7** (extreme target)
+
+> Push it to fifteen percent, and the gauge hits extreme. The expected value drops to a fraction of the gross. <break time="0.6s" /> Over-promising doesn't buy a higher score, so no one can talk a vanity project up.
+
+**Scene 8** (Evidence-backed target)
 
 > Sometimes a big target is justified. Say a site bug cut a rate, and the fix brings it back. Mark the target as evidence-backed, choose the evidence type, and add a note. The note is required, and it's audited.
 
-**Scene 8** (Submit button)
+**Scene 9** (Submit button)
 
-> One submit, and the project enters the pipeline with a defensible, data-backed estimate attached. Next, it gets scored.
+> Submit, and the project enters the pipeline with a defensible estimate attached, and any discount already applied. Next, it gets scored.
 
 ## Video 3: Score
 
-Video 3 shows the anonymous vote, then the single blended score it feeds. It runs about two minutes. Record it logged in as `admin`, who is a voting member of Home Products Company. The screen never splits the blended score into its vote half and algorithm half, so the narration explains the split. Claude moves the sliders but never clicks Save Score, so no vote is cast.
+Video 3 shows the anonymous vote, then the single blended score it feeds. It runs about two minutes. Record it logged in as `admin`, who is a voting member of Home Products Company. The screen never splits the blended score into its vote half and algorithm half, so the narration explains the split. Four projects are waiting for `admin`'s vote. The prompt uses "Restore mobile add-to-cart after the theme update", which carries an Evidence-backed target shield. Claude moves the sliders but never clicks Save Score, so no vote is cast and the scene can be re-recorded.
 
 ### Browser prompt
 
@@ -231,7 +318,7 @@ Rules:
 - Before scene 1: confirm the top bar shows Company = Home Products Company and Business Unit = All Business Units. If not, set them, click Apply, and wait.
 
 Scene 1: In the sidebar under Project Prioritization, click Score Projects. Scroll to the top so the "Score Projects · Business Value Model" header, the "awaiting your score" summary and the weighting legend are visible. Hold 13 seconds.
-Scene 2: Scroll to the first project card. If any card on the page shows an "Evidence-backed target" shield, scroll to that card instead. Make sure the card's Gross impact / yr, Expected (risk-adjusted) and realized-this-year figures are visible. Hold 13 seconds.
+Scene 2: Scroll to the card "Restore mobile add-to-cart after the theme update", which shows an "Evidence-backed target" shield (if it is missing, use the first card). Make sure the card's Gross impact / yr, Expected (risk-adjusted) and realized-this-year figures and its evidence note are visible. Hold 18 seconds.
 Scene 3: On that card, move the five sliders one at a time, pausing about 1 second after each: Customer Value to 8, Business Value to 7, Cost Savings to 3, Operational Cost to 4, Business Risk to 5. Watch "Your weighted score" update. Hold 10 seconds. Do not click Save.
 Scene 4: Hover over the "X of Y voted" progress bar on the same card. Hold 10 seconds.
 Scene 5: In the sidebar under Project Prioritization, click Executive Approval. Make sure the "Awaiting approval" table with its "Score /100" and "Projected value" columns is visible. Hold 16 seconds.
@@ -247,7 +334,7 @@ Then tell me "Recording complete".
 
 **Scene 2** (project card)
 
-> Voters see the estimate before they score: the gross impact, the risk-adjusted value, and what it could deliver this year. Every vote starts from the same numbers.
+> Voters see the estimate before they score: the gross impact, the risk-adjusted value, and what it could deliver this year. Every vote starts from the same numbers. <break time="0.6s" /> This one carries an evidence-backed target, so every voter also sees the shield and the note that justifies it.
 
 **Scene 3** (sliders moving)
 
@@ -267,7 +354,7 @@ Then tell me "Recording complete".
 
 ## Video 4: Execute
 
-Video 4 follows approved work from sign-off to delivery: the approval steps, the Kanban board, the Work In Progress gantt, and the forward-looking pipeline. It runs about two and a half minutes. Claude only looks and hovers. It approves nothing and drags no cards.
+Video 4 follows approved work from sign-off to delivery: the approval steps, the Kanban board, the Work In Progress gantt, and the forward-looking pipeline. It runs about two and a half minutes. Claude approves nothing. It makes one change: it drags the "Bundle shades + bulbs at the PDP" card from SCORED to EXECUTIVE APPROVAL. Reset that card after each take (see the pre-flight checklist) so the next take starts the same way.
 
 ### Browser prompt
 
@@ -278,13 +365,13 @@ Rules:
 - Move slowly and deliberately. One action at a time.
 - After each scene, hold completely still for the stated time (use a wait action; no scrolling or clicking during a hold).
 - Wait for every chart and gantt to finish rendering before a hold starts.
-- Never click Approve, "Review value", Save, Complete, "Approve → On Deck", Delete or Log Out. Never drag Kanban cards. Never open Settings pages, /admin, or any file.
+- Never click Approve, "Review value", Save, Complete, "Approve → On Deck", Delete or Log Out. The only Kanban card you may drag is "Bundle shades + bulbs at the PDP", and only in scene 3. Never open Settings pages, /admin, or any file.
 - If a page doesn't match these instructions, stop and tell me instead of improvising.
 - Before scene 1: confirm the top bar shows Company = Home Products Company and Business Unit = All Business Units. If not, set them, click Apply, and wait.
 
 Scene 1: In the sidebar under Project Prioritization, click Approve Projects. Scroll to the top. Hold 6 seconds. Then scroll down slowly through "1. Pending Business Unit Leader Approval", "2. Value Sign-off · Analyst" and "3. Effort & Capability · Lead Developer", pausing about 3 seconds on each. Hold 4 seconds at the end.
 Scene 2: In the sidebar, click Executive Approval. Hover over the first "Approve → On Deck" button without clicking. Hold 10 seconds.
-Scene 3: In the sidebar under Project Control, click Kanban. Scroll to the top so the Projected Value tiles and all six lanes (BLOCKED, READY TO SCORE, SCORED, EXECUTIVE APPROVAL, ON DECK, WIP) are visible. Hold 10 seconds. Then hover over the first card in the ON DECK lane. Hold 8 seconds.
+Scene 3: In the sidebar under Project Control, click Kanban. Scroll to the top so the Projected Value tiles and all six lanes (BLOCKED, READY TO SCORE, SCORED, EXECUTIVE APPROVAL, ON DECK, WIP) are visible. Hold 10 seconds. Find the "Bundle shades + bulbs at the PDP" card in the SCORED lane and hover over it. Hold 3 seconds. Then press the mouse on that card, drag it slowly into the EXECUTIVE APPROVAL lane, and release it there. Wait for the Projected Value tiles to update. If a red toast message appears instead, stop and tell me what it says. Hold 9 seconds.
 Scene 4: In the sidebar under Project Control, click Work In Progress. Click "This Quarter". Wait for the gantt to render. Hold 8 seconds. Hover over the label of a row that shows a link (dependency) icon so its tooltip appears. Hold 10 seconds.
 Scene 5: Click "Next Quarter". Wait for the gantt to render with its "On Deck" tags. Hold 12 seconds.
 Scene 6: Go to http://localhost:8082/app/ (Project Pipeline Value). Under "Look ahead", click "Next Quarter". Wait for the tiles and the Revenue chart to update. Hold 8 seconds. Then scroll down slowly to the "Projects Summary" table. Hold 8 seconds.
@@ -303,7 +390,7 @@ Then tell me "Recording complete".
 
 **Scene 3** (Kanban)
 
-> The Kanban board shows every project by stage, with the projected value of each lane at the top. <break time="0.5s" /> Moves follow your rules: a project must be scored before it advances, and only an executive can put it On Deck.
+> The Kanban board shows every project by stage, with the projected value of each lane at the top. <break time="0.5s" /> The bundle project is scored, so a business unit lead drags it to Executive Approval, and the lane totals update. <break time="0.5s" /> Every move follows your rules: a project must be scored before it advances, and only an executive can put it On Deck.
 
 **Scene 4** (Work In Progress gantt)
 
@@ -319,7 +406,7 @@ Then tell me "Recording complete".
 
 ## Video 5: Prove
 
-Video 5 opens a launched project and shows Kiboko's verdict on whether that project moved sales. It runs about two minutes. It uses project 19, "Lighting Store nav & search relaunch", which moves the Visitors lever. The verdict text depends on the data, so the narration describes what the banner does without quoting it. If you'd like the voiceover to state the result, read the banner during your test run and add one sentence to scene 2.
+Video 5 opens a launched project and shows Kiboko's verdict on whether that project moved sales. It runs about two minutes. It uses project 19, "Lighting Store nav & search relaunch", which moves the Visitors lever. With the current seed, its banner reads "Sales rose $145,030 in the 30 days after launch, vs a projected gain of $109,096. This project drove the gain — it worked." The Visitors lever accounts for 57% of the change. If you reseed later, check the banner still says "it worked" before recording, since the narration relies on it.
 
 ### Browser prompt
 
@@ -352,7 +439,7 @@ Then tell me "Recording complete".
 
 **Scene 2** (Realized Performance verdict)
 
-> Here's the Lighting Store navigation and search relaunch. <break time="0.5s" /> Kiboko compares the weeks after launch, once the ramp-up is over, with the period before launch. It then writes the verdict in plain language: did sales move, and was it this project that moved them?
+> Here's the Lighting Store navigation and search relaunch. <break time="0.5s" /> Kiboko compares the weeks after launch, once the ramp-up is over, with the period before launch. It then writes the verdict in plain language: did sales move, and was it this project that moved them? <break time="0.8s" /> Here the answer is yes. Sales rose more than projected, and the visitors lever this project targeted drove most of the gain.
 
 **Scene 3** (estimate vs actual)
 
@@ -360,7 +447,7 @@ Then tell me "Recording complete".
 
 **Scene 4** (How we know tiles)
 
-> Then the evidence. How much sales changed, how much of that change came from this project's lever, and how far the lever actually moved compared with the plan.
+> Then the evidence. How much sales changed, how much of that change came from this project's lever, and how far the lever actually moved compared with the plan: about eight percent, against a planned ten.
 
 **Scene 5** (Per-lever contribution)
 
@@ -388,6 +475,13 @@ Run every prompt once without recording. Any mismatch then shows up in a test ru
 - [ ] Open Backlog and confirm it is sorted by score. If it isn't, end Video 3 on scene 5 and cut the scene 6 narration.
 - [ ] Close every editor, terminal and Finder window that shows `local_settings.py`, `client_secret_*.json` or the `mysql_creds` files, so none of them appear in a recording.
 - [ ] Turn on Focus mode and hide the Dock.
+- [ ] After each Video 4 take, put the Bundle card back in SCORED and remove the comment the move logged:
+
+```bash
+python manage.py shell -c "from strategy.models import Project, ProjectComment; p = Project.objects.get(name='Bundle shades + bulbs at the PDP'); p.status = 'Scored'; p.save(); ProjectComment.objects.filter(project=p, text__contains='moved this from').delete()"
+```
+
+- [ ] To refresh the demo data (for example, to move the latest day forward before a later recording session), run `python manage.py seed_belami_demo --to <yesterday's date, YYYY-MM-DD>`. The seeded actuals currently run through 2026-10-22.
 
 ### Troubleshooting
 
@@ -395,10 +489,11 @@ Run every prompt once without recording. Any mismatch then shows up in a test ru
 | --- | --- | --- |
 | Pages load slowly or fail | Company defaulted to Autocado, which makes live BigQuery calls | Set Company = Home Products Company and click Apply |
 | "Live data available — Sign in with Google" banner instead of charts | Demo Account or VOLT Lighting is selected; both have GA4 properties | Switch to Home Products Company |
-| Dashboards look empty for This Month MTD | The seeded actuals end 2026-09-24 | Set Period to Last Month, or reseed with `python manage.py seed_belami_demo` |
+| Dashboards look empty or stale for This Month MTD | The seeded actuals stop at the last seeded day (currently 2026-10-22) | Reseed with `python manage.py seed_belami_demo --to <yesterday>` |
 | Changeplot dots bunch into a line | Daily actuals apply a fixed device and channel mix, so all segments move by the same percentage | Expected with seeded data. Hover any dot, or drop Video 1 scene 6 |
 | Impact estimator stays locked | A Project details field is blank | Fill every field, including Owner, Department and go-live date |
 | Size of Impact gauge is greyed out | The selected business unit has less than 3 weeks of history | Use Business Unit = Lighting |
-| "Not enough post-launch data yet" on Realized Performance | The measurement window hasn't finished | Use project 18, 20 or 22 instead, and update the name in Video 5 scene 2 |
+| "Not enough post-launch data yet", or a verdict other than "it worked", on project 19 | The data was reseeded with different dates, or the go-live moved | Reseed with `python manage.py seed_belami_demo --to <yesterday>`, which re-applies the project's lift. The other completed projects (18, 20, 21, 22) intentionally show mixed results, so they don't fit the Video 5 narration |
 | Product Category AOV Changeplot shows "Premium Tier Required" | Home Products Company has no BigQuery connection | Expected. Video 1 uses the Device changeplot on Engage Customers |
+| The Bundle card won't drop into EXECUTIVE APPROVAL, or a toast says "Project must be scored first" | The card was already moved in an earlier take, or its score was cleared | Run the Bundle reset command above, reload the Kanban, and retake |
 | Claude clicks the wrong thing mid-take | The page layout differs from the prompt | Stop the recording, then rerun from that scene: paste the rules block plus only the remaining scenes |

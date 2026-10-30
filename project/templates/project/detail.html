@@ -75,7 +75,7 @@
         <div class="x_content">
           <table class="table">
             <tr><th>Status</th><td>{{ project.status|default:"—" }}</td></tr>
-            <tr><th>Score</th><td>{{ project.normalized_score|score100 }} / 100</td></tr>
+            <tr><th>Score</th><td>{% if project.normalized_score %}{{ project.normalized_score|score100 }} / 100{% else %}Not scored yet{% endif %}</td></tr>
             <tr><th>Projected revenue</th><td>${{ project.value|default:0|intcomma }}</td></tr>
             <tr><th>Level of effort</th><td>{{ project.level_of_effort|default:"—" }}</td></tr>
             <tr><th>Owner</th><td>{{ project.owner|default:"—" }}</td></tr>

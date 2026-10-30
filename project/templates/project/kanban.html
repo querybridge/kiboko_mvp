@@ -346,6 +346,9 @@
         animation: 150,
         ghostClass: 'sortable-ghost',
         chosenClass: 'sortable-chosen',
+        // Mouse-event dragging instead of native HTML5 DnD, so scripted drags
+        // (browser automation, demo recordings) move cards too.
+        forceFallback: true,
         onEnd: function(evt) {
           var cardEl = evt.item;
           var projectId = cardEl.getAttribute('data-project-id');
