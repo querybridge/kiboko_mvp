@@ -1,6 +1,6 @@
 {% extends "app/base_site.html" %}
 {% load humanize %}
-{% block title %} Actions {% endblock title %}
+{% block title %} Backlog {% endblock title %}
 {% block stylesheets %}
 {{ block.super }}
 <!-- Ion.RangeSlider -->
@@ -32,15 +32,15 @@
       <div class="clearfix"></div>
 
       {% if lane_filter %}
-      {% include "project/_backlog_table.html" with table_id="lane" heading=lane_filter_label projects=lane_filter_projects empty_msg="No matching actions" %}
+      {% include "project/_backlog_table.html" with table_id="lane" heading=lane_filter_label projects=lane_filter_projects empty_msg="No matching projects" %}
       {% else %}
-      {% include "project/_backlog_table.html" with table_id="approved" heading="Approved Actions" projects=approved_projects empty_msg="No Approved Actions" %}
+      {% include "project/_backlog_table.html" with table_id="approved" heading="Approved Projects" projects=approved_projects empty_msg="No Approved Projects" %}
 
-      {% include "project/_backlog_table.html" with table_id="pending" heading="Actions Pending Review" projects=pending_review_projects empty_msg="No Actions Pending Review" %}
+      {% include "project/_backlog_table.html" with table_id="pending" heading="Projects Pending Review" projects=pending_review_projects empty_msg="No Projects Pending Review" %}
 
-      {% include "project/_backlog_table.html" with table_id="incomplete" heading="Incomplete Entry" projects=incomplete_projects empty_msg="No Incomplete Entries" %}
+      {% include "project/_backlog_table.html" with table_id="intake" heading="In Intake" projects=intake_projects empty_msg="No Projects In Intake" %}
 
-      {% include "project/_backlog_table.html" with table_id="blocked" heading="Blocked Actions" projects=blocked_projects empty_msg="No Blocked Actions" %}
+      {% include "project/_backlog_table.html" with table_id="blocked" heading="Blocked Projects" projects=blocked_projects empty_msg="No Blocked Projects" %}
       {% endif %}
 
       <div class="row">

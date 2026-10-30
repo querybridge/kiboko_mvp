@@ -81,6 +81,29 @@ def view(request):
         for key in ('blocked', 'ready_to_score', 'scored', 'executive_approval'):
             buckets[key] = [p for p in buckets[key] if p.department_id in owned_ids]
 
+    # In Intake: proposed but not yet through approval / sizing (e.g. added from
+    # Insights). Same set as the Approve Projects queue; each row names its stage
+    # and links there to move it forward. Kept out of the tables above so unscored
+    # proposals never sit next to committed work.
+    intake_qs = _scope(Project.objects.filter(archived=False).filter(
+        Q(approved=False) | Q(status__in=PIPELINE_STATUSES)
+    ).exclude(status__in=NON_KANBAN_STATUSES).select_related(
+        'owner', 'objective', 'vertical', 'department'), vertical_id, _get_company_id(request))
+    if aee:
+        intake_qs = intake_qs.filter(objective__aee_alignment=aee)
+    intake_projects = []
+    for p in intake_qs.order_by('-date_created', '-id'):
+        if p.status in PIPELINE_STATUSES and p.status != 'Incomplete Entry':
+            p.kanban_lane_label = p.status
+        elif is_ready_for_review(p):
+            p.kanban_lane_label = 'Pending Approval'
+        else:
+            p.kanban_lane_label = 'Incomplete Entry'
+        p.kanban_lane_key = 'intake'
+        intake_projects.append(p)
+    if owned_bus.exists():
+        intake_projects = [p for p in intake_projects if p.department_id in owned_ids]
+
     approved_projects = buckets['active'] + buckets['on_deck']
     pending_review_projects = buckets['ready_to_score'] + buckets['scored'] + buckets['executive_approval']
     blocked_projects = buckets['blocked']
@@ -89,7 +112,7 @@ def view(request):
     return render(request, 'project/view.html', {
         'approved_projects': approved_projects,
         'pending_review_projects': pending_review_projects,
-        'incomplete_projects': [],
+        'intake_projects': intake_projects,
         'blocked_projects': blocked_projects,
         'lane_filter': lane_filter,
         'lane_filter_label': LANES.get(lane_filter, ''),
