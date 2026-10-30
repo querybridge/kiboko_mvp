@@ -2532,7 +2532,11 @@ def insights(request):
     metrics = ad.build_metrics(primary, compare, rows=rows)
     weekly = ga4_dashboard.scope_weekly_levers(request)
     wins, losses = I.classify(metrics, weekly)
+    # On "All Business Units" each Add Project must pick one: a project is sized
+    # and measured against its own unit's data, never added company-wide.
+    bu_choices = [] if scoped_vertical_id(request) else ga4_dashboard._scoped_verticals(request)
     ctx.update({'title': 'Insights', 'wins': wins, 'losses': losses,
+                'bu_choices': bu_choices,
                 'has_history': weekly is not None,
                 'win_threshold': int(I.WIN_THRESHOLD)})
     return render(request, 'app/insights.html', ctx)
@@ -2565,8 +2569,19 @@ def insights_add_project(request):
     if dept is None:
         dept, _ = Department.objects.get_or_create(name='General')
 
-    vid = scoped_vertical_id(request)
-    bu = BusinessUnit.objects.filter(pk=vid).first() if vid else None
+    # The project needs a business unit: the scoped one, else the one picked on
+    # the card. Only units the user can reach in the scoped company are accepted.
+    from app.integrations import ga4_dashboard
+    vid = scoped_vertical_id(request) or request.POST.get('vertical')
+    allowed = {b.pk: b for b in ga4_dashboard._scoped_verticals(request)}
+    try:
+        bu = allowed.get(int(vid)) if vid else None
+    except (TypeError, ValueError):
+        bu = None
+    if bu is None:
+        messages.error(request, 'Choose a business unit for this project. Each unit has its '
+                                'own data and performance, so projects are added per unit.')
+        return redirect(request.POST.get('next') or 'app:insights')
     kw = I.objective_keyword(rec.metric)
     objective = Objective.objects.filter(name__icontains=kw).first() if kw else None
     metric_label = dict(I.METRIC_CHOICES).get(rec.metric, rec.metric)
@@ -2575,7 +2590,7 @@ def insights_add_project(request):
     # Don't re-add a recommendation that's already queued (same name, same company).
     name = rec.text[:75].strip()
     existing = Project.objects.filter(archived=False, name__iexact=name)
-    existing = existing.filter(vertical__company=bu.company) if bu is not None else existing.filter(vertical__isnull=True)
+    existing = existing.filter(vertical__company=bu.company)
     dup = existing.first()
     if dup is not None:
         messages.warning(request, format_html(

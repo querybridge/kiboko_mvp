@@ -20,7 +20,9 @@
     .ins-recs { margin: 0; padding-left: 22px; }
     .ins-recs li { margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; }
     .ins-rec-text { flex: 1; }
-    .ins-rec-form { margin: 0; white-space: nowrap; }
+    .ins-rec-form { margin: 0; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
+    .ins-bu { font-size: 12px; padding: 1px 4px; border-radius: 4px; max-width: 150px;
+      background: var(--ac-panel, #241a3d); color: inherit; border: 1px solid var(--ac-edge, #3a2c57); }
   </style>
 {% endblock stylesheets %}
 {% block content %}
@@ -39,7 +41,8 @@
      Units per Order, Average Unit Price) whose move versus the comparison period is
      {% if has_history %}bigger than that lever's normal week-to-week swing{% else %}more than {{ win_threshold }}%{% endif %}.
      Each comes with ideas to keep a win going or turn a loss around — click <strong>Add Project</strong>
-     to drop any into the backlog and prioritize it.</p>
+     to drop any into the backlog and prioritize it.{% if bu_choices %} You're viewing all business
+     units, so pick the unit each project belongs to: every unit has its own data and performance.{% endif %}</p>
 
   <div class="row">
     <div class="col-md-6">

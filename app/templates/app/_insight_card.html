@@ -14,6 +14,12 @@
         {% csrf_token %}
         <input type="hidden" name="recommendation_id" value="{{ rec.id }}">
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        {% if bu_choices %}
+        <select name="vertical" required class="ins-bu" aria-label="Business unit for this project">
+          <option value="">Business unit…</option>
+          {% for bu in bu_choices %}<option value="{{ bu.pk }}">{{ bu.name }}</option>{% endfor %}
+        </select>
+        {% endif %}
         <button type="submit" class="btn btn-xs btn-primary"><i class="fa fa-plus"></i> Add Project</button>
       </form>
     </li>
