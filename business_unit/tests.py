@@ -7,6 +7,7 @@ from unittest import mock
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from business_unit.models import (BusinessUnit, Company, CompanyMembership, IntegrationSettings,
                                   Organization, Plan, TrialCode)
@@ -21,44 +22,85 @@ def _configure(**kw):
 
 
 class TrialSignupTests(TestCase):
+    """Email first: 1) email -> code sent, 2) code verified, 3) plan + details."""
     def setUp(self):
         self.plan = Plan.objects.create(slug='standard', name='Standard', tier='standard', price=99)
 
-    def _form(self, **kw):
-        data = {'first_name': 'Ada', 'last_name': 'Lee', 'email': 'ada@acme.co', 'company': 'Acme',
+    def _details(self, **kw):
+        data = {'action': 'create', 'first_name': 'Ada', 'last_name': 'Lee', 'company': 'Acme',
                 'plan': 'standard', 'password': 'longpassword', 'password_confirm': 'longpassword'}
         data.update(kw)
         return data
 
+    def _step(self):
+        return self.client.get('/users/get-started/').context['step']
+
     @mock.patch('business_unit.email.send', return_value=True)
-    def test_send_code_emails_a_code(self, send):
-        r = self.client.post('/users/get-started/', self._form(action='send_code'))
-        self.assertEqual(r.status_code, 200)
+    def _send(self, send, email='ada@acme.co'):
+        self.client.post('/users/get-started/', {'action': 'send_code', 'email': email})
+        return send
+
+    def test_step_one_emails_a_code_and_moves_to_verify(self):
+        send = self._send()
         tc = TrialCode.objects.get(email='ada@acme.co')
         self.assertEqual(send.call_args[0][2], 'trial_code')
         self.assertEqual(send.call_args[0][3]['code'], tc.code)
+        self.assertEqual(self._step(), 'verify')
         self.assertFalse(User.objects.filter(email='ada@acme.co').exists())
 
-    def test_signup_without_code_is_refused(self):
-        self.client.post('/users/get-started/', self._form())
+    def test_existing_account_email_is_refused(self):
+        User.objects.create_user('ada', 'ada@acme.co', 'pw')
+        self._send()
+        self.assertFalse(TrialCode.objects.exists())
+        self.assertEqual(self._step(), 'email')
+
+    def test_details_are_refused_until_the_code_is_verified(self):
+        self._send()
+        self.client.post('/users/get-started/', self._details())
         self.assertFalse(User.objects.filter(email='ada@acme.co').exists())
 
-    def test_wrong_email_code_is_refused(self):
-        tc = TrialCode.issue('someone@else.co')
-        self.client.post('/users/get-started/', self._form(trial_code=tc.code))
-        self.assertFalse(User.objects.filter(email='ada@acme.co').exists())
+    def test_wrong_code_then_too_many_tries_restarts(self):
+        self._send()
+        for _ in range(4):
+            self.client.post('/users/get-started/', {'action': 'verify', 'code': 'WRONG123'})
+        self.assertEqual(self._step(), 'verify')
+        self.client.post('/users/get-started/', {'action': 'verify', 'code': 'WRONG123'})
+        self.assertEqual(self._step(), 'email')
+        self.assertFalse(TrialCode.objects.filter(email='ada@acme.co', expires__gt=timezone.now()).exists())
 
-    def test_code_starts_45_day_trial_once(self):
-        tc = TrialCode.issue('ada@acme.co')
-        r = self.client.post('/users/get-started/', self._form(trial_code=tc.code.lower()))
-        self.assertEqual(r.status_code, 302)
+    def test_code_for_another_email_does_not_verify(self):
+        other = TrialCode.issue('someone@else.co')
+        self._send()
+        self.client.post('/users/get-started/', {'action': 'verify', 'code': other.code})
+        self.assertEqual(self._step(), 'verify')
+
+    def test_full_flow_starts_45_day_trial_once(self):
+        self._send()
+        tc = TrialCode.objects.get(email='ada@acme.co')
+        self.client.post('/users/get-started/', {'action': 'verify', 'code': tc.code.lower()})
+        self.assertEqual(self._step(), 'details')
+        r = self.client.post('/users/get-started/', self._details())
+        self.assertRedirects(r, '/app/getting-started/', fetch_redirect_response=False)
         org = Organization.objects.get(name='Acme')
-        self.assertEqual(org.plan_status, 'trial')
+        self.assertEqual((org.plan_status, org.org_admin.email), ('trial', 'ada@acme.co'))
         self.assertEqual(org.trial_ends, datetime.date.today() + datetime.timedelta(days=45))
-        self.assertEqual(org.trial_days_left, 45)
         tc.refresh_from_db()
         self.assertIsNotNone(tc.used_at)
         self.assertIsNone(TrialCode.redeemable('ada@acme.co', tc.code))
+
+    def test_detail_errors_keep_fields_and_stay_on_step_three(self):
+        self._send()
+        tc = TrialCode.objects.get(email='ada@acme.co')
+        self.client.post('/users/get-started/', {'action': 'verify', 'code': tc.code})
+        self.client.post('/users/get-started/', self._details(password_confirm='different1'))
+        r = self.client.get('/users/get-started/')
+        self.assertEqual(r.context['step'], 'details')
+        self.assertEqual(r.context['form']['company'], 'Acme')
+
+    def test_change_email_goes_back_to_step_one(self):
+        self._send()
+        self.client.post('/users/get-started/', {'action': 'change_email'})
+        self.assertEqual(self._step(), 'email')
 
 
 class BillingLockTests(TestCase):

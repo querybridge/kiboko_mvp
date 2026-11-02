@@ -23,6 +23,12 @@
     border: 1px solid var(--border-subtle, #3a2c57); border-radius: 8px; }
   #login-form input:focus { outline: none; border-color: var(--purple-400, #8E6FE0); }
   .login-submit { margin-top: 4px; }
+  /* "Create a new account": brighter than the muted help lines so it's easy to find. */
+  .login-new { font-size: 13px; color: var(--text-secondary, #C8BCDF); text-align: center; margin-top: 14px; }
+  .login-new a { color: var(--purple-200, #D6C5F7); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+  .login-new a:hover { color: #fff; }
+  html.theme-light .login-new a { color: var(--purple-700, #432A85); }
+  html.theme-light .login-new a:hover { color: var(--purple-800, #321F66); }
   .login-help { font-size: 11.5px; color: var(--text-muted, #8b7fa6); text-align: center; margin-top: 12px; }
 </style>
 {% endblock stylesheets %}
@@ -59,8 +65,8 @@
       <i class="fa fa-google"></i>&nbsp; Sign in with Google
     </a>
     {% endif %}
-    <div class="login-help" style="margin-top:8px;">
-      New to Kiboko? <a href="{% url 'users:get_started' %}" style="color:var(--purple-400,#8E6FE0); font-weight:600;">Create a new account</a>
+    <div class="login-new">
+      New to Kiboko? <a href="{% url 'users:get_started' %}">Create a new account</a>
     </div>
   </div>
 </div>

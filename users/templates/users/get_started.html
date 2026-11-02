@@ -16,14 +16,30 @@
   .gs-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
     color: var(--text-muted, #8b7fa6); margin: 34px 0 14px; }
 
-  /* Steps */
-  .gs-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-  .gs-step { background: var(--bg-surface, #1b1230); border: 1px solid var(--border-subtle, #33264d);
-    border-radius: 12px; padding: 16px; }
-  .gs-step .n { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
-    border-radius: 50%; background: var(--purple-400, #8E6FE0); color: #fff; font-weight: 700; font-size: 13px; margin-bottom: 10px; }
-  .gs-step .t { font-weight: 700; color: var(--text-primary, #f2edff); font-size: 14px; margin-bottom: 4px; }
-  .gs-step .d { color: var(--text-secondary, #b9adcf); font-size: 12.5px; line-height: 1.45; }
+  /* Progress: Email -> Verify -> Plan and details */
+  .gs-progress { display: flex; justify-content: center; gap: 8px; list-style: none; padding: 0; margin: 0 0 26px; flex-wrap: wrap; }
+  .gs-progress li { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted, #8b7fa6); }
+  .gs-progress li + li:before { content: ""; width: 28px; height: 1px; background: var(--border-strong, #4A3380); margin-right: 4px; }
+  .gs-progress .dot { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--border-strong, #4A3380); font-size: 12px; }
+  .gs-progress li.current { color: var(--text-primary, #f2edff); }
+  .gs-progress li.current .dot { background: var(--purple-400, #8E6FE0); border-color: var(--purple-400, #8E6FE0); color: #fff; }
+  .gs-progress li.done { color: var(--text-secondary, #b9adcf); }
+  .gs-progress li.done .dot { background: rgba(107,194,140,0.18); border-color: var(--status-success, #6BC28C); color: var(--status-success, #6BC28C); }
+
+  .gs-narrow { max-width: 460px; margin: 0 auto; }
+  .gs-card-title { font-size: 19px; font-weight: 700; color: var(--text-primary, #f2edff); margin: 0 0 6px; }
+  .gs-card-sub { color: var(--text-secondary, #b9adcf); font-size: 14px; line-height: 1.5; margin: 0 0 18px; }
+  .gs-perks { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+  .gs-perks li { font-size: 12.5px; color: var(--text-secondary, #b9adcf); }
+  .gs-perks .fa { color: var(--status-success, #6BC28C); margin-right: 5px; }
+  .gs-code-input { font-size: 24px !important; letter-spacing: .35em; text-align: center; text-transform: uppercase;
+    font-family: Menlo, Consolas, monospace; padding: 12px !important; }
+  .gs-linkbtn { background: none; border: 0; padding: 0; color: var(--purple-200, #D6C5F7); font-weight: 600; text-decoration: underline; cursor: pointer; }
+  html.theme-light .gs-linkbtn { color: var(--purple-700, #432A85); }
+  .gs-verified { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary, #b9adcf);
+    background: var(--bg-surface-muted, #241a3d); border: 1px solid var(--border-subtle, #33264d); border-radius: 20px; padding: 5px 12px; }
+  .gs-verified .fa { color: var(--status-success, #6BC28C); }
 
   /* Plans */
   .gs-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: stretch; }
@@ -55,9 +71,6 @@
     width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 14px;
     background: var(--bg-surface-muted, #241a3d); color: var(--text-primary, #f2edff);
     border: 1px solid var(--border-subtle, #3a2c57); border-radius: 8px; }
-  .gs-code { display: flex; gap: 10px; align-items: flex-end; }
-  .gs-code-btn { margin-bottom: 14px; white-space: nowrap; }
-  @media (max-width: 560px) { .gs-code { flex-direction: column; align-items: stretch; } }
   .gs-form input:focus { outline: none; border-color: var(--purple-400, #8E6FE0); }
   .gs-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .gs-field { margin-bottom: 14px; }
@@ -70,29 +83,69 @@
 <div class="gs-wrap">
   <div class="gs-head">
     <img src="/static/images/kiboko-logo-white.png" alt="Kiboko" class="gs-logo">
-    <h1>Create your Kiboko account</h1>
-    <p>See performance, prioritize the projects that move revenue, and prove the impact. Start a free trial — no charge today.</p>
+    <h1>Start your free {{ trial_days }}-day trial</h1>
+    <p>See performance, prioritize the projects that move revenue, and prove the impact.</p>
   </div>
+
+  <ol class="gs-progress" aria-label="Sign-up progress">
+    {% for key, label in steps %}
+    <li class="{% if key == step %}current{% elif step == 'verify' and key == 'email' or step == 'details' and key != 'details' %}done{% endif %}"{% if key == step %} aria-current="step"{% endif %}>
+      <span class="dot">{% if step == 'verify' and key == 'email' or step == 'details' and key != 'details' %}<i class="fa fa-check"></i>{% else %}{{ forloop.counter }}{% endif %}</span>{{ label }}
+    </li>
+    {% endfor %}
+  </ol>
 
   {% if messages %}
+  <div class="{% if step != 'details' %}gs-narrow{% endif %}">
     {% for message in messages %}
-    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}" style="margin-bottom:14px;">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-
-  <div class="gs-section-title">How it works</div>
-  <div class="gs-steps">
-    {% for step in steps %}
-    <div class="gs-step">
-      <div class="n">{{ forloop.counter }}</div>
-      <div class="t">{{ step.label }}</div>
-      <div class="d">{{ step.desc }}</div>
-    </div>
+    <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}" style="margin-bottom:14px;">{{ message }}</div>
     {% endfor %}
   </div>
+  {% endif %}
 
-  <form method="post" action="{% url 'users:get_started' %}" id="gs-signup">
-    {% csrf_token %}
+  {% if step == 'email' %}
+  <div class="gs-narrow">
+    <form method="post" class="gs-form">{% csrf_token %}
+      <input type="hidden" name="action" value="send_code">
+      <h2 class="gs-card-title">Enter your work email</h2>
+      <p class="gs-card-sub">We’ll email you a code to start your trial. It takes about a minute.</p>
+      <div class="gs-field"><label for="gs-email">Work email</label>
+        <input type="email" id="gs-email" name="email" placeholder="you@company.com" autocomplete="email" required autofocus></div>
+      <button type="submit" class="btn btn-primary btn-block">Email me a code</button>
+      <ul class="gs-perks">
+        <li><i class="fa fa-check"></i>{{ trial_days }} days free</li>
+        <li><i class="fa fa-check"></i>No card needed</li>
+        <li><i class="fa fa-check"></i>Full access during the trial</li>
+      </ul>
+    </form>
+    <div class="gs-test-note">Already have an account? <a href="{% url 'users:login' %}" style="color:var(--purple-200,#D6C5F7); font-weight:600;">Sign in</a></div>
+  </div>
+
+  {% elif step == 'verify' %}
+  <div class="gs-narrow">
+    <form method="post" class="gs-form">{% csrf_token %}
+      <input type="hidden" name="action" value="verify">
+      <h2 class="gs-card-title">Check your email</h2>
+      <p class="gs-card-sub">We sent an 8-character code to <strong>{{ email }}</strong>. Enter it below. It expires in {{ code_valid_days }} days.</p>
+      <div class="gs-field"><label for="gs-code">Trial code</label>
+        <input type="text" id="gs-code" name="code" class="gs-code-input" maxlength="8" autocomplete="one-time-code"
+               autocapitalize="characters" spellcheck="false" required autofocus></div>
+      <button type="submit" class="btn btn-primary btn-block">Verify and continue</button>
+    </form>
+    <div class="gs-test-note">
+      Didn’t get it? Check your spam folder, or
+      <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="resend"><button type="submit" class="gs-linkbtn">send a new code</button></form>.
+    </div>
+    <div class="gs-test-note" style="margin-top:6px;">
+      Wrong email?
+      <form method="post" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="change_email"><button type="submit" class="gs-linkbtn">Change it</button></form>
+    </div>
+  </div>
+
+  {% else %}
+  <form method="post" id="gs-signup">{% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div style="text-align:center;"><span class="gs-verified"><i class="fa fa-check-circle"></i> {{ email }} verified</span></div>
 
     <div class="gs-section-title">Choose your plan</div>
     <div class="gs-plans">
@@ -126,33 +179,21 @@
     <div class="gs-section-title">Your details</div>
     <div class="gs-form">
       <div class="gs-grid2">
-        <div class="gs-field"><label>First name</label><input type="text" name="first_name" value="{{ form.first_name }}" required></div>
-        <div class="gs-field"><label>Last name</label><input type="text" name="last_name" value="{{ form.last_name }}" required></div>
+        <div class="gs-field"><label>First name</label><input type="text" name="first_name" value="{{ form.first_name }}" autocomplete="given-name" required></div>
+        <div class="gs-field"><label>Last name</label><input type="text" name="last_name" value="{{ form.last_name }}" autocomplete="family-name" required></div>
       </div>
+      <div class="gs-field"><label>Company name</label><input type="text" name="company" value="{{ form.company }}" autocomplete="organization" required></div>
       <div class="gs-grid2">
-        <div class="gs-field"><label>Work email</label><input type="email" name="email" value="{{ form.email }}" placeholder="you@company.com" required></div>
-        <div class="gs-field"><label>Company name</label><input type="text" name="company" value="{{ form.company }}" required></div>
+        <div class="gs-field"><label>Password</label><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" required></div>
+        <div class="gs-field"><label>Confirm password</label><input type="password" name="password_confirm" autocomplete="new-password" required></div>
       </div>
-      <div class="gs-code">
-        <div class="gs-field" style="flex:1;"><label>Trial code</label>
-          <input type="text" name="trial_code" value="{{ form.trial_code }}" placeholder="8-character code from your email" autocomplete="one-time-code" maxlength="12" style="text-transform:uppercase;" required></div>
-        <button type="submit" name="action" value="send_code" formnovalidate class="btn btn-default gs-code-btn">
-          <i class="fa fa-envelope-o"></i> {% if code_sent %}Resend code{% else %}Email me a trial code{% endif %}</button>
-      </div>
-      <div class="gs-test-note" style="margin:-4px 0 12px; text-align:left;">Enter your work email above, then we’ll email you a code to start your {{ trial_days }}-day free trial.</div>
-      <div class="gs-grid2">
-        <div class="gs-field"><label>Password</label><input type="password" name="password" placeholder="At least 8 characters" required></div>
-        <div class="gs-field"><label>Confirm password</label><input type="password" name="password_confirm" required></div>
-      </div>
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">Start my free trial</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">Start my {{ trial_days }}-day trial</button>
       <div class="gs-test-note">
-        <i class="fa fa-lock"></i> No card needed for the {{ trial_days }}-day trial. Add payment any time from Billing.
-      </div>
-      <div class="gs-test-note" style="margin-top:6px;">
-        Already have an account? <a href="{% url 'users:login' %}" style="color:var(--purple-400,#8E6FE0); font-weight:600;">Sign in</a>
+        <i class="fa fa-lock"></i> No card needed. You can add payment any time from Billing; you won’t be charged before the trial ends.
       </div>
     </div>
   </form>
+  {% endif %}
 </div>
 {% endblock content %}
 

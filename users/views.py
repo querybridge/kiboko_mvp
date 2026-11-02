@@ -52,22 +52,33 @@ def _unique_slug(model, value):
     return slug
 
 
-def get_started(request):
-    """Public "Create a new account" page: describes the onboarding steps,
-    shows the pricing/plan table, and takes a self-serve trial signup.
+SIGNUP_KEY = 'trial_signup'          # session: {'email', 'verified', 'code_id', 'tries', 'sent_at'}
+CODE_TRIES = 5                        # wrong codes allowed before a new one is needed
+RESEND_SECONDS = 60
 
-    A trial needs a code: the person enters their email, we send a one-time trial
-    code (SendGrid), and they enter it with the rest of the form. Submitting
-    creates the User + Organization (45-day trial, no card) + Company, records the
-    chosen plan, logs the person in, and drops them on the Getting Started
-    checklist. Payment is added later on the Billing page (Stripe).
+
+def get_started(request):
+    """Public "Create a new account" page: an email-first trial signup in three
+    steps, each its own screen.
+
+      1. Email   -- the person enters a work email; we email a one-time trial code.
+      2. Verify  -- they enter the code. Proves the email before we ask for more.
+      3. Set up  -- choose a plan and enter name, company and password. Creates the
+                    User + Organization (45-day trial, no card) + Company, logs them
+                    in, and drops them on the Getting Started checklist.
+
+    Progress lives in the session, so a refresh or the back button keeps the step.
+    Every POST redirects (post/redirect/get). Payment is added later on Billing.
     """
     import datetime
+    from django.conf import settings
     from django.contrib import messages
     from django.contrib.auth import login
-    from django.utils import timezone
     from django.contrib.auth.models import User
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
     from django.db import transaction
+    from django.utils import timezone
     from business_unit.models import Plan, Organization, Company, CompanyMembership, TrialCode
     from business_unit import email as mail
 
@@ -78,120 +89,150 @@ def get_started(request):
     addon = Plan.objects.filter(active=True, is_addon=True).order_by('sort_order').first()
     valid_slugs = {p.slug for p in plans}
     default_slug = next((p.slug for p in plans if p.highlighted), plans[0].slug if plans else '')
+    days = Organization.TRIAL_DAYS
+    signup = request.session.get(SIGNUP_KEY) or {}
+    here = reverse('users:get_started')
 
-    # Onboarding steps described on the page (mirrors the logged-in checklist).
-    steps = [
-        {'label': 'Create your account', 'desc': 'Tell us who you are and name your company.'},
-        {'label': 'Choose a plan', 'desc': f'Pick Standard, Premium, or Enterprise. We email you a trial code for a {Organization.TRIAL_DAYS}-day free trial — no card needed.'},
-        {'label': 'Connect your data', 'desc': 'Link GA4 (Standard) or a BigQuery service account (Premium Connection).'},
-        {'label': 'Invite your team', 'desc': 'Add teammates and set each one’s role and business units.'},
-        {'label': 'Set your budget & go', 'desc': 'Enter monthly revenue targets and start prioritizing the work that moves revenue.'},
-    ]
+    def save(state):
+        request.session[SIGNUP_KEY] = state
+        request.session.modified = True
 
-    form = {'first_name': '', 'last_name': '', 'email': '', 'company': '',
-            'plan': default_slug, 'premium_connection': False, 'trial_code': ''}
-    code_sent = False
+    def send_code(email, first_name=''):
+        """Issue a code for `email` and email it. Returns True if it went out."""
+        tc = TrialCode.issue(email)
+        sent = mail.send(email, 'Your Kiboko trial code', 'trial_code',
+                         {'code': tc.code, 'days': days, 'valid_days': TrialCode.VALID_DAYS,
+                          'first_name': first_name})
+        if not sent and settings.DEBUG:
+            messages.warning(request, f'Email isn’t set up, so here is the code (development only): {tc.code}')
+            sent = True
+        if sent:
+            save({'email': email, 'verified': False, 'code_id': None, 'tries': 0,
+                  'sent_at': timezone.now().timestamp()})
+        return sent
 
     if request.method == 'POST':
-        form = {
-            'first_name': (request.POST.get('first_name') or '').strip(),
-            'last_name': (request.POST.get('last_name') or '').strip(),
-            'email': (request.POST.get('email') or '').strip(),
-            'company': (request.POST.get('company') or '').strip(),
-            'plan': (request.POST.get('plan') or '').strip(),
-            'premium_connection': bool(request.POST.get('premium_connection')),
-            'trial_code': (request.POST.get('trial_code') or '').strip().upper(),
-        }
-        password = request.POST.get('password') or ''
+        action = request.POST.get('action', '')
 
-        if request.POST.get('action') == 'send_code':
-            email = form['email']
-            from django.core.validators import validate_email
-            from django.core.exceptions import ValidationError
+        if action == 'send_code':                                   # step 1
+            email = (request.POST.get('email') or '').strip()
             try:
                 validate_email(email)
             except ValidationError:
-                messages.error(request, 'Enter a valid work email to receive your trial code.')
-                email = ''
-            if email and User.objects.filter(email__iexact=email).exists():
-                messages.error(request, 'An account with that email already exists — try signing in instead.')
-            elif email:
-                tc = TrialCode.issue(email)
-                sent = mail.send(email, 'Your Kiboko trial code', 'trial_code',
-                                 {'code': tc.code, 'days': Organization.TRIAL_DAYS,
-                                  'valid_days': TrialCode.VALID_DAYS, 'first_name': form['first_name']})
-                if sent:
-                    code_sent = True
-                    messages.success(request, f'We emailed a trial code to {email}. Enter it below to start your trial.')
-                else:
-                    from django.conf import settings
-                    if settings.DEBUG:
-                        code_sent = True
-                        messages.warning(request, f'Email isn’t set up, so here is the code (development only): {tc.code}')
-                    else:
-                        messages.error(request, 'We couldn’t send the trial code just now. Please try again shortly.')
-            return render(request, 'users/get_started.html', {
-                'title': 'Get Started', 'plans': plans, 'addon': addon, 'steps': steps,
-                'form': form, 'default_slug': default_slug, 'code_sent': code_sent,
-                'trial_days': Organization.TRIAL_DAYS})
-        confirm = request.POST.get('password_confirm') or ''
+                messages.error(request, 'Enter a valid work email.')
+                return redirect(here)
+            if User.objects.filter(email__iexact=email).exists():
+                messages.error(request, 'An account with that email already exists. Sign in instead.')
+                return redirect(here)
+            if not send_code(email):
+                messages.error(request, 'We couldn’t send the code just now. Please try again shortly.')
+            return redirect(here)
 
-        errors = []
-        if not form['first_name'] or not form['last_name']:
-            errors.append('Enter your first and last name.')
-        if not form['email']:
-            errors.append('Enter a work email.')
-        elif User.objects.filter(email__iexact=form['email']).exists() or \
-                User.objects.filter(username__iexact=form['email']).exists():
-            errors.append('An account with that email already exists — try signing in instead.')
-        if not form['company']:
-            errors.append('Enter your company name.')
-        if len(password) < 8:
-            errors.append('Choose a password of at least 8 characters.')
-        elif password != confirm:
-            errors.append('The passwords do not match.')
-        if form['plan'] not in valid_slugs:
-            errors.append('Choose a plan.')
-        trial = TrialCode.redeemable(form['email'], form['trial_code']) if form['email'] else None
-        if not form['trial_code']:
-            errors.append('Enter the trial code we emailed you (use “Email me a trial code”).')
-        elif trial is None:
-            errors.append('That trial code isn’t valid for this email, or it has expired. Request a new one.')
+        if action == 'change_email':
+            request.session.pop(SIGNUP_KEY, None)
+            return redirect(here)
 
-        if errors:
-            for e in errors:
-                messages.error(request, e)
-        else:
+        if action == 'resend' and signup.get('email') and not signup.get('verified'):
+            wait = RESEND_SECONDS - (timezone.now().timestamp() - (signup.get('sent_at') or 0))
+            if wait > 0:
+                messages.info(request, f'Please wait {int(wait) + 1} seconds before asking for another code.')
+            elif send_code(signup['email']):
+                messages.success(request, f'We sent a new code to {signup["email"]}.')
+            else:
+                messages.error(request, 'We couldn’t send the code just now. Please try again shortly.')
+            return redirect(here)
+
+        if action == 'verify' and signup.get('email') and not signup.get('verified'):  # step 2
+            tc = TrialCode.redeemable(signup['email'], request.POST.get('code'))
+            if tc is None:
+                signup['tries'] = signup.get('tries', 0) + 1
+                if signup['tries'] >= CODE_TRIES:
+                    TrialCode.objects.filter(email__iexact=signup['email'], used_at__isnull=True).update(
+                        expires=timezone.now())
+                    request.session.pop(SIGNUP_KEY, None)
+                    messages.error(request, 'Too many incorrect codes. Enter your email to get a new one.')
+                    return redirect(here)
+                save(signup)
+                messages.error(request, 'That code isn’t right or has expired. Check the latest email, or resend it.')
+                return redirect(here)
+            signup.update(verified=True, code_id=tc.id)
+            save(signup)
+            return redirect(here)
+
+        if action == 'create' and signup.get('verified'):            # step 3
+            form = {
+                'first_name': (request.POST.get('first_name') or '').strip(),
+                'last_name': (request.POST.get('last_name') or '').strip(),
+                'company': (request.POST.get('company') or '').strip(),
+                'plan': (request.POST.get('plan') or '').strip(),
+                'premium_connection': bool(request.POST.get('premium_connection')),
+            }
+            password = request.POST.get('password') or ''
+            confirm = request.POST.get('password_confirm') or ''
+            email = signup['email']
+            trial = TrialCode.objects.filter(pk=signup.get('code_id'), email__iexact=email,
+                                             used_at__isnull=True).first()
+            errors = []
+            if trial is None or User.objects.filter(email__iexact=email).exists():
+                request.session.pop(SIGNUP_KEY, None)
+                messages.error(request, 'That trial code has already been used. Enter your email to start again.')
+                return redirect(here)
+            if not form['first_name'] or not form['last_name']:
+                errors.append('Enter your first and last name.')
+            if not form['company']:
+                errors.append('Enter your company name.')
+            if len(password) < 8:
+                errors.append('Choose a password of at least 8 characters.')
+            elif password != confirm:
+                errors.append('The passwords do not match.')
+            if form['plan'] not in valid_slugs:
+                errors.append('Choose a plan.')
+            if errors:
+                for e in errors:
+                    messages.error(request, e)
+                signup['form'] = form             # refill the step 3 fields (never the password)
+                save(signup)
+                return redirect(here)
+
             chosen = Plan.objects.get(slug=form['plan'])
             # Premium/Enterprise include the connection; the add-on only applies to Standard.
             premium_conn = form['premium_connection'] if chosen.tier == 'standard' else (chosen.tier != 'standard')
+            today = datetime.date.today()
             with transaction.atomic():
                 user = User.objects.create_user(
-                    username=_signup_username(form['email']), email=form['email'],
+                    username=_signup_username(email), email=email,
                     password=password, first_name=form['first_name'], last_name=form['last_name'])
                 org = Organization.objects.create(
                     name=form['company'], slug=_unique_slug(Organization, form['company']),
                     kind='direct', org_admin=user, plan=chosen,
                     premium_connection=premium_conn,
-                    plan_status='trial', trial_started=datetime.date.today(),
-                    trial_ends=datetime.date.today() + datetime.timedelta(days=Organization.TRIAL_DAYS))
-                trial.used_at = timezone.now()
-                trial.organization = org
-                trial.save(update_fields=['used_at', 'organization'])
+                    plan_status='trial', trial_started=today,
+                    trial_ends=today + datetime.timedelta(days=days))
                 company = Company.objects.create(
                     organization=org, name=form['company'],
                     slug=_unique_slug(Company, form['company']))
                 CompanyMembership.objects.create(user=user, company=company, role='admin')
+                trial.used_at = timezone.now()
+                trial.organization = org
+                trial.save(update_fields=['used_at', 'organization'])
+            request.session.pop(SIGNUP_KEY, None)
             # No authenticate() call (we set the password directly), so name the backend.
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            messages.success(request, f'Welcome to Kiboko! Your {Organization.TRIAL_DAYS}-day {chosen.name} trial '
-                                      'has started. Finish setup below — no card needed.')
+            messages.success(request, f'Welcome to Kiboko! Your {days}-day {chosen.name} trial '
+                                      'has started. Finish setup below. No card needed.')
             return redirect('app:getting_started')
 
+        return redirect(here)
+
+    step = 'details' if signup.get('verified') else ('verify' if signup.get('email') else 'email')
+    form = {'first_name': '', 'last_name': '', 'company': '', 'plan': default_slug,
+            'premium_connection': False, **(signup.get('form') or {})}
     return render(request, 'users/get_started.html', {
-        'title': 'Get Started', 'plans': plans, 'addon': addon, 'steps': steps,
-        'form': form, 'default_slug': default_slug, 'code_sent': code_sent,
-        'trial_days': Organization.TRIAL_DAYS})
+        'title': 'Get Started', 'step': step, 'email': signup.get('email', ''),
+        'plans': plans, 'addon': addon, 'form': form, 'trial_days': days,
+        'code_valid_days': TrialCode.VALID_DAYS,
+        'steps': [('email', 'Your email'), ('verify', 'Verify'), ('details', 'Plan and details')],
+    })
 
 
 @login_required
