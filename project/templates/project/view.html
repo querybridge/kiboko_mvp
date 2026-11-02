@@ -34,13 +34,14 @@
       {% if lane_filter %}
       {% include "project/_backlog_table.html" with table_id="lane" heading=lane_filter_label projects=lane_filter_projects empty_msg="No matching projects" %}
       {% else %}
+      {% include "project/_backlog_table.html" with table_id="blocked" heading="Blocked Projects" projects=blocked_projects empty_msg="No Blocked Projects" %}
+
       {% include "project/_backlog_table.html" with table_id="approved" heading="Approved Projects" projects=approved_projects empty_msg="No Approved Projects" %}
 
       {% include "project/_backlog_table.html" with table_id="pending" heading="Projects Pending Review" projects=pending_review_projects empty_msg="No Projects Pending Review" %}
 
       {% include "project/_backlog_table.html" with table_id="intake" heading="In Intake" projects=intake_projects empty_msg="No Projects In Intake" %}
 
-      {% include "project/_backlog_table.html" with table_id="blocked" heading="Blocked Projects" projects=blocked_projects empty_msg="No Blocked Projects" %}
       {% endif %}
 
       <div class="row">
