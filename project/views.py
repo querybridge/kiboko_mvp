@@ -8,7 +8,7 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Avg, Count, Q
 
 from strategy.models import Project, ProjectComment
 from .models import Action
@@ -109,7 +109,14 @@ def view(request):
     blocked_projects = buckets['blocked']
     lane = request.GET.get('lane', '').strip()
     lane_filter = lane if lane in LANES else ''
+    phases = [
+        _phase_summary('blocked', 'Blocked', blocked_projects),
+        _phase_summary('approved', 'Approved', approved_projects),
+        _phase_summary('pending', 'Pending Review', pending_review_projects),
+        _phase_summary('intake', 'In Intake', intake_projects),
+    ]
     return render(request, 'project/view.html', {
+        'phases': phases,
         'approved_projects': approved_projects,
         'pending_review_projects': pending_review_projects,
         'intake_projects': intake_projects,
@@ -122,6 +129,27 @@ def view(request):
         'aee_filter_label': aee_labels.get(aee, ''),
         'measure_filter': '',
     })
+
+
+# AEE alignment colours, shared with the analytics views.
+AEE_COLORS = (('attract_traffic', 'Attract', '#3FC9E0'),
+              ('engage_customers', 'Engage', '#ECB752'),
+              ('expand_purchase', 'Expand', '#55C892'))
+
+
+def _phase_summary(key, label, projects):
+    """Count, total value and AEE split of one Backlog phase, for the summary
+    strip. The split is by value; a phase with no value yet splits by count."""
+    total = sum(p.value or 0 for p in projects)
+    weight = (lambda p: p.value or 0) if total else (lambda p: 1)
+    denom = total or len(projects)
+    split = []
+    for aee, name, color in AEE_COLORS:
+        w = sum(weight(p) for p in projects if p.aee_alignment == aee)
+        if w:
+            split.append({'name': name, 'color': color, 'pct': round(100 * w / denom, 1)})
+    short = (f'${total / 1e6:.1f}M' if total >= 1e6 else f'${total / 1e3:.0f}K' if total >= 1e3 else f'${total:,}')
+    return {'key': key, 'label': label, 'count': len(projects), 'value': short, 'split': split}
 
 
 # ---------------------------------------------------------------------------
@@ -283,14 +311,20 @@ def estimator_baseline(request):
 
 
 @login_required
-def project_detail(request, project_id):
-    """A Project with its execution Actions and an add-action form."""
+def project_detail(request, project_id, tab='overview'):
+    """A Project as a tabbed workspace: Overview, Actions, Performance, Activity.
+    Each tab has its own URL so links (e.g. from the WIP Gantt) land on it."""
     project = get_object_or_404(Project, pk=project_id)
-    actions = (project.actions.select_related('owner', 'team', 'measure')
-               .prefetch_related('depends_on').order_by('launch', 'name'))
+    completed = project.status in COMPLETED_STATUSES
+    tabs = ['overview', 'actions'] + (['performance'] if completed else []) + ['activity']
+    if tab not in tabs:
+        return redirect('project:project_detail', project_id=project.id)
+    actions = list(project.actions.filter(archived=False)
+                   .select_related('owner', 'team', 'measure')
+                   .prefetch_related('depends_on').order_by('launch', 'name'))
     # Post-launch back-half: Realized Performance on completed projects.
     realized = None
-    if project.status in COMPLETED_STATUSES:
+    if tab == 'performance':
         from app.integrations import ga4_dashboard
         realized = ga4_dashboard.realized_perf_for_project(request, project)
     # Analyst review audit: the auto value + delta vs the analyst's projected value.
@@ -299,15 +333,37 @@ def project_detail(request, project_id):
         est = project._estimate()
         analyst_auto = int(round(est['gross_annual'])) if est else 0
         analyst_delta = int(project.analyst_value) - analyst_auto
+    # Breadcrumb: the list this project currently lives in.
+    if project.archived:
+        crumb = ('Archive', reverse('project:archive'))
+    elif completed:
+        crumb = ('Completed Projects', reverse('project:completed_projects'))
+    elif project.approved and get_lane(project) in ('on_deck', 'active'):
+        crumb = ('Work In Progress', reverse('app:work_in_progress'))
+    else:
+        crumb = ('Backlog', reverse('project:all'))
+    focus = request.GET.get('focus', '')
     return render(request, 'project/detail.html', {
         'project': project,
+        'tab': tab,
+        'crumb': crumb,
         'actions': actions,
+        'action_progress': action_progress(actions),
+        'focus_id': int(focus) if focus.isdigit() else None,
         'action_form': ActionTaskForm(project=project),
         'realized': realized,
-        'completed': project.status in COMPLETED_STATUSES,
+        'completed': completed,
         'analyst_auto': analyst_auto,
         'analyst_delta': analyst_delta,
     })
+
+
+def action_progress(actions):
+    """Roll a project's actions up to {done, total, pct}: done = actions at 100%,
+    pct = the average action progress."""
+    prog = [max(0, min(100, a.progress or 0)) for a in actions]
+    return {'done': sum(1 for p in prog if p >= 100), 'total': len(prog),
+            'pct': round(sum(prog) / len(prog)) if prog else 0}
 
 
 @login_required
@@ -317,7 +373,7 @@ def add_action(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
     if project.status in COMPLETED_STATUSES:
         messages.error(request, 'Actions can’t be added to a completed project.')
-        return redirect('project:project_detail', project_id=project.id)
+        return redirect('project:project_tab', project_id=project.id, tab='actions')
     form = ActionTaskForm(request.POST, project=project)
     if form.is_valid():
         action = form.save(commit=False)
@@ -330,7 +386,7 @@ def add_action(request, project_id):
         messages.success(request, f'Added action "{action.name}".')
     else:
         messages.error(request, 'Could not add the action — check the fields.')
-    return redirect('project:project_detail', project_id=project.id)
+    return redirect('project:project_tab', project_id=project.id, tab='actions')
 
 
 @login_required
@@ -740,6 +796,12 @@ def kanban_view(request):
         status__in=NON_KANBAN_STATUSES + list(PIPELINE_STATUSES)
     ).select_related('objective', 'department', 'vertical', 'owner'),
         vertical_id, _get_company_id(request))
+    # Action roll-up for each card: "3 of 5 actions · 60%".
+    live = Q(actions__archived=False)
+    projects = projects.annotate(
+        n_actions=Count('actions', filter=live),
+        n_actions_done=Count('actions', filter=live & Q(actions__progress__gte=100)),
+        actions_pct=Avg('actions__progress', filter=live))
 
     grouped = group_projects(projects)
     lane_totals = compute_all_lane_totals(grouped)

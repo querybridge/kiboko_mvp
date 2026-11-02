@@ -30,4 +30,6 @@ urlpatterns = [
     path('<int:project_id>/comment/', views.add_comment_to_project, name='add_comment_to_project'),
     path('<int:project_id>/approve/', views.approve_project, name='approve_project'),
     path('<int:project_id>/delete/', views.delete, name='delete_project'),
+    # Tabs on the project page (actions/, performance/, activity/); keep last.
+    path('<int:project_id>/<str:tab>/', views.project_detail, name='project_tab'),
 ]

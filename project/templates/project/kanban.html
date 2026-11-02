@@ -116,6 +116,12 @@
       border-radius: 10px;
       color: #fff;
     }
+    .kanban-card .card-actions { display: block; margin: 2px 0 8px; text-decoration: none; }
+    .kanban-card .card-actions-text { display: block; font-size: 11px; color: var(--text-muted, #666); margin-bottom: 3px; }
+    .kanban-card .card-actions:hover .card-actions-text { text-decoration: underline; }
+    .kanban-card .card-actions-bar { display: block; height: 4px; border-radius: 2px; background: var(--card-edge, #e2e2e2); overflow: hidden; }
+    .kanban-card .card-actions-bar span { display: block; height: 100%; background: var(--purple-400, #8E6FE0); }
+    .kanban-card .card-actions.none { font-size: 11px; color: var(--text-muted, #aaa); font-style: italic; }
     .tag-expand-selection   { background: #3498db; }
     .tag-improve-experience { background: #27ae60; }
     .tag-increase-urgency   { background: #e74c3c; }
@@ -271,6 +277,14 @@
             </div>
             {% if project.measure %}
               <div class="card-metric">{{ project.measure.name }}</div>
+            {% endif %}
+            {% if project.n_actions %}
+              <a class="card-actions" href="{% url 'project:project_tab' project.pk 'actions' %}" title="Open this project's actions">
+                <span class="card-actions-text">{{ project.n_actions_done }} of {{ project.n_actions }} action{{ project.n_actions|pluralize }} &middot; {{ project.actions_pct|floatformat:0 }}%</span>
+                <span class="card-actions-bar"><span style="width:{{ project.actions_pct|floatformat:0 }}%"></span></span>
+              </a>
+            {% else %}
+              <a class="card-actions none" href="{% url 'project:project_tab' project.pk 'actions' %}">No actions yet</a>
             {% endif %}
             {% if project.strategy_tag %}
               <span class="card-tag tag-{{ project.strategy_tag|slugify }}">{{ project.strategy_tag }}</span>

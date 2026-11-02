@@ -195,7 +195,8 @@
           var isFocus = (FOCUS_ID !== null && proj.id === FOCUS_ID);
           var $row = $('<div class="gantt-row' + (isFocus ? ' gantt-focus' : '') + '"></div>');
           var $label = $('<a class="gantt-label"></a>')
-            .attr({href: '/project/' + (proj.project_id || proj.id), 'data-project-id': proj.project_id || proj.id});
+            .attr({href: proj.project_id ? '/project/' + proj.project_id + '/actions/?focus=' + proj.id : '/project/' + proj.id,
+                   'data-project-id': proj.project_id || proj.id});
           var $action = $('<span class="gl-action"></span>');
           if (isFocus) $action.append('<i class="fa fa-angle-right gantt-focus-chevron"></i> ');
           if (proj.has_deps) $action.append('<i class="fa fa-link" style="color:#E0A65A; margin-right:5px;" title="Starts after its dependencies"></i>');

@@ -51,7 +51,7 @@
               <td>${{ p.value|default:0|intcomma }}</td>
               <td><span class="cp-verdict cp-mixed">{{ p.status }}</span></td>
               <td style="white-space:nowrap;">
-                <a href="{% url 'project:project_detail' p.id %}#realized" class="btn btn-success btn-xs"><i class="fa fa-line-chart"></i> Analyze Impact</a>
+                <a href="{% url 'project:project_tab' p.id 'performance' %}" class="btn btn-success btn-xs"><i class="fa fa-line-chart"></i> Analyze Impact</a>
                 <span style="display:inline-block; width:1px; height:16px; background:var(--border-strong,#cbb8ea); opacity:.4; margin:0 10px; vertical-align:middle;"></span>
                 <form method="post" action="{% url 'project:archive_project' p.id %}" style="display:inline;"
                       onsubmit="return confirm('Archive “{{ p.name|escapejs }}”? It will move to the Archive.');">

@@ -7,6 +7,56 @@
 <link href="/static/vendors/normalize-css/normalize.css" rel="stylesheet">
 <link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.css" rel="stylesheet">
 <link href="/static/vendors/ion.rangeSlider/css/ion.rangeSlider.skinNice.css" rel="stylesheet">
+<style>
+  /* Summary strip: count + value per phase, split by AEE. */
+  .bl-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 6px 0 22px; }
+  .bl-tile { display: block; background: var(--card-fill); border: 1px solid var(--card-edge); border-radius: var(--radius-app, 12px);
+    padding: 14px 16px; color: var(--text-primary); text-decoration: none; transition: border-color .15s; }
+  .bl-tile:hover { border-color: var(--accent-primary); text-decoration: none; color: var(--text-primary); }
+  .bl-tile.blocked { border-left: 3px solid var(--status-danger); }
+  .bl-tile-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+  .bl-tile-nums { margin: 6px 0 10px; font-variant-numeric: tabular-nums; }
+  .bl-tile-count { font-size: 24px; font-weight: 700; }
+  .bl-tile-value { font-size: 14px; color: var(--text-secondary); margin-left: 6px; }
+  .bl-split { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--border-subtle); }
+  .bl-split span { display: block; height: 100%; }
+  .bl-legend { display: flex; gap: 14px; justify-content: flex-end; font-size: 11px; color: var(--text-muted); margin: -12px 0 14px; }
+  .bl-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+  @media (max-width: 900px) { .bl-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* Slim Backlog tables with an AEE colour edge on each row. */
+  .bl-title h3 .bl-count { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; margin-left: 6px; vertical-align: middle;
+    border-radius: 10px; background: var(--bg-elevated); color: var(--text-secondary); }
+  .bl-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .bl-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted);
+    padding: 8px 12px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  .bl-table td { padding: 11px 12px; border-bottom: 1px solid var(--card-edge); vertical-align: middle; }
+  .bl-table tbody tr:hover td { background: var(--bg-surface-muted); }
+  .bl-row td:first-child { border-left: 3px solid transparent; }
+  .bl-row.aee-attract_traffic td:first-child { border-left-color: #3FC9E0; }
+  .bl-row.aee-engage_customers td:first-child { border-left-color: #ECB752; }
+  .bl-row.aee-expand_purchase td:first-child { border-left-color: #55C892; }
+  .bl-name a { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+  .bl-name a:hover { color: var(--accent-secondary); }
+  .bl-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .bl-aee { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 10px;
+    background: var(--bg-elevated); color: var(--text-secondary); white-space: nowrap; }
+  .bl-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--text-muted); }
+  .aee-attract_traffic .bl-dot { background: #3FC9E0; }
+  .aee-engage_customers .bl-dot { background: #ECB752; }
+  .aee-expand_purchase .bl-dot { background: #55C892; }
+  .bl-num { text-align: right; }
+  .bl-value { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bl-score { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+  .bl-score-bar { width: 56px; height: 4px; border-radius: 2px; background: var(--border-subtle); overflow: hidden; }
+  .bl-score-bar span { display: block; height: 100%; background: var(--accent-primary); }
+  .bl-status, .bl-date { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+  .bl-go { text-align: right; width: 1%; }
+  .bl-empty { text-align: center; color: var(--text-muted); padding: 18px !important; }
+  @media (max-width: 768px) {
+    .bl-table th:nth-child(6), .bl-table td:nth-child(6), .bl-table th:nth-child(5), .bl-table td:nth-child(5) { display: none; }
+  }
+</style>
 {% endblock stylesheets %}
 {% block content %}
 <!-- <script type="text/javascript">
@@ -30,6 +80,19 @@
       </div>
       {% endif %}
       <div class="clearfix"></div>
+
+      {% if not lane_filter %}
+      <div class="bl-strip">
+        {% for ph in phases %}
+        <a class="bl-tile{% if ph.key == 'blocked' %} blocked{% endif %}" href="#phase-{{ ph.key }}">
+          <div class="bl-tile-label">{{ ph.label }}</div>
+          <div class="bl-tile-nums"><span class="bl-tile-count">{{ ph.count }}</span><span class="bl-tile-value">{{ ph.value }}</span></div>
+          <div class="bl-split" title="{% for s in ph.split %}{{ s.name }} {{ s.pct|floatformat:0 }}%{% if not forloop.last %} · {% endif %}{% endfor %}">{% for s in ph.split %}<span style="width:{{ s.pct }}%; background:{{ s.color }};"></span>{% endfor %}</div>
+        </a>
+        {% endfor %}
+      </div>
+      <div class="bl-legend"><span><i style="background:#3FC9E0"></i>Attract</span><span><i style="background:#ECB752"></i>Engage</span><span><i style="background:#55C892"></i>Expand</span><span>bar = share of value</span></div>
+      {% endif %}
 
       {% if lane_filter %}
       {% include "project/_backlog_table.html" with table_id="lane" heading=lane_filter_label projects=lane_filter_projects empty_msg="No matching projects" %}

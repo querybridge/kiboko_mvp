@@ -30,15 +30,84 @@
   .af-input .form-control, .af-input input, .af-input select, .af-input textarea { width: 100%; }
   .af-help { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
   .af-input .errorlist { color: var(--status-danger, #E74C3C); font-size: 11px; margin: 3px 0 0; padding-left: 16px; }
+  /* Project workspace: fixed header (breadcrumb, status, value, progress) over tabs. */
+  /* Details: grouped fields, label above value, no row lines. */
+  .pd-group { padding: 14px 0; border-top: 1px solid var(--card-edge); }
+  .pd-group:first-child { border-top: 0; padding-top: 4px; }
+  .pd-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent-secondary); margin-bottom: 10px; }
+  .pd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; }
+  .pd-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 3px; }
+  .pd-val { font-size: 14px; color: var(--text-primary); line-height: 1.4; }
+  .pd-text { font-size: 14px; color: var(--text-primary); line-height: 1.55; }
+  @media (max-width: 480px) { .pd-grid { grid-template-columns: 1fr; } }
+  .pj-crumb { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .pj-crumb a { color: var(--text-muted); }
+  .pj-crumb a:hover { color: var(--accent-secondary); text-decoration: underline; }
+  .pj-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 24px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--card-edge); }
+  .pj-head h3 { margin: 0; }
+  .pj-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin-top: 8px; font-size: 13px; color: var(--text-secondary); }
+  .pj-meta strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .pj-status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-primary); }
+  .pj-status.blocked { border-color: var(--status-danger); color: var(--status-danger); }
+  .pj-prog { min-width: 220px; }
+  .pj-prog-text { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .pj-prog-bar { height: 6px; border-radius: 3px; background: var(--border-subtle); overflow: hidden; }
+  .pj-prog-bar span { display: block; height: 100%; background: var(--accent-primary); }
+  /* Folder-style tabs: each tab is a bordered, filled box; the active one is
+     brighter and joins the content edge below it. */
+  .pj-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 2px solid var(--accent-primary); margin: 24px 0 20px; padding: 0; list-style: none; }
+  .pj-tabs a { display: inline-block; padding: 10px 20px; font-weight: 600; font-size: 14px; color: var(--text-secondary);
+    background: var(--bg-surface-muted); border: 1px solid var(--border-strong); border-bottom: 0;
+    border-radius: 10px 10px 0 0; cursor: pointer; transition: background .15s, color .15s; }
+  .pj-tabs a:hover { color: var(--text-primary); background: var(--bg-elevated); text-decoration: none; }
+  .pj-tabs a.active { color: #fff; background: var(--accent-primary); border-color: var(--accent-primary); }
+  .pj-tabs a.active .badge { background: rgba(255,255,255,0.25); color: #fff; }
+  .pj-tabs .badge { margin-left: 4px; }
+  .pj-actions tr.focus td { background: rgba(142,111,224,0.18) !important; }
+  .pj-actions tr.focus td:first-child { box-shadow: inset 3px 0 0 var(--accent-primary); }
+  .pj-mini-bar { display: inline-block; width: 60px; height: 4px; border-radius: 2px; background: var(--border-subtle); vertical-align: middle; margin-right: 6px; overflow: hidden; }
+  .pj-mini-bar span { display: block; height: 100%; background: var(--accent-primary); }
+  .pj-next li { padding: 7px 0; border-top: 1px solid var(--card-edge); list-style: none; }
+  .pj-next li:first-child { border-top: 0; }
+  .pj-next { padding: 0; margin: 0 0 10px; }
 </style>
 {% endblock stylesheets %}
 {% block content %}
 <div class="right_col" role="main">
-  <div class="page-title">
-    <div class="title_left"><h3>{{ project.name }} <small>Project</small></h3></div>
-    <div class="clearfix"></div>
+  <div class="pj-crumb"><a href="{{ crumb.1 }}">{{ crumb.0 }}</a> &rsaquo; {{ project.name }}</div>
+  <div class="pj-head">
+    <div>
+      <h3>{{ project.name }} <small>Project</small></h3>
+      <div class="pj-meta">
+        <span class="pj-status{% if project.status == 'Blocked' or project.is_blocked %} blocked{% endif %}">{{ project.status|default:"No status" }}</span>
+        <span>Value <strong>${{ project.value|default:0|intcomma }}</strong></span>
+        <span>Score <strong>{% if project.normalized_score %}{{ project.normalized_score|score100 }}{% else %}&mdash;{% endif %}</strong></span>
+        {% if project.vertical %}<span>{{ project.vertical }}</span>{% endif %}
+      </div>
+    </div>
+    <a class="pj-prog" href="{% url 'project:project_tab' project.id 'actions' %}" style="text-decoration:none;">
+      <div class="pj-prog-text">{% if action_progress.total %}{{ action_progress.done }} of {{ action_progress.total }} action{{ action_progress.total|pluralize }} done &middot; {{ action_progress.pct }}%{% else %}No actions yet{% endif %}</div>
+      <div class="pj-prog-bar"><span style="width:{{ action_progress.pct }}%"></span></div>
+    </a>
   </div>
 
+  <ul class="pj-tabs">
+    <li><a href="{% url 'project:project_detail' project.id %}"{% if tab == 'overview' %} class="active"{% endif %}>Overview</a></li>
+    <li><a href="{% url 'project:project_tab' project.id 'actions' %}"{% if tab == 'actions' %} class="active"{% endif %}>Actions <span class="badge">{{ actions|length }}</span></a></li>
+    {% if completed %}<li><a href="{% url 'project:project_tab' project.id 'performance' %}"{% if tab == 'performance' %} class="active"{% endif %}>Performance</a></li>{% endif %}
+    <li><a href="{% url 'project:project_tab' project.id 'activity' %}"{% if tab == 'activity' %} class="active"{% endif %}>Activity <span class="badge">{{ project.comments.count }}</span></a></li>
+  </ul>
+
+  {% if messages %}
+  <div class="row"><div class="col-md-12">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div></div>
+  {% endif %}
+
+  {% if tab == 'overview' %}
   {% if project.analyst_reviewed and analyst_auto is not None %}
   {% load humanize %}
   <div class="row"><div class="col-md-12">
@@ -53,17 +122,9 @@
   </div></div>
   {% endif %}
 
-  {% if messages %}
-  <div class="row"><div class="col-md-12">
-    {% for message in messages %}
-    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}">{{ message }}</div>
-    {% endfor %}
-  </div></div>
-  {% endif %}
-
   <div class="row">
     <!-- Summary -->
-    <div class="col-md-5 col-sm-12">
+    <div class="col-md-7 col-sm-12">
       <div class="x_panel">
         <div class="x_title">
           <h2>Details</h2>
@@ -73,50 +134,67 @@
           <div class="clearfix"></div>
         </div>
         <div class="x_content">
-          <table class="table">
-            <tr><th>Status</th><td>{{ project.status|default:"—" }}</td></tr>
-            <tr><th>Score</th><td>{% if project.normalized_score %}{{ project.normalized_score|score100 }} / 100{% else %}Not scored yet{% endif %}</td></tr>
-            <tr><th>Projected revenue</th><td>${{ project.value|default:0|intcomma }}</td></tr>
-            <tr><th>Level of effort</th><td>{{ project.level_of_effort|default:"—" }}</td></tr>
-            <tr><th>Owner</th><td>{{ project.owner|default:"—" }}</td></tr>
-            <tr><th>Business unit</th><td>{{ project.vertical|default:"—" }}</td></tr>
-            <tr><th>Objective</th><td>{{ project.objective|default:"—" }}</td></tr>
-            <tr><th>AEE alignment</th><td>{{ project.get_aee_alignment_display|default:"— (set on the objective)" }}</td></tr>
-            <tr><th>Definition of Done</th><td>{{ project.definition_of_done|default:"—" }}</td></tr>
-            <tr><th>User story</th><td>{{ project.why|default:"—" }}</td></tr>
-          </table>
+          <div class="pd-group">
+            <div class="pd-head">Ownership</div>
+            <div class="pd-grid">
+              <div><div class="pd-label">Owner</div><div class="pd-val">{{ project.owner|default:"—" }}</div></div>
+              <div><div class="pd-label">Business unit</div><div class="pd-val">{{ project.vertical|default:"—" }}</div></div>
+            </div>
+          </div>
+          <div class="pd-group">
+            <div class="pd-head">Strategy</div>
+            <div class="pd-grid">
+              <div><div class="pd-label">Objective</div><div class="pd-val">{{ project.objective|default:"—" }}</div></div>
+              <div><div class="pd-label">AEE alignment</div><div class="pd-val">{{ project.get_aee_alignment_display|default:"— (set on the objective)" }}</div></div>
+              <div><div class="pd-label">Level of effort</div><div class="pd-val">{% if project.level_of_effort %}{{ project.level_of_effort }} / 10{% else %}—{% endif %}</div></div>
+            </div>
+          </div>
+          <div class="pd-group">
+            <div class="pd-head">Definition of Done</div>
+            <div class="pd-text">{{ project.definition_of_done|default:"—"|linebreaksbr }}</div>
+          </div>
+          <div class="pd-group">
+            <div class="pd-head">User story</div>
+            <div class="pd-text">{{ project.why|default:"—"|linebreaksbr }}</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Execution tasks (Actions) -->
-    <div class="col-md-7 col-sm-12">
+    <!-- Next actions: a short look at the work, with the way into the Actions tab -->
+    <div class="col-md-5 col-sm-12">
       <div class="x_panel">
-        <div class="x_title"><h2>Actions <small>the steps that deliver this project</small> <span class="badge">{{ actions|length }}</span></h2><div class="clearfix"></div></div>
+        <div class="x_title"><h2>Next actions</h2><div class="clearfix"></div></div>
         <div class="x_content">
-          <table class="table table-striped">
-            <thead><tr><th>Action</th><th>Owner</th><th>Depends on</th><th style="width:150px;">Start (earliest)</th><th style="width:110px;">Target</th><th style="width:80px;">Progress</th></tr></thead>
-            <tbody>
-              {% for a in actions %}
-              <tr>
-                <td>{{ a.name }}</td>
-                <td>{{ a.owner|default:"—" }}</td>
-                <td>{% for d in a.depends_on.all %}<span class="label label-default">{{ d.name }}</span> {% empty %}<span class="text-muted">—</span>{% endfor %}</td>
-                <td>{% with g=a.start_guardrail %}{% if g %}{{ g|date:"M j, Y" }} <small class="text-muted">(after deps)</small>{% else %}—{% endif %}{% endwith %}</td>
-                <td>{{ a.launch|date:"M j, Y"|default:"—" }}</td>
-                <td>{{ a.progress|default:0 }}%</td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="6" class="text-center text-muted">No actions yet. Add the first one below.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+          <ul class="pj-next">
+            {% for a in actions %}{% if a.progress|default:0 < 100 %}
+            <li><a href="{% url 'project:project_tab' project.id 'actions' %}?focus={{ a.id }}">{{ a.name }}</a>
+              <div class="text-muted" style="font-size:12px; margin-top:2px;"><span class="pj-mini-bar"><span style="width:{{ a.progress|default:0 }}%"></span></span>{{ a.progress|default:0 }}% &middot; {{ a.owner|default:"No owner" }}{% if a.launch %} &middot; target {{ a.launch|date:"M j" }}{% endif %}</div></li>
+            {% endif %}{% empty %}
+            <li class="text-muted">No actions yet.</li>
+            {% endfor %}
+          </ul>
+          <a href="{% url 'project:project_tab' project.id 'actions' %}" class="btn btn-default btn-sm">{% if actions %}All actions{% else %}Add the first action{% endif %} <i class="fa fa-angle-right"></i></a>
+        </div>
+      </div>
+    </div>
+  </div>
 
-          {% if completed %}
-          <p class="text-muted" style="margin-top:14px;"><i class="fa fa-lock"></i> This project is
-            {{ project.status|lower }} — actions can’t be added.</p>
-          {% else %}
-          <h4 style="margin-top:18px;">Add Action</h4>
+  {% elif tab == 'actions' %}
+  <div class="row"><div class="col-md-12">
+    <div class="x_panel">
+      <div class="x_title"><h2>Actions <small>the steps that deliver this project</small></h2>
+        {% if not completed %}<ul class="nav navbar-right panel_toolbox"><li>
+          <button type="button" class="btn btn-success btn-xs" data-toggle="collapse" data-target="#add-action"><i class="fa fa-plus"></i> Add Action</button>
+        </li></ul>{% endif %}
+        <div class="clearfix"></div></div>
+      <div class="x_content">
+        {% if completed %}
+        <p class="text-muted"><i class="fa fa-lock"></i> This project is
+          {{ project.status|lower }} — actions can’t be added.</p>
+        {% else %}
+        <div id="add-action" class="collapse{% if not actions %} in{% endif %}" style="margin-bottom:16px;">
+          <h4>Add Action</h4>
           <form method="post" action="{% url 'project:add_action' project.id %}">
             {% csrf_token %}
             {{ action_form.non_field_errors }}
@@ -138,14 +216,32 @@
               {% endfor %}
             </div>
             <button type="submit" class="btn btn-success btn-sm">Add Action</button>
+            <button type="button" class="btn btn-default btn-sm" data-toggle="collapse" data-target="#add-action">Cancel</button>
           </form>
-          {% endif %}
         </div>
+        {% endif %}
+        <table class="table table-striped pj-actions">
+          <thead><tr><th>Action</th><th>Owner</th><th>Depends on</th><th style="width:150px;">Start (earliest)</th><th style="width:110px;">Target</th><th style="width:120px;">Progress</th></tr></thead>
+          <tbody>
+            {% for a in actions %}
+            <tr id="action-{{ a.id }}"{% if a.id == focus_id %} class="focus"{% endif %}>
+              <td>{{ a.name }}</td>
+              <td>{{ a.owner|default:"—" }}</td>
+              <td>{% for d in a.depends_on.all %}<span class="label label-default">{{ d.name }}</span> {% empty %}<span class="text-muted">—</span>{% endfor %}</td>
+              <td>{% with g=a.start_guardrail %}{% if g %}{{ g|date:"M j, Y" }} <small class="text-muted">(after deps)</small>{% else %}—{% endif %}{% endwith %}</td>
+              <td>{{ a.launch|date:"M j, Y"|default:"—" }}</td>
+              <td><span class="pj-mini-bar"><span style="width:{{ a.progress|default:0 }}%"></span></span>{{ a.progress|default:0 }}%</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted">No actions yet.{% if not completed %} Use Add Action above.{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
     </div>
-  </div>
+  </div></div>
 
-  {% if completed %}
+  {% elif tab == 'performance' %}
   <!-- Post-launch back-half: Realized Performance -->
   <div class="row" id="realized"><div class="col-md-12">
     <div class="x_panel">
@@ -232,9 +328,8 @@
       </div>
     </div>
   </div></div>
-  {% endif %}
 
-  <!-- Comments -->
+  {% elif tab == 'activity' %}
   <div class="row"><div class="col-md-12">
     <div class="x_panel">
       <div class="x_title"><h2>Activity &amp; comments</h2><div class="clearfix"></div></div>
@@ -255,9 +350,18 @@
     </div>
   </div></div>
 
+  {% endif %}
+
 </div>
 {% endblock content %}
 {% block javascripts %}{{ block.super }}
+{% if focus_id %}
+<script>
+  // Arrived from a specific action (e.g. the WIP Gantt): bring its row into view.
+  (function () { var r = document.getElementById('action-{{ focus_id }}');
+    if (r) r.scrollIntoView({block: 'center'}); })();
+</script>
+{% endif %}
 {% if realized.ok %}
 <script src="/static/vendors/chartjs-2.9.4/Chart.min.js"></script>
 <script>
