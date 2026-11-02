@@ -55,6 +55,9 @@
     width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 14px;
     background: var(--bg-surface-muted, #241a3d); color: var(--text-primary, #f2edff);
     border: 1px solid var(--border-subtle, #3a2c57); border-radius: 8px; }
+  .gs-code { display: flex; gap: 10px; align-items: flex-end; }
+  .gs-code-btn { margin-bottom: 14px; white-space: nowrap; }
+  @media (max-width: 560px) { .gs-code { flex-direction: column; align-items: stretch; } }
   .gs-form input:focus { outline: none; border-color: var(--purple-400, #8E6FE0); }
   .gs-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .gs-field { margin-bottom: 14px; }
@@ -130,13 +133,20 @@
         <div class="gs-field"><label>Work email</label><input type="email" name="email" value="{{ form.email }}" placeholder="you@company.com" required></div>
         <div class="gs-field"><label>Company name</label><input type="text" name="company" value="{{ form.company }}" required></div>
       </div>
+      <div class="gs-code">
+        <div class="gs-field" style="flex:1;"><label>Trial code</label>
+          <input type="text" name="trial_code" value="{{ form.trial_code }}" placeholder="8-character code from your email" autocomplete="one-time-code" maxlength="12" style="text-transform:uppercase;" required></div>
+        <button type="submit" name="action" value="send_code" formnovalidate class="btn btn-default gs-code-btn">
+          <i class="fa fa-envelope-o"></i> {% if code_sent %}Resend code{% else %}Email me a trial code{% endif %}</button>
+      </div>
+      <div class="gs-test-note" style="margin:-4px 0 12px; text-align:left;">Enter your work email above, then we’ll email you a code to start your {{ trial_days }}-day free trial.</div>
       <div class="gs-grid2">
         <div class="gs-field"><label>Password</label><input type="password" name="password" placeholder="At least 8 characters" required></div>
         <div class="gs-field"><label>Confirm password</label><input type="password" name="password_confirm" required></div>
       </div>
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">Start my free trial</button>
       <div class="gs-test-note">
-        <i class="fa fa-lock"></i> Test mode — no payment is collected yet. Your trial account is created and you'll be signed in.
+        <i class="fa fa-lock"></i> No card needed for the {{ trial_days }}-day trial. Add payment any time from Billing.
       </div>
       <div class="gs-test-note" style="margin-top:6px;">
         Already have an account? <a href="{% url 'users:login' %}" style="color:var(--purple-400,#8E6FE0); font-weight:600;">Sign in</a>

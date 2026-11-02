@@ -1,0 +1,8 @@
+{% autoescape off %}Hi {{ recipient }},
+
+"{{ project.name }}"{% if bu %} ({{ bu }}){% endif %} is ready to be scored, and you're one of the people scoring it.
+Scores are anonymous, and the project moves forward once everyone has scored.
+
+Score it: {{ score_url }}
+Project details: {{ project_url }}
+{% endautoescape %}

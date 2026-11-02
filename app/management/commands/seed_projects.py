@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from business_unit.models import Department, BusinessUnit, Team
 from project.models import Action
 from strategy.models import Project, Objective, Measure
+from business_unit.email import quiet as quiet_emails
 
 
 def _rand_date(rng, start, end):
@@ -43,6 +44,7 @@ PROJECTS = [
 class Command(BaseCommand):
     help = 'Seed dummy Projects (+ child tasks) for UX testing.'
 
+    @quiet_emails  # seeding never sends project notifications
     def handle(self, *args, **options):
         rng = random.Random(42)
         today = date.today()

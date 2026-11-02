@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 from business_unit.models import Company, Department, Team
 from strategy.models import Project, Objective, Measure
 from project.models import Action
+from business_unit.email import quiet as quiet_emails
 
 # (name, status, approved, scored, revenue, effort_size, why, dod, okey)
 # okey: volume=Shopper Volume, close=Close Rate, aov=Average Order Value, ''=none
@@ -52,6 +53,7 @@ OBJ_KEYWORD = {'volume': 'shopper', 'close': 'close', 'aov': 'order value'}
 class Command(BaseCommand):
     help = 'Seed demo Projects for the Demo Account / Google Merch Shop.'
 
+    @quiet_emails  # seeding never sends project notifications
     def handle(self, *args, **opts):
         rng = random.Random(4207)
         today = date.today()

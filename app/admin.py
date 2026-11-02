@@ -2,7 +2,7 @@ from django.contrib import admin
 from strategy.models import Project, ProjectComment, AnnualGoals, Objective, Metric, KPI, Measure
 from project.models import Action, ActionComment
 from business_unit.models import Department, BusinessUnit, Organization, Company, CompanyMembership
-from app.models import MetricRecommendation, SendGridSettings
+from app.models import MetricRecommendation
 
 
 @admin.register(MetricRecommendation)
@@ -13,15 +13,6 @@ class MetricRecommendationAdmin(admin.ModelAdmin):
     search_fields = ('text',)
     ordering = ('metric', 'direction', 'order')
 
-
-@admin.register(SendGridSettings)
-class SendGridSettingsAdmin(admin.ModelAdmin):
-    list_display = ('from_email', 'from_name', 'feedback_to', 'active', 'is_configured', 'updated')
-    fields = ('api_key', 'from_email', 'from_name', 'feedback_to', 'active')
-
-    @admin.display(boolean=True, description='Configured')
-    def is_configured(self, obj):
-        return obj.is_configured
 
 # Register your models here.
 

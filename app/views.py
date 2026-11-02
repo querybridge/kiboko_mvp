@@ -2056,9 +2056,21 @@ def manage_users(request):
                 CompanyMembership.objects.get_or_create(
                     company=company, user=member, defaults={'role': 'member'})
                 _set_roles(member, roles_list)          # the roles chosen on the add row
-                if starter_pw:
-                    # Roles are defined at add time, so pop the credentials now — the
-                    # emailed login reflects the selected role(s).
+                from business_unit import email as mail
+                from app.integrations import google_oauth
+                invited = mail.send(member.email, f'You’ve been added to {company.name} on Kiboko', 'invite', {
+                    'recipient': member.first_name or member.email, 'email': member.email,
+                    'inviter': user.get_full_name() or user.username, 'company': company.name,
+                    'roles': ', '.join(ROLE_KEYS.get(r, r) for r in roles_list),
+                    'username': member.username, 'password': starter_pw,
+                    'login_url': request.build_absolute_uri(reverse('users:login')),
+                    'google': google_oauth.is_enabled(),
+                })
+                if invited:
+                    messages.success(request, f'Added {email} to {company.name} and emailed them an invite.')
+                elif starter_pw:
+                    # Email isn't set up (or failed): pop the credentials so the admin
+                    # can send them by hand. They reflect the selected role(s).
                     _flash_starter_creds(member, company)
                     messages.success(request, f'Added {email} — copy their temporary login from the popup to email.')
                 else:
@@ -2146,10 +2158,12 @@ def manage_users(request):
 @login_required
 def billing(request):
     """Billing — visible only to organization admins. Shows plan/trial status,
-    the billing address, and lets the admin cancel the account (data retained 90
-    days, then deleted forever). Payment collection is wired to Stripe later."""
+    the billing address, adds payment through Stripe Checkout (card changes via
+    the Stripe Customer Portal), and lets the admin cancel the account (data
+    retained 90 days, then deleted forever)."""
     import datetime
     from django.utils import timezone
+    from business_unit import billing as billing_svc
 
     if not (request.user.is_superuser or request.user.administered_orgs.exists()):
         return HttpResponseForbidden('Billing is available to organization admins only.')
@@ -2167,6 +2181,7 @@ def billing(request):
             org.billing_postal = (request.POST.get('billing_postal') or '').strip()
             org.billing_country = (request.POST.get('billing_country') or '').strip()
             org.save()
+            billing_svc.sync_customer(org)
             messages.success(request, 'Billing address saved.')
         elif action == 'cancel_account':
             org.plan_status = 'canceled'
@@ -2183,7 +2198,22 @@ def billing(request):
             messages.success(request, 'Welcome back — your account is active again.')
         return redirect('app:billing')
 
-    return render(request, 'app/billing.html', {'title': 'Billing', 'organization': org})
+    # Back from Stripe Checkout.
+    checkout = request.GET.get('checkout')
+    if org is not None and checkout == 'success':
+        if billing_svc.confirm_checkout(org, request.GET.get('session_id')):
+            messages.success(request, 'Payment method added — thank you. Your subscription is active.')
+        else:
+            messages.info(request, 'Thanks — we’re confirming your payment with Stripe. Refresh in a moment.')
+        return redirect('app:billing')
+    if checkout == 'canceled':
+        messages.info(request, 'No payment was added.')
+        return redirect('app:billing')
+
+    return render(request, 'app/billing.html', {
+        'title': 'Billing', 'organization': org,
+        'payments_ready': bool(org and billing_svc.is_configured() and billing_svc.line_items(org)),
+    })
 
 
 def _org_for(user):
@@ -2496,7 +2526,8 @@ def feedback(request):
     gets a friendly confirmation."""
     if request.method != 'POST':
         return redirect('app:analytics_grow_sales')
-    from app.integrations import sendgrid_mail
+    from business_unit import email as mail
+    from business_unit.models import IntegrationSettings
     back = request.POST.get('next') or 'app:analytics_grow_sales'
     msg = (request.POST.get('message') or '').strip()
     if not msg:
@@ -2505,16 +2536,16 @@ def feedback(request):
 
     u = request.user
     who = u.get_full_name() or u.username
-    cfg = sendgrid_mail.get_settings()
-    to = cfg.feedback_to if cfg else 'feedback@kibokomethod.com'
-    subject = f'Kiboko feedback from {who}'
-    body = (f'From: {who} <{u.email}>\nUser id: {u.id}\n'
-            f'Page: {request.POST.get("next") or ""}\n\n{msg}')
-    ok, detail = sendgrid_mail.send(to, subject, body, reply_to=(u.email or None))
+    org = _org_for(u)
+    to = IntegrationSettings.current().feedback_to or 'info@kibokomethod.com'
+    ok = mail.send(to, f'Kiboko feedback from {who}', 'feedback', {
+        'who': who, 'email': u.email, 'user_id': u.id, 'username': u.username,
+        'org': org.name if org else '', 'page': request.POST.get('next') or '', 'message': msg,
+    }, reply_to=(u.email or None))
     if not ok:
         # Capture it server-side until SendGrid is live so nothing is lost.
         logging.getLogger('app.feedback').warning(
-            'FEEDBACK (unsent: %s) from %s <%s>: %s', detail, u.username, u.email, msg)
+            'FEEDBACK (unsent) from %s <%s>: %s', u.username, u.email, msg)
     messages.success(request, 'Thanks for your feedback — the Kiboko team will see it.')
     return redirect(back)
 

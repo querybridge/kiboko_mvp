@@ -1,0 +1,6 @@
+{% autoescape off %}Hi {{ recipient }},
+
+Your project "{{ project.name }}" moved from {{ from_phase }} to {{ to_phase }}.
+
+View it: {{ project_url }}
+{% endautoescape %}

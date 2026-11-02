@@ -11,6 +11,7 @@
   .bl-status.canceled, .bl-status.past_due { background:rgba(231,76,60,0.18); color:#f0a59c; }
   .bl-status.paused { background:rgba(241,196,15,0.18); color:#f2d675; }
   .bl-plan-price { font-size:28px; font-weight:800; color:var(--text-primary,#f2edff); }
+  .bl-pay { margin-top:14px; padding-top:14px; border-top:1px solid var(--card-edge, rgba(214,197,247,0.14)); }
   .bl-danger { border:1px solid rgba(231,76,60,0.5); border-radius:12px; padding:18px 20px; }
   .bl-danger h4 { color:#f0a59c; font-weight:700; margin-top:0; }
 </style>
@@ -35,6 +36,15 @@
     <p>You don’t administer an organization yet.</p>
   </div></div></div></div>
   {% else %}
+
+  {% if organization.is_locked %}
+  <div class="row"><div class="col-md-12">
+    <div class="alert alert-warning"><i class="fa fa-lock"></i>
+      {% if organization.plan_status == 'past_due' %}Your last payment didn’t go through. Update your payment method to restore access for your team.
+      {% else %}Your free trial has ended. Add a payment method to restore access for your team.{% endif %}
+    </div>
+  </div></div>
+  {% endif %}
 
   {% if organization.is_canceled %}
   <div class="row"><div class="col-md-12">
@@ -64,12 +74,38 @@
           <p class="text-muted">No plan selected.</p>
           {% endif %}
           <p>Status: <span class="bl-status {{ organization.plan_status }}">{{ organization.plan_status }}</span></p>
-          {% if organization.trial_days_left is not None %}
-          <p class="text-muted"><i class="fa fa-clock-o"></i> {{ organization.trial_days_left }} day{{ organization.trial_days_left|pluralize }} left in your free trial.</p>
+          {% if organization.billing_exempt %}
+          <p class="text-muted"><i class="fa fa-check-circle"></i> Complimentary account — no payment required.</p>
+          {% else %}
+          {% if organization.trial_days_left is not None and not organization.has_payment %}
+          <p class="text-muted"><i class="fa fa-clock-o"></i>
+            {% if organization.trial_days_left %}{{ organization.trial_days_left }} day{{ organization.trial_days_left|pluralize }} left in your free trial (ends {{ organization.trial_end_date|date:"M j, Y" }}).
+            {% else %}Your free trial ended on {{ organization.trial_end_date|date:"M j, Y" }}.{% endif %}</p>
           {% endif %}
-          <p class="text-muted" style="font-size:12px; margin-top:14px;">
-            <i class="fa fa-lock"></i> Payment collection is coming soon — no card is charged yet.
-          </p>
+
+          <div class="bl-pay">
+            {% if organization.has_payment %}
+            <p><i class="fa fa-credit-card"></i> Payment method on file.
+              {% if organization.trial_end_date and organization.trial_days_left %}Your first charge is on {{ organization.trial_end_date|date:"M j, Y" }}, when the free trial ends.{% endif %}</p>
+            {% if payments_ready %}
+            <form method="post" action="{% url 'billing:portal' %}">{% csrf_token %}
+              <button type="submit" class="btn btn-default"><i class="fa fa-cog"></i> Manage payment &amp; invoices</button>
+            </form>
+            {% endif %}
+            {% else %}
+            <p>Add a payment method to keep using Kiboko after your trial.
+              {% if organization.trial_days_left %}You won’t be charged until {{ organization.trial_end_date|date:"M j, Y" }}.{% endif %}</p>
+            {% if payments_ready %}
+            <form method="post" action="{% url 'billing:checkout' %}">{% csrf_token %}
+              <button type="submit" class="btn btn-success"><i class="fa fa-credit-card"></i> Add payment method</button>
+            </form>
+            <p class="text-muted" style="font-size:12px; margin-top:8px;"><i class="fa fa-lock"></i> Card details are entered on Stripe’s secure page; Kiboko never sees them.</p>
+            {% else %}
+            <p class="text-muted" style="font-size:12px;"><i class="fa fa-info-circle"></i> Online payment isn’t available yet. Contact Kiboko support to set up billing.</p>
+            {% endif %}
+            {% endif %}
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>

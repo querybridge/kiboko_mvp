@@ -1,0 +1,12 @@
+{% autoescape off %}Hi {{ recipient }},
+
+A project was added to {{ bu }}{% if proposer %} by {{ proposer }}{% endif %}:
+
+  {{ project.name }}
+{% if project.why %}  {{ project.why }}
+{% endif %}
+Please review it: approve it to move it forward, or leave feedback for the owner.
+
+Approve projects: {{ approve_url }}
+Leave feedback:   {{ comment_url }}
+{% endautoescape %}

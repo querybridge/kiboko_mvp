@@ -1,0 +1,10 @@
+{% extends "emails/_base.html" %}
+{% block body %}
+<p>Hi {{ recipient }},</p>
+<p>A project was added to <strong>{{ bu }}</strong>{% if proposer %} by {{ proposer }}{% endif %}:</p>
+<p style="font-size:17px; font-weight:700; margin:6px 0 4px;"><a href="{{ project_url }}" style="color:#432A85; text-decoration:none;">{{ project.name }}</a></p>
+{% if project.why %}<p style="color:#432A85; margin-top:0;">{{ project.why }}</p>{% endif %}
+<p>Please review it: approve it to move it forward, or leave feedback for the owner.</p>
+{% include "emails/_button.html" with url=approve_url label="Review and approve" %}
+<a href="{{ comment_url }}" style="color:#6B4BC9; font-weight:600;">Leave feedback</a>
+{% endblock %}

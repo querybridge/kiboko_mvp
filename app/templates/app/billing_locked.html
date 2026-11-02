@@ -1,0 +1,17 @@
+{% extends "app/base_site.html" %}
+{% block title %} Subscription required {% endblock title %}
+{% block content %}
+<div class="right_col" role="main">
+  <div class="row"><div class="col-md-8 col-md-offset-2">
+    <div class="x_panel" style="margin-top:40px; text-align:center; padding:40px 30px;">
+      <i class="fa fa-lock" style="font-size:40px; color:var(--text-muted); margin-bottom:14px;"></i>
+      <h3 style="margin-top:0;">{{ organization.name }}’s Kiboko subscription needs attention</h3>
+      <p class="text-muted" style="font-size:15px; max-width:520px; margin:12px auto 0;">
+        {% if organization.plan_status == 'past_due' %}The last payment didn’t go through.{% else %}The free trial has ended.{% endif %}
+        Your organization admin{% if organization.org_admin %}, {{ organization.org_admin.get_full_name|default:organization.org_admin.email }},{% endif %}
+        can restore access by adding a payment method on the Billing page. Your data is safe in the meantime.</p>
+      <p style="margin-top:22px;"><a href="{% url 'users:logout' %}" class="btn btn-default">Sign out</a></p>
+    </div>
+  </div></div>
+</div>
+{% endblock content %}

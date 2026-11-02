@@ -1,0 +1,9 @@
+{% extends "emails/_base.html" %}
+{% block body %}
+<p>Hi{% if first_name %} {{ first_name }}{% endif %},</p>
+<p>Your Kiboko trial code is:</p>
+<p style="font-size:28px; font-weight:800; letter-spacing:.18em; color:#432A85; margin:8px 0 16px;">{{ code }}</p>
+<p>Enter it on the sign-up page to start your {{ days }}-day free trial. No card is needed.
+The code works once and expires in {{ valid_days }} days.</p>
+<p style="color:#6A5A8C; font-size:13px;">If you didn’t ask for this, you can ignore this email.</p>
+{% endblock %}

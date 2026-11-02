@@ -1,0 +1,13 @@
+{% autoescape off %}Hi {{ recipient }},
+
+{{ inviter }} added you to {{ company }} on Kiboko{% if roles %} as {{ roles }}{% endif %}.
+{% if password %}
+Sign in here: {{ login_url }}
+Username: {{ username }}
+Temporary password: {{ password }}
+
+You'll be asked to choose your own password the first time you sign in.{% else %}
+Sign in here: {{ login_url }}{% endif %}
+{% if google %}
+If {{ email }} is a Google account, you can also use "Sign in with Google".{% endif %}
+{% endautoescape %}

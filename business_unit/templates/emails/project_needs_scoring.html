@@ -1,0 +1,8 @@
+{% extends "emails/_base.html" %}
+{% block body %}
+<p>Hi {{ recipient }},</p>
+<p><strong>{{ project.name }}</strong>{% if bu %} ({{ bu }}){% endif %} is ready to be scored, and you’re one of the people scoring it.</p>
+<p style="color:#6A5A8C; font-size:14px;">Scores are anonymous, and the project moves forward once everyone has scored.</p>
+{% include "emails/_button.html" with url=score_url label="Score it" %}
+<a href="{{ project_url }}" style="color:#6B4BC9; font-weight:600;">Project details</a>
+{% endblock %}

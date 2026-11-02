@@ -79,6 +79,13 @@ class Organization(models.Model):
 	                         related_name='organizations')
 	premium_connection = models.BooleanField(default=False,
 	                                         help_text='Standard add-on: warehouse-grade BigQuery connection')
+	billing_exempt = models.BooleanField('Comped (no payment required)', default=False,
+	                                     help_text='Demo, sales, or internal account: never locked for payment')
+	trial_ends = models.DateField(null=True, blank=True,
+	                              help_text='Last day of the free trial (set when the trial code is redeemed)')
+	# Stripe: the customer + subscription created when the admin adds payment.
+	stripe_customer_id = models.CharField(max_length=80, blank=True)
+	stripe_subscription_id = models.CharField(max_length=80, blank=True)
 	# Billing address (the billing entity of record; Stripe holds the card later).
 	billing_legal_name = models.CharField(max_length=200, blank=True)
 	billing_email = models.EmailField(blank=True)
@@ -107,17 +114,42 @@ class Organization(models.Model):
 		"""What this org calls its companies in the UI."""
 		return 'Client' if self.kind == 'agency' else 'Company'
 
-	TRIAL_DAYS = 30
+	TRIAL_DAYS = 45
 	PURGE_DAYS = 90
+
+	@property
+	def trial_end_date(self):
+		"""Last day of the trial, or None if the org has no trial clock (internal)."""
+		if self.trial_ends:
+			return self.trial_ends
+		if self.trial_started:
+			import datetime
+			return self.trial_started + datetime.timedelta(days=self.TRIAL_DAYS)
+		return None
 
 	@property
 	def trial_days_left(self):
 		"""Days remaining in the trial (>=0), or None if not on a trial."""
-		if self.plan_status != 'trial' or not self.trial_started:
+		end = self.trial_end_date
+		if self.plan_status != 'trial' or end is None:
 			return None
 		import datetime
-		left = self.TRIAL_DAYS - (datetime.date.today() - self.trial_started).days
-		return max(0, left)
+		return max(0, (end - datetime.date.today()).days)
+
+	@property
+	def has_payment(self):
+		return bool(self.stripe_subscription_id)
+
+	@property
+	def is_locked(self):
+		"""True when the org may not use the app until payment is set up: the trial
+		ran out with no payment on file, or Stripe reports the payment past due.
+		Platform demo and internal orgs (no trial clock) are never locked."""
+		if self.is_platform_demo or self.billing_exempt:
+			return False
+		if self.plan_status == 'past_due':
+			return True
+		return self.plan_status == 'trial' and self.trial_days_left == 0 and not self.has_payment
 
 	@property
 	def is_canceled(self):
@@ -362,3 +394,81 @@ class GA4DailyRollup(models.Model):
 
 	def __str__(self):
 		return f'{self.company} / {self.property_id} / {self.date}'
+
+
+class IntegrationSettings(models.Model):
+	"""Platform-wide API keys for SendGrid (email) and Stripe (billing). One row,
+	edited in Django admin. Until a key is filled in, the matching feature stays
+	off: emails are skipped (logged) and the Billing page hides payment."""
+	sendgrid_api_key = models.CharField('SendGrid API key', max_length=200, blank=True)
+	email_from_address = models.EmailField('From address', blank=True, default='no-reply@kibokomethod.com',
+	                                       help_text='A sender verified in SendGrid')
+	email_from_name = models.CharField('From name', max_length=100, blank=True, default='Kiboko')
+	site_url = models.URLField('App URL', blank=True,
+	                           help_text='Base address used for links in emails, e.g. https://kiboko.pythonanywhere.com')
+	feedback_to = models.EmailField('Feedback goes to', default='info@kibokomethod.com',
+	                                help_text='Where the in-app Feedback button delivers')
+	notifications_enabled = models.BooleanField(default=True,
+	                                            help_text='Untick to pause all project notification emails')
+	stripe_secret_key = models.CharField('Stripe secret key', max_length=200, blank=True,
+	                                     help_text='sk_test_... or sk_live_...')
+	stripe_publishable_key = models.CharField('Stripe publishable key', max_length=200, blank=True,
+	                                          help_text='pk_test_... or pk_live_...')
+	stripe_webhook_secret = models.CharField('Stripe webhook signing secret', max_length=200, blank=True,
+	                                         help_text='whsec_... from the webhook endpoint in Stripe')
+	updated = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		verbose_name = 'Integration Settings'
+		verbose_name_plural = 'Integration Settings'
+
+	def __str__(self):
+		return 'API keys (SendGrid, Stripe)'
+
+	@classmethod
+	def current(cls):
+		obj, _ = cls.objects.get_or_create(pk=1)
+		return obj
+
+	def save(self, *args, **kwargs):
+		self.pk = 1                       # singleton
+		super().save(*args, **kwargs)
+
+
+class TrialCode(models.Model):
+	"""A one-time code emailed to a prospective customer. Redeeming it at signup
+	starts the 45-day free trial; no trial begins without one."""
+	email = models.EmailField()
+	code = models.CharField(max_length=12, unique=True)
+	created = models.DateTimeField(auto_now_add=True)
+	expires = models.DateTimeField()
+	used_at = models.DateTimeField(null=True, blank=True)
+	organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, null=True, blank=True,
+	                                 related_name='trial_codes')
+
+	VALID_DAYS = 7
+
+	class Meta:
+		ordering = ['-created']
+
+	def __str__(self):
+		return f'{self.code} ({self.email})'
+
+	@classmethod
+	def issue(cls, email):
+		import datetime, secrets
+		from django.utils import timezone
+		alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'          # no I O 0 1
+		while True:
+			code = ''.join(secrets.choice(alphabet) for _ in range(8))
+			if not cls.objects.filter(code=code).exists():
+				break
+		return cls.objects.create(email=email, code=code,
+		                          expires=timezone.now() + datetime.timedelta(days=cls.VALID_DAYS))
+
+	@classmethod
+	def redeemable(cls, email, code):
+		"""The unused, unexpired code issued to this email, or None."""
+		from django.utils import timezone
+		return cls.objects.filter(email__iexact=email, code=(code or '').strip().upper(),
+		                          used_at__isnull=True, expires__gt=timezone.now()).first()

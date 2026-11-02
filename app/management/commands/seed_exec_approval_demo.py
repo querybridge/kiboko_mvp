@@ -13,6 +13,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from business_unit.email import quiet as quiet_emails
 
 
 # lever + (current, target) per AEE element so the estimate is sensible.
@@ -51,6 +52,7 @@ class Command(BaseCommand):
         parser.add_argument('--count', type=int, default=len(SPEC),
                             help=f'How many to create (max {len(SPEC)}; default all).')
 
+    @quiet_emails  # seeding never sends project notifications
     def handle(self, *args, **opts):
         from django.contrib.auth.models import User
         from business_unit.models import Company, Department

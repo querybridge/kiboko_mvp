@@ -1,0 +1,9 @@
+{% autoescape off %}Hi{% if first_name %} {{ first_name }}{% endif %},
+
+Your Kiboko trial code is: {{ code }}
+
+Enter it on the sign-up page to start your {{ days }}-day free trial. No card is needed.
+The code works once and expires in {{ valid_days }} days.
+
+If you didn't ask for this, you can ignore this email.
+{% endautoescape %}

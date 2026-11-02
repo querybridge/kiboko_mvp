@@ -16,3 +16,8 @@ google-analytics-data>=0.18
 google-analytics-admin>=0.22
 # GA4 Premium tier: read the customer's GA4->BigQuery export via a service account.
 google-cloud-bigquery>=3.11
+
+# Billing (Stripe Checkout + Customer Portal) and email (SendGrid). Keys are set in
+# Django admin -> Integration Settings; both stay off until a key is entered.
+stripe>=16.0,<17
+sendgrid>=6.11,<7

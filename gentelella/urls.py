@@ -30,4 +30,6 @@ urlpatterns = [
     path('project/', include('project.urls', namespace='project')),
     path('users/', include('users.urls', namespace='users')),
     path('app/', include('app.urls')),
+    # Stripe: Checkout, Customer Portal, webhook (reachable while billing-locked)
+    path('billing/', include('business_unit.billing_urls', namespace='billing')),
 ]

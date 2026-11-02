@@ -65,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'users.middleware.ForcePasswordChangeMiddleware',
+    'business_unit.middleware.BillingLockMiddleware',
 ]
 
 ROOT_URLCONF = 'gentelella.urls'

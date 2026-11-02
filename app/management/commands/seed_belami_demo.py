@@ -25,6 +25,7 @@ from django.core.management.base import BaseCommand, CommandError
 from app.models import DailyActual, MonthlyGoal
 from business_unit.models import Company, BusinessUnit, Department
 from strategy.models import Objective, Project
+from business_unit.email import quiet as quiet_emails
 
 
 # --- BU demo profile: category (seasonal shape) + annual sales run-rate --------
@@ -120,6 +121,7 @@ class Command(BaseCommand):
         parser.add_argument('--from', dest='start', default='2024-01-01')
         parser.add_argument('--to', dest='end', default=None)
 
+    @quiet_emails  # seeding never sends project notifications
     def handle(self, *args, **opts):
         rng = random.Random(1128)
         # Bootstrap the pieces this demo needs so it works on a fresh database

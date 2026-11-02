@@ -1,0 +1,7 @@
+{% autoescape off %}Feedback from {{ who }}{% if email %} <{{ email }}>{% endif %}
+User: {{ username }} (id {{ user_id }}){% if org %}
+Organization: {{ org }}{% endif %}
+Page: {{ page }}
+
+{{ message }}
+{% endautoescape %}

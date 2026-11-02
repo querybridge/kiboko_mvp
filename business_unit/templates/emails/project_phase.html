@@ -1,0 +1,7 @@
+{% extends "emails/_base.html" %}
+{% block body %}
+<p>Hi {{ recipient }},</p>
+<p>Your project <strong>{{ project.name }}</strong> moved to a new phase:</p>
+<p style="font-size:16px; margin:6px 0 16px;"><span style="color:#6A5A8C;">{{ from_phase }}</span> &rarr; <strong style="color:#432A85;">{{ to_phase }}</strong></p>
+{% include "emails/_button.html" with url=project_url label="View project" %}
+{% endblock %}
