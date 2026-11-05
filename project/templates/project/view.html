@@ -20,6 +20,9 @@
   .bl-tile-value { font-size: 14px; color: var(--text-secondary); margin-left: 6px; }
   .bl-split { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--border-subtle); }
   .bl-split span { display: block; height: 100%; }
+  .bl-split .seg-attract_traffic { background: var(--aee-attract); }
+  .bl-split .seg-engage_customers { background: var(--aee-engage); }
+  .bl-split .seg-expand_purchase { background: var(--aee-expand); }
   .bl-legend { display: flex; gap: 14px; justify-content: flex-end; font-size: 11px; color: var(--text-muted); margin: -12px 0 14px; }
   .bl-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
   @media (max-width: 900px) { .bl-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -33,18 +36,18 @@
   .bl-table td { padding: 11px 12px; border-bottom: 1px solid var(--card-edge); vertical-align: middle; }
   .bl-table tbody tr:hover td { background: var(--bg-surface-muted); }
   .bl-row td:first-child { border-left: 3px solid transparent; }
-  .bl-row.aee-attract_traffic td:first-child { border-left-color: #3FC9E0; }
-  .bl-row.aee-engage_customers td:first-child { border-left-color: #ECB752; }
-  .bl-row.aee-expand_purchase td:first-child { border-left-color: #55C892; }
+  .bl-row.aee-attract_traffic td:first-child { border-left-color: var(--aee-attract); }
+  .bl-row.aee-engage_customers td:first-child { border-left-color: var(--aee-engage); }
+  .bl-row.aee-expand_purchase td:first-child { border-left-color: var(--aee-expand); }
   .bl-name a { font-weight: 700; font-size: 14px; color: var(--text-primary); }
   .bl-name a:hover { color: var(--accent-secondary); }
   .bl-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
   .bl-aee { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 10px;
     background: var(--bg-elevated); color: var(--text-secondary); white-space: nowrap; }
   .bl-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--text-muted); }
-  .aee-attract_traffic .bl-dot { background: #3FC9E0; }
-  .aee-engage_customers .bl-dot { background: #ECB752; }
-  .aee-expand_purchase .bl-dot { background: #55C892; }
+  .aee-attract_traffic .bl-dot { background: var(--aee-attract); }
+  .aee-engage_customers .bl-dot { background: var(--aee-engage); }
+  .aee-expand_purchase .bl-dot { background: var(--aee-expand); }
   .bl-num { text-align: right; }
   .bl-value { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .bl-score { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
@@ -87,11 +90,11 @@
         <a class="bl-tile{% if ph.key == 'blocked' %} blocked{% endif %}" href="#phase-{{ ph.key }}">
           <div class="bl-tile-label">{{ ph.label }}</div>
           <div class="bl-tile-nums"><span class="bl-tile-count">{{ ph.count }}</span><span class="bl-tile-value">{{ ph.value }}</span></div>
-          <div class="bl-split" title="{% for s in ph.split %}{{ s.name }} {{ s.pct|floatformat:0 }}%{% if not forloop.last %} · {% endif %}{% endfor %}">{% for s in ph.split %}<span style="width:{{ s.pct }}%; background:{{ s.color }};"></span>{% endfor %}</div>
+          <div class="bl-split" title="{% for s in ph.split %}{{ s.name }} {{ s.pct|floatformat:0 }}%{% if not forloop.last %} · {% endif %}{% endfor %}">{% for s in ph.split %}<span class="seg-{{ s.key }}" style="width:{{ s.pct }}%;"></span>{% endfor %}</div>
         </a>
         {% endfor %}
       </div>
-      <div class="bl-legend"><span><i style="background:#3FC9E0"></i>Attract</span><span><i style="background:#ECB752"></i>Engage</span><span><i style="background:#55C892"></i>Expand</span><span>bar = share of value</span></div>
+      <div class="bl-legend"><span><i style="background:var(--aee-attract)"></i>Attract</span><span><i style="background:var(--aee-engage)"></i>Engage</span><span><i style="background:var(--aee-expand)"></i>Expand</span><span>bar = share of value</span></div>
       {% endif %}
 
       {% if lane_filter %}

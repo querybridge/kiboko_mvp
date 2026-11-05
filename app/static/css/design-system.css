@@ -50,6 +50,11 @@
   --status-danger:  #E26B6B;
   --status-info:    var(--purple-400);
 
+  /* AEE alignment colours (Attract / Engage / Expand) */
+  --aee-attract: #3FC9E0;
+  --aee-engage:  #ECB752;
+  --aee-expand:  #55C892;
+
   /* Radii */
   --radius-app: 12px;
   --radius-card: 16px;
@@ -470,6 +475,11 @@ label { color: var(--text-secondary); font-weight: 500; }
 }
 .kanban-fab:hover { background: var(--purple-500) !important; }
 
+/* ----- Logo: one image per theme ----- */
+.logo-for-light { display: none !important; }
+html.theme-light .logo-for-dark { display: none !important; }
+html.theme-light .logo-for-light { display: inline-block !important; }
+
 /* ----- Misc ----- */
 hr { border-top: 1px solid var(--border-subtle); }
 code, pre { background: var(--bg-surface-muted); color: var(--purple-300); border-radius: 6px; }
@@ -488,26 +498,49 @@ code, pre { background: var(--bg-surface-muted); color: var(--purple-300); borde
 
 html.theme-light {
   color-scheme: light;
+  /* Light theme follows WCAG 2.2 AA: body text >= 4.5:1 on its surface, borders
+     and icons that carry meaning >= 3:1. Text is near-neutral (purple text reads
+     washed out on white); purple is kept for accents, links, and actions. */
 
-  /* Surfaces */
-  --bg-app:           #F5F1FA;
+  /* Surfaces: a cool off-white page, white cards that lift off it */
+  --bg-app:           #F4F2F8;
   --bg-surface:       #FFFFFF;
-  --bg-surface-muted: #ECE2FB;
+  --bg-surface-muted: #EFEBF6;
   --bg-elevated:      #FFFFFF;
 
-  /* Borders */
-  --border-subtle: #E0D0F5;
-  --border-strong: #BAA3F0;
+  /* Borders: subtle for dividers, strong (>= 3:1) for inputs and outlines */
+  --border-subtle: #DDD6EC;
+  --border-strong: #8A80A6;
 
-  /* Text */
-  --text-primary:   #1A0F36;
-  --text-secondary: #432A85;
-  --text-muted:     #6A5A8C;
-  --text-disabled:  #BAA3F0;
+  /* Text (contrast on white / on the page background) */
+  --text-primary:   #1C1530;   /* 17.5:1 */
+  --text-secondary: #3E3658;   /* 11.2:1 */
+  --text-muted:     #5C5474;   /*  6.4:1 */
+  --text-disabled:  #6F6788;   /*  5.0:1, placeholders */
 
-  /* Shadows softer for light bg */
-  --shadow-card:  0 6px 18px rgba(36, 23, 73, 0.08);
-  --shadow-panel: 0 14px 40px rgba(36, 23, 73, 0.14);
+  /* Accents darkened so they pass on white */
+  --accent-primary:   #5B3A9E;  /* 8.3:1 */
+  --accent-secondary: #4B2D91;  /* links, 10.1:1 */
+
+  /* Status: dark enough to read as text; always paired with a word or icon */
+  --status-success: #1F7A4D;   /* 5.3:1 */
+  --status-warning: #8F5600;   /* 6.0:1 */
+  --status-danger:  #B42318;   /* 6.6:1 */
+  --status-info:    #5B3A9E;
+
+  /* AEE colours for marks and text on white (the dark theme's bright cyan,
+     amber and green fall under 2:1 here) */
+  --aee-attract: #0B7A90;
+  --aee-engage:  #A85F00;
+  --aee-expand:  #1F7A4D;
+
+  /* Cards: white with a visible edge and a soft two-layer shadow */
+  --card-fill:   #FFFFFF;
+  --card-edge:   #D5CDE6;
+  --card-shadow: 0 1px 2px rgba(28, 21, 48, 0.06), 0 4px 14px rgba(28, 21, 48, 0.06);
+
+  --shadow-card:  0 1px 2px rgba(28, 21, 48, 0.06), 0 6px 18px rgba(28, 21, 48, 0.08);
+  --shadow-panel: 0 14px 40px rgba(28, 21, 48, 0.14);
 }
 
 /* Element-level overrides for light mode where the dark rules used purple-ladder vars directly */
@@ -605,16 +638,54 @@ html.theme-light code, html.theme-light pre {
 html.theme-light .kanban-card .card-value { color: var(--purple-700) !important; }
 html.theme-light .kanban-lane { background: var(--purple-100) !important; }
 html.theme-light .kanban-card { background: var(--bg-surface) !important; }
-/* Lane headers use the dark purple ladder; in light mode the dark base text disappears.
-   Use the lightest palette shade (purple-100) for contrast. */
+/* Lane headers: white text (titles are links, which light mode would otherwise
+   colour purple-on-purple) on fills that all reach >= 4.5:1 against white. */
 html.theme-light .lane-header,
 html.theme-light .lane-header span,
-html.theme-light .lane-header .badge {
-  color: var(--purple-100) !important;
+html.theme-light .lane-header a,
+html.theme-light .lane-header .badge { color: #FFFFFF !important; }
+html.theme-light .lane-header .badge { background: rgba(255, 255, 255, 0.25) !important; }
+html.theme-light .lane-ready_to_score .lane-header     { background: var(--purple-600) !important; }
+html.theme-light .lane-scored .lane-header             { background: #6A4BB3 !important; }
+html.theme-light .lane-executive_approval .lane-header { background: #A85F00 !important; }
+html.theme-light .lane-on_deck .lane-header            { background: var(--purple-800) !important; }
+
+/* Logo: white SVG on dark, brand-purple SVG on light (see the .logo-for-* rules) */
+
+/* Inputs: white fields with a 3:1 border, so their edges are visible */
+html.theme-light .form-control,
+html.theme-light input.form-control,
+html.theme-light select.form-control,
+html.theme-light textarea.form-control {
+  background: #FFFFFF !important;
+  border-color: var(--border-strong) !important;
 }
-html.theme-light .lane-header .badge {
-  background: rgba(255, 255, 255, 0.22) !important;
-}
+html.theme-light .form-control:focus { background: #FFFFFF !important; border-color: var(--accent-primary) !important; }
+
+/* Focus ring: the dark theme's pale lavender is invisible on white */
+html.theme-light .btn:focus-visible,
+html.theme-light a:focus-visible,
+html.theme-light input:focus,
+html.theme-light select:focus,
+html.theme-light textarea:focus,
+html.theme-light .form-control:focus { outline-color: var(--accent-primary) !important; }
+
+/* Status fills: white text on the darker light-theme status colours */
+html.theme-light .label-success,
+html.theme-light .label-warning,
+html.theme-light .label-danger,
+html.theme-light .btn-warning,
+html.theme-light .btn-danger { color: #FFFFFF !important; }
+
+/* Panel titles get a firmer divider on white */
+html.theme-light .x_title { border-bottom-color: var(--border-subtle) !important; }
+html.theme-light .x_title h2 { color: var(--text-primary) !important; }
+
+/* Kanban: blocked / WIP lane headers in the darker status colours so their
+   pale header text stays readable */
+html.theme-light .lane-blocked .lane-header { background: var(--status-danger) !important; }
+html.theme-light .lane-active .lane-header  { background: var(--status-success) !important; }
+html.theme-light .kanban-card { border-color: var(--card-edge) !important; box-shadow: var(--card-shadow) !important; }
 
 /* Scrollbars */
 html.theme-light::-webkit-scrollbar-thumb { background: var(--purple-300); }

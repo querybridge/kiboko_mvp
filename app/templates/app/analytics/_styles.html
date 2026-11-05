@@ -21,6 +21,34 @@
     --ac-up: #6BC28C;
     --ac-down: #E88A8A;
   }
+  /* Light theme: white cards, near-neutral text, accents darkened to pass
+     WCAG AA on white. The coloured band headers keep the bright AEE fills
+     (dark text on them reads well) -- see the band rules below. */
+  html.theme-light #analytics-page {
+    --ac-top: #FFFFFF;
+    --ac-bot: #FFFFFF;
+    --ac-nested: #F4F1FA;
+    --ac-edge: #D5CDE6;
+    --ac-shadow: 0 1px 2px rgba(28,21,48,0.06), 0 4px 14px rgba(28,21,48,0.06);
+    --ac-primary: #1C1530;
+    --ac-secondary: #3E3658;
+    --ac-muted: #5C5474;
+    --ac-grow: #5B3A9E;
+    --ac-attract: #0B7A90;
+    --ac-engage: #A85F00;
+    --ac-expand: #1F7A4D;
+    --ac-up: #1F7A4D;
+    --ac-down: #B42318;
+  }
+  html.theme-light #analytics-page #analytics-filter select,
+  html.theme-light #analytics-page #analytics-filter .af-daterange { background: #FFFFFF; border-color: #8A80A6; }
+  html.theme-light #analytics-page .group-grow    .ac-band { background: #BAA3F0; }
+  html.theme-light #analytics-page .group-attract .ac-band { background: #3FC9E0; }
+  html.theme-light #analytics-page .group-engage  .ac-band { background: #ECB752; }
+  html.theme-light #analytics-page .group-expand  .ac-band { background: #55C892; }
+  html.theme-light #analytics-page .hc-premium-badge { background: rgba(255,255,255,0.92); box-shadow: 0 4px 12px rgba(28,21,48,0.12); }
+  html.theme-light #analytics-page .ac-linked:hover { box-shadow: 0 8px 22px rgba(28,21,48,0.14); }
+  html.theme-light #analytics-page .cp-legend-dot { border-color: rgba(28,21,48,0.35); }
 
   #analytics-page .page-title { margin-bottom: 10px; }
   #analytics-page .page-title h3 { letter-spacing: -0.3px; }

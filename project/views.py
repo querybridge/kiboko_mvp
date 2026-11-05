@@ -147,7 +147,7 @@ def _phase_summary(key, label, projects):
     for aee, name, color in AEE_COLORS:
         w = sum(weight(p) for p in projects if p.aee_alignment == aee)
         if w:
-            split.append({'name': name, 'color': color, 'pct': round(100 * w / denom, 1)})
+            split.append({'key': aee, 'name': name, 'color': color, 'pct': round(100 * w / denom, 1)})
     short = (f'${total / 1e6:.1f}M' if total >= 1e6 else f'${total / 1e3:.0f}K' if total >= 1e3 else f'${total:,}')
     return {'key': key, 'label': label, 'count': len(projects), 'value': short, 'split': split}
 

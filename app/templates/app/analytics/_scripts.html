@@ -53,12 +53,21 @@
 
   if (typeof Chart === 'undefined') return;
 
-  // Light defaults so axes / legends read on the dark card surface.
-  Chart.defaults.global.defaultFontColor = '#C8BCDF';
+  // Axis / legend / series colours per theme: bright on the dark cards, darker
+  // (WCAG AA on white) in light mode.
+  var LIGHT = document.documentElement.classList.contains('theme-light');
+  Chart.defaults.global.defaultFontColor = LIGHT ? '#3E3658' : '#C8BCDF';
   Chart.defaults.global.defaultFontFamily = "'Inter', system-ui, sans-serif";
-  var GRID = 'rgba(255,255,255,0.06)';
+  var GRID = LIGHT ? 'rgba(28,21,48,0.10)' : 'rgba(255,255,255,0.06)';
+  var ZERO = LIGHT ? 'rgba(28,21,48,0.35)' : 'rgba(255,255,255,0.28)';
+  var POINT_EDGE = LIGHT ? 'rgba(28,21,48,0.45)' : 'rgba(255,255,255,0.55)';
 
-  var GROUP_COLORS = {
+  var GROUP_COLORS = LIGHT ? {
+    grow:    { line: '#5B3A9E', fill: 'rgba(91,58,158,0.12)',  line2: '#9C93B5', fill2: 'rgba(156,147,181,0.10)' },
+    attract: { line: '#0B7A90', fill: 'rgba(11,122,144,0.12)', line2: '#7FB7C3', fill2: 'rgba(11,122,144,0.06)' },
+    engage:  { line: '#A85F00', fill: 'rgba(168,95,0,0.12)',   line2: '#D2AE7A', fill2: 'rgba(168,95,0,0.06)' },
+    expand:  { line: '#1F7A4D', fill: 'rgba(31,122,77,0.12)',  line2: '#8DBFA5', fill2: 'rgba(31,122,77,0.06)' }
+  } : {
     grow:    { line: '#A98EE8', fill: 'rgba(169,142,232,0.16)', line2: '#7A6AA0', fill2: 'rgba(122,106,160,0.14)' },
     attract: { line: '#3FC9E0', fill: 'rgba(63,201,224,0.16)',  line2: '#2C7C8A', fill2: 'rgba(63,201,224,0.08)' },
     engage:  { line: '#ECB752', fill: 'rgba(236,183,82,0.18)',  line2: '#96793C', fill2: 'rgba(236,183,82,0.08)' },
@@ -187,7 +196,7 @@
               borderColor: 'rgba(120,120,120,0.7)', borderWidth: 1, borderDash: [5, 4],
               fill: false, pointRadius: 0, showLine: true },
             { label: ch.heading, data: pts, backgroundColor: ptColors,
-              pointBackgroundColor: ptColors, borderColor: 'rgba(255,255,255,0.55)',
+              pointBackgroundColor: ptColors, borderColor: POINT_EDGE,
               borderWidth: 1, pointRadius: 6, pointHoverRadius: 8, showLine: false }
           ]
         },
@@ -218,10 +227,10 @@
           },
           scales: {
             xAxes: [{ scaleLabel: { display: true, labelString: 'Change in ' + ch.x_label + ' vs ' + cmp, fontSize: 10 },
-                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.28)', zeroLineWidth: 1.2 },
+                      gridLines: { color: GRID, zeroLineColor: ZERO, zeroLineWidth: 1.2 },
                       ticks: { fontSize: 10, callback: cpAxisTick } }],
             yAxes: [{ scaleLabel: { display: true, labelString: 'Change in ' + ch.y_label + ' vs ' + cmp, fontSize: 10 },
-                      gridLines: { color: GRID, zeroLineColor: 'rgba(255,255,255,0.28)', zeroLineWidth: 1.2 },
+                      gridLines: { color: GRID, zeroLineColor: ZERO, zeroLineWidth: 1.2 },
                       ticks: { fontSize: 10, callback: cpAxisTick } }]
           }
         }

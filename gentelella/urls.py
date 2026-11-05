@@ -23,6 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # Home page -> Grow Sales dashboard
     path('', RedirectView.as_view(url='/app/analytics/grow-sales/', permanent=False)),
+    # Browsers ask for /favicon.ico directly (e.g. on non-HTML responses).
+    path('favicon.ico', RedirectView.as_view(url='/static/images/kiboko-favicon.ico', permanent=True)),
     # Sign in with Google (callback path must match GOOGLE_OAUTH_REDIRECT_URI)
     path('auth/google/login/', auth_views.google_login, name='google_login'),
     path('auth/google/callback/', auth_views.google_callback, name='google_callback'),
