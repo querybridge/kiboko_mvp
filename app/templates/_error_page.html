@@ -33,7 +33,7 @@
     p { font-size: 15px; line-height: 1.5; color: var(--text-2); margin: 0 0 26px; }
     .err-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
     .err-btn { display: inline-block; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 700;
-      text-decoration: none; background: var(--btn-bg); color: var(--btn-text); border: 0; cursor: pointer; }
+      text-decoration: none; background: var(--btn-bg); color: var(--btn-text); border: 0; cursor: pointer; font: inherit; font-weight: 700; }
     .err-btn:hover { background: var(--btn-hover); }
     .err-link { display: inline-block; padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--link);
       text-decoration: underline; text-underline-offset: 3px; }
@@ -47,14 +47,17 @@
     <h1>{% block heading %}{% endblock %}</h1>
     <p>{% block message %}{% endblock %}</p>
     <div class="err-actions">
+      {% block actions %}
       <a href="/" class="err-btn" id="err-back">Go back</a>
       <a href="/" class="err-link">Go to home</a>
+      {% endblock actions %}
     </div>
   </main>
   <script>
     (function () {
       // Return to the previous page when there is one; otherwise "Go back" falls through to home.
       var back = document.getElementById('err-back');
+      if (!back) return;
       var cameFromHere = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
       if (cameFromHere && window.history.length > 1) {
         back.addEventListener('click', function (e) { e.preventDefault(); window.history.back(); });

@@ -289,6 +289,90 @@ class EmailSendTests(TestCase):
         self.assertEqual(SG.return_value.send.call_count, 2)
 
 
+class UnsubscribeTests(TestCase):
+    """Automatic emails (category set) honor opt-outs and carry an unsubscribe link;
+    service emails (no category) always go out."""
+    CTX = {'recipient': 'Pat', 'project': SimpleNamespace(name='Nav'), 'from_phase': 'Backlog',
+           'to_phase': 'Work In Progress', 'project_url': 'https://kiboko.app/project/1/'}
+
+    def setUp(self):
+        _configure(sendgrid_api_key='SG.x', email_from_address='hello@kiboko.co', site_url='https://kiboko.app')
+
+    def _send(self, SG, to='pat@acme.co', category='project_updates'):
+        from business_unit import email as mail
+        SG.return_value.send.return_value = SimpleNamespace(status_code=202)
+        return mail.send(to, 'Moved', 'project_phase', self.CTX, category=category)
+
+    def _url_path(self, address='pat@acme.co'):
+        from business_unit import email as mail
+        return mail.unsubscribe_url(address, 'project_updates').replace('https://kiboko.app', '')
+
+    @mock.patch('sendgrid.SendGridAPIClient')
+    def test_category_email_has_link_footer_and_one_click_headers(self, SG):
+        self.assertTrue(self._send(SG))
+        msg = SG.return_value.send.call_args.args[0].get()
+        self.assertEqual(msg['headers']['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click')
+        url = msg['headers']['List-Unsubscribe'].strip('<>')
+        self.assertTrue(url.startswith('https://kiboko.app/email/unsubscribe/'))
+        bodies = ''.join(c['value'] for c in msg['content'])
+        self.assertEqual(bodies.count(url), 2)       # text + html footers
+
+    @mock.patch('sendgrid.SendGridAPIClient')
+    def test_opted_out_address_is_skipped_but_service_email_still_sends(self, SG):
+        from business_unit import email as mail
+        mail.set_opted_out('Pat@Acme.co', 'project_updates')
+        self.assertFalse(self._send(SG))
+        SG.return_value.send.assert_not_called()
+        self.assertTrue(mail.send('pat@acme.co', 'Code', 'trial_code', {'code': 'X', 'days': 45, 'valid_days': 7}))
+        msg = SG.return_value.send.call_args.args[0].get()
+        self.assertNotIn('List-Unsubscribe', msg.get('headers', {}))
+
+    def test_link_get_confirms_without_unsubscribing(self):
+        from business_unit import email as mail
+        r = self.client.get(self._url_path())
+        self.assertContains(r, 'Unsubscribe?')
+        self.assertFalse(mail.is_opted_out('pat@acme.co', 'project_updates'))
+
+    def test_link_post_unsubscribes_and_resubscribes(self):
+        from business_unit import email as mail
+        path = self._url_path()
+        self.assertContains(self.client.post(path, {'action': 'unsubscribe'}), "You're unsubscribed")
+        self.assertTrue(mail.is_opted_out('pat@acme.co', 'project_updates'))
+        self.client.post(path, {'action': 'resubscribe'})
+        self.assertFalse(mail.is_opted_out('pat@acme.co', 'project_updates'))
+
+    def test_one_click_post_from_mail_app(self):
+        from business_unit import email as mail
+        from django.test import Client
+        r = Client(enforce_csrf_checks=True).post(self._url_path(), {'List-Unsubscribe': 'One-Click'})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(mail.is_opted_out('pat@acme.co', 'project_updates'))
+
+    def test_tampered_link_is_rejected(self):
+        r = self.client.get(self._url_path()[:-3] + 'xx/')
+        self.assertEqual(r.status_code, 400)
+
+    def test_settings_toggle(self):
+        from business_unit import email as mail
+        user = User.objects.create_user('pat', 'pat@acme.co', 'pw')
+        self.client.force_login(user)
+        self.client.post('/users/profile/', {'action': 'set_email_prefs'})          # box unchecked
+        self.assertTrue(mail.is_opted_out('pat@acme.co', 'project_updates'))
+        self.client.post('/users/profile/', {'action': 'set_email_prefs', 'email_project_updates': '1'})
+        self.assertFalse(mail.is_opted_out('pat@acme.co', 'project_updates'))
+
+    @mock.patch('business_unit.email.send', return_value=True)
+    def test_project_notifications_are_unsubscribable(self, send):
+        gm = User.objects.create_user('gm', 'gm@acme.co', 'pw')
+        org = Organization.objects.create(name='Acme', slug='acme', plan_status='active')
+        company = Company.objects.create(organization=org, name='Acme', slug='acme')
+        bu = BusinessUnit.objects.create(name='Lighting', company=company, general_manager=gm)
+        with self.captureOnCommitCallbacks(execute=True):
+            Project.objects.create(name='Nav', why='x', owner=gm, vertical=bu)
+        self.assertTrue(send.call_args_list)
+        self.assertTrue(all(c.kwargs.get('category') == 'project_updates' for c in send.call_args_list))
+
+
 class FeedbackTests(TestCase):
     @mock.patch('business_unit.email.send', return_value=True)
     def test_feedback_goes_to_info_with_reply_to(self, send):

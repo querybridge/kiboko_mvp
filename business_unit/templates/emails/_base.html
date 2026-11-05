@@ -8,5 +8,6 @@
     </td></tr>
   </table>
   <p style="font-size:12px; color:#6A5A8C; margin:14px 0 0;">Kiboko &middot; RevOps platform for eCommerce</p>
+  {% if unsubscribe_url %}<p style="font-size:12px; color:#6A5A8C; margin:8px 0 0;">Don’t want {{ unsubscribe_label }}? <a href="{{ unsubscribe_url }}" style="color:#432A85;">Unsubscribe</a> or change it in <a href="{{ site_url }}{% url 'users:profile' %}" style="color:#432A85;">User Settings</a>.</p>{% endif %}
 </td></tr></table>
 </body></html>

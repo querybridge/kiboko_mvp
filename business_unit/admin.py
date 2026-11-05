@@ -6,7 +6,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Plan, Organization, IntegrationSettings, TrialCode
+from .models import Plan, Organization, IntegrationSettings, TrialCode, EmailOptOut
 
 
 @admin.register(Organization)
@@ -136,3 +136,12 @@ class TrialCodeAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(EmailOptOut)
+class EmailOptOutAdmin(admin.ModelAdmin):
+    """Addresses that turned off a category of automatic email. Delete a row to
+    resubscribe someone (only at their request)."""
+    list_display = ('email', 'category', 'source', 'created_at')
+    search_fields = ('email',)
+    list_filter = ('category', 'source')

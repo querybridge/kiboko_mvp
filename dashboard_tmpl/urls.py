@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.views.generic import RedirectView, TemplateView
 
 from app import auth_views
+from business_unit import email_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -35,6 +36,8 @@ urlpatterns = [
     # Public legal pages (open to signed-out and billing-locked users)
     path('legal/privacy/', TemplateView.as_view(template_name='legal/privacy.html'), name='legal_privacy'),
     path('legal/terms/', TemplateView.as_view(template_name='legal/terms.html'), name='legal_terms'),
+    # Unsubscribe link in automatic emails (signed token; no login needed)
+    path('email/unsubscribe/<str:token>/', email_views.unsubscribe, name='email_unsubscribe'),
     # Stripe: Checkout, Customer Portal, webhook (reachable while billing-locked)
     path('billing/', include('business_unit.billing_urls', namespace='billing')),
 ]

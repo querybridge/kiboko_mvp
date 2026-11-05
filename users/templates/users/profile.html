@@ -94,6 +94,29 @@
         </div>
       </div>
     </div>
+    <div class="col-md-6 col-sm-12">
+      <div class="x_panel">
+        <div class="x_title"><h2>Email notifications</h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          {% if user.email %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_email_prefs">
+            {% for key, label, on in email_prefs %}
+            <div class="checkbox" style="margin-top:0;">
+              <label><input type="checkbox" name="email_{{ key }}" value="1" {% if on %}checked{% endif %}> {{ label }}</label>
+              <small class="text-muted" style="display:block; margin-left:20px;">New projects in your business units, phase changes on your projects, and projects waiting for your score.</small>
+            </div>
+            {% endfor %}
+            <p class="text-muted" style="font-size:12px;">Account emails, such as password resets and billing notices, are always sent to {{ user.email }}.</p>
+            <button type="submit" class="btn btn-primary">Save email settings</button>
+          </form>
+          {% else %}
+          <p class="text-muted">Your account has no email address, so Kiboko doesn't send you email.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
   </div>
   {% endif %}
 </div>

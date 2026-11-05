@@ -73,7 +73,7 @@ def notify_new_project(project):
             'proposer': _name(project.owner), 'project_url': _url(project),
             'approve_url': mail.site_url() + reverse('project:approve_projects'),
             'comment_url': _url(project, 'activity'),
-        })
+        }, category='project_updates')
 
 
 def notify_phase_change(project, old_status):
@@ -85,7 +85,7 @@ def notify_phase_change(project, old_status):
         'recipient': _name(owner), 'project': project,
         'from_phase': _phase(old_status), 'to_phase': _phase(project.status),
         'project_url': _url(project),
-    })
+    }, category='project_updates')
 
 
 def notify_needs_scoring(project):
@@ -99,7 +99,7 @@ def notify_needs_scoring(project):
             'recipient': _name(u), 'project': project, 'bu': project.vertical,
             'score_url': mail.site_url() + reverse('app:score_projects'),
             'project_url': _url(project),
-        })
+        }, category='project_updates')
 
 
 @receiver(pre_save, sender=Project)

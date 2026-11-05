@@ -290,7 +290,16 @@ def profile(request):
                 messages.success(request, 'Landing page updated.')
                 return redirect('users:profile')
             messages.error(request, 'Pick a valid landing page.')
+        elif action == 'set_email_prefs':
+            from business_unit import email as mail
+            if request.user.email:
+                for key in mail.OPTIONAL_CATEGORIES:
+                    mail.set_opted_out(request.user.email, key,
+                                       opted_out=not request.POST.get(f'email_{key}'), source='settings')
+                messages.success(request, 'Email settings saved.')
+            return redirect('users:profile')
 
+    from business_unit import email as mail
     from users.models import LANDER_CHOICES
     for f in pw_form.fields.values():
         f.widget.attrs['class'] = 'form-control'
@@ -298,4 +307,6 @@ def profile(request):
         'title': 'User Settings', 'pw_form': pw_form, 'must_change': must_change,
         'lander_choices': LANDER_CHOICES,
         'current_lander': (prof.default_lander if prof else ''),
-        'resolved_lander': (prof.resolved_lander_key() if prof else 'pipeline')})
+        'resolved_lander': (prof.resolved_lander_key() if prof else 'pipeline'),
+        'email_prefs': [(key, label, not (request.user.email and mail.is_opted_out(request.user.email, key)))
+                        for key, label in (('project_updates', 'Project updates'),)]})

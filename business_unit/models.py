@@ -472,3 +472,31 @@ class TrialCode(models.Model):
 		from django.utils import timezone
 		return cls.objects.filter(email__iexact=email, code=(code or '').strip().upper(),
 		                          used_at__isnull=True, expires__gt=timezone.now()).first()
+
+
+class EmailOptOut(models.Model):
+	"""An address that unsubscribed from one category of automatic email. Service
+	emails (invites, trial codes, password resets, billing) ignore this; see
+	business_unit.email.OPTIONAL_CATEGORIES."""
+	CATEGORY_CHOICES = [
+		('project_updates', 'Project updates'),
+		('marketing', 'Trial follow-ups and product news'),
+	]
+	SOURCE_CHOICES = [
+		('link', 'Unsubscribe link'),
+		('one_click', 'One-click (mail app)'),
+		('settings', 'User Settings'),
+		('admin', 'Admin'),
+	]
+	email = models.EmailField(db_index=True)  # stored lowercase
+	category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+	source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='link')
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		verbose_name = 'email opt-out'
+		unique_together = [['email', 'category']]
+		ordering = ['-created_at']
+
+	def __str__(self):
+		return f'{self.email} ({self.get_category_display()})'

@@ -1,0 +1,13 @@
+{% extends "_error_page.html" %}
+{% block title %}Email preferences{% endblock %}
+{% block code %}Email preferences{% endblock %}
+{% block heading %}{% if state == 'confirm' %}Unsubscribe?{% elif state == 'unsubscribed' %}You're unsubscribed{% elif state == 'resubscribed' %}You're subscribed again{% else %}This link doesn't work{% endif %}{% endblock %}
+{% block message %}{% if state == 'confirm' %}Stop sending {{ label }} to {{ email }}? Account emails, such as password resets and billing notices, will still arrive.{% elif state == 'unsubscribed' %}We won't send {{ label }} to {{ email }}. Account emails, such as password resets and billing notices, will still arrive.{% elif state == 'resubscribed' %}We'll send {{ label }} to {{ email }} again.{% else %}The unsubscribe link may be incomplete. Copy the whole link from the email, or change your email settings in User Settings after signing in.{% endif %}{% endblock %}
+{% block actions %}
+{% if state == 'confirm' %}
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="unsubscribe"><button type="submit" class="err-btn">Unsubscribe</button></form>
+{% elif state == 'unsubscribed' %}
+<form method="post">{% csrf_token %}<input type="hidden" name="action" value="resubscribe"><button type="submit" class="err-btn">Resubscribe</button></form>
+{% endif %}
+<a href="{% url 'users:profile' %}" class="err-link">Email settings</a>
+{% endblock actions %}

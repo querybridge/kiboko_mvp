@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 # Always reachable, even when locked.
-_OPEN_PREFIXES = ('/static/', '/media/', '/admin/', '/auth/', '/users/', '/billing/', '/legal/')
+_OPEN_PREFIXES = ('/static/', '/media/', '/admin/', '/auth/', '/users/', '/billing/', '/legal/', '/email/')
 
 
 class BillingLockMiddleware:
