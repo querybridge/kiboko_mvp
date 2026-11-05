@@ -40,6 +40,8 @@ _load_dotenv(os.path.join(BASE_DIR, '.env'))
 # SECURITY WARNING: keep the secret key used in production secret!
 # Set DJANGO_SECRET_KEY in the gitignored .env at the project root.
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+# Encrypts stored secrets (OAuth tokens, BigQuery keys, API keys); see business_unit/crypto.py.
+KIBOKO_ENCRYPTION_KEY = os.environ.get('KIBOKO_ENCRYPTION_KEY', '')
 
 
 
@@ -222,3 +224,7 @@ except ImportError:
 if not SECRET_KEY:
     from django.core.exceptions import ImproperlyConfigured
     raise ImproperlyConfigured('DJANGO_SECRET_KEY is not set. Add it to .env in the project root.')
+if not KIBOKO_ENCRYPTION_KEY:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('KIBOKO_ENCRYPTION_KEY is not set. Add it to .env in the project root '
+                               '(see business_unit/crypto.py for how to make one).')

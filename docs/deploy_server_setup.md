@@ -34,6 +34,18 @@ The redirect URI must also be registered in the Google Cloud Console OAuth clien
 (add test users if the consent screen is in Testing). PA MySQL credentials live in
 the gitignored `mysql_creds.md` locally — never commit them.
 
+The gitignored **`.env`** at the project root holds `DJANGO_SECRET_KEY`, `DEBUG`,
+`ALLOWED_HOSTS` and **`KIBOKO_ENCRYPTION_KEY`**. Django refuses to start without the
+two keys. The encryption key encrypts stored Google tokens, BigQuery service-account
+keys and the SendGrid/Stripe keys (`business_unit/crypto.py`); it must match the
+database it was used with, so keep a copy in a password manager. Make one with:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+To rotate: set `KIBOKO_ENCRYPTION_KEY=<new>,<old>`, run
+`python manage.py reencrypt_secrets`, then remove `<old>`.
+
 ## First-time provisioning (fresh MySQL database)
 **Order matters:** create the superuser BEFORE seeding, so seeded projects get a
 real owner and `seed_tenancy_demo` grants that superuser admin access.

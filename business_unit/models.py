@@ -5,6 +5,8 @@ from multiselectfield import MultiSelectField
 from django.contrib.auth.models import User
 import datetime
 
+from business_unit.crypto import EncryptedJSONField, EncryptedTextField
+
 # Create your models here.
 
 
@@ -296,13 +298,12 @@ class GoogleIdentity(models.Model):
 	"""A Kiboko user's linked Google account. The OAuth token authorizes GA4
 	reads on the user's behalf, so their own GA4 access gates what they see.
 
-	NOTE: refresh_token must be encrypted at rest (django-cryptography) before
-	real tokens are stored -- see the data-connection plan."""
+	refresh_token is encrypted at rest (business_unit/crypto.py)."""
 	user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='google_identity')
 	google_sub = models.CharField(max_length=255, unique=True, help_text='Stable Google user id (sub)')
 	email = models.EmailField()
 	picture_url = models.URLField(blank=True)
-	refresh_token = models.TextField(blank=True)
+	refresh_token = EncryptedTextField(blank=True)
 	token_expiry = models.DateTimeField(null=True, blank=True)
 	created = models.DateTimeField(auto_now_add=True)
 
@@ -322,12 +323,11 @@ class BigQueryConnection(models.Model):
 	The dataset for a property is analytics_<vertical.ga4_property_id>; the page
 	paths let the SQL derive cart/checkout/billing views (mirrors ITG).
 
-	NOTE: service_account_json holds a GCP service-account key -- HIGHLY sensitive.
-	It must be encrypted at rest (django-cryptography / Fernet) before production,
-	like GoogleIdentity.refresh_token. Stored plain here only for scaffolding."""
+	service_account_json holds a GCP service-account key, so it is encrypted at
+	rest (business_unit/crypto.py), like GoogleIdentity.refresh_token."""
 	company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='bigquery')
 	gcp_project = models.CharField(max_length=100, blank=True)
-	service_account_json = models.JSONField(default=dict, blank=True)
+	service_account_json = EncryptedJSONField(blank=True)
 	# Maps a standard GA4 event name -> the name this company actually fires
 	# (e.g. {'view_cart': 'View Cart'}). Empty/missing means use the standard name.
 	event_map = models.JSONField(default=dict, blank=True)
@@ -409,7 +409,7 @@ class IntegrationSettings(models.Model):
 	"""Platform-wide API keys for SendGrid (email) and Stripe (billing). One row,
 	edited in Django admin. Until a key is filled in, the matching feature stays
 	off: emails are skipped (logged) and the Billing page hides payment."""
-	sendgrid_api_key = models.CharField('SendGrid API key', max_length=200, blank=True)
+	sendgrid_api_key = EncryptedTextField('SendGrid API key', blank=True)
 	email_from_address = models.EmailField('From address', blank=True, default='no-reply@kibokomethod.com',
 	                                       help_text='A sender verified in SendGrid')
 	email_from_name = models.CharField('From name', max_length=100, blank=True, default='Kiboko')
@@ -419,11 +419,11 @@ class IntegrationSettings(models.Model):
 	                                help_text='Where the in-app Feedback button delivers')
 	notifications_enabled = models.BooleanField(default=True,
 	                                            help_text='Untick to pause all project notification emails')
-	stripe_secret_key = models.CharField('Stripe secret key', max_length=200, blank=True,
+	stripe_secret_key = EncryptedTextField('Stripe secret key', blank=True,
 	                                     help_text='sk_test_... or sk_live_...')
 	stripe_publishable_key = models.CharField('Stripe publishable key', max_length=200, blank=True,
 	                                          help_text='pk_test_... or pk_live_...')
-	stripe_webhook_secret = models.CharField('Stripe webhook signing secret', max_length=200, blank=True,
+	stripe_webhook_secret = EncryptedTextField('Stripe webhook signing secret', blank=True,
 	                                         help_text='whsec_... from the webhook endpoint in Stripe')
 	updated = models.DateTimeField(auto_now=True)
 

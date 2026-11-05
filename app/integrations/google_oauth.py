@@ -135,8 +135,7 @@ def credentials_from_identity(identity):
 def upsert_identity(user, creds, claims):
     """Create/update the user's GoogleIdentity from an OAuth result.
 
-    NOTE: refresh_token is stored in plaintext here for scaffolding -- encrypt it
-    with django-cryptography before storing real tokens (see the plan).
+    The refresh token is encrypted at rest by the model field (business_unit/crypto.py).
     """
     from business_unit.models import GoogleIdentity
     from django.utils import timezone
