@@ -29,6 +29,7 @@ from app.models import MonthlyGoal, DailyActual
 from business_unit.models import Department, BusinessUnit
 from business_unit.scope import scoped_vertical_id, scoped_company_id
 from business_unit.feature_gate import feature_required
+from business_unit.access import staff_only, visible_projects
 from project.models import Action
 from strategy.models import Project, Objective, Metric, KPI
 from project.views import project_detail
@@ -1269,7 +1270,13 @@ def _aee_choices():
 
 @login_required
 def upload_actuals(request):
-    verticals = BusinessUnit.objects.all()
+    # Only units the user may enter figures for (same rule as budgets), never
+    # another organization's.
+    from business_unit.access import can_manage_goals, visible_bu_ids
+    ids = visible_bu_ids(request.user)
+    candidates = (BusinessUnit.objects.all() if ids is None else BusinessUnit.objects.filter(id__in=ids))
+    verticals = [v for v in candidates.select_related('company').order_by('company__name', 'name')
+                 if can_manage_goals(request.user, v)]
 
     if request.method == 'POST':
         csv_file = request.FILES.get('csv_file')
@@ -1283,10 +1290,9 @@ def upload_actuals(request):
             messages.error(request, 'Please select a Business Unit.')
             return redirect('app:upload_actuals')
 
-        try:
-            vertical_obj = BusinessUnit.objects.get(pk=int(vertical_id))
-        except (BusinessUnit.DoesNotExist, ValueError):
-            messages.error(request, 'Invalid vertical selected.')
+        vertical_obj = next((v for v in verticals if str(v.pk) == vertical_id), None)
+        if vertical_obj is None:
+            messages.error(request, 'Choose one of your business units.')
             return redirect('app:upload_actuals')
 
         try:
@@ -1341,6 +1347,7 @@ def upload_actuals(request):
 
 
 @login_required
+@staff_only
 def settings_company(request):
     """Manage Departments and Verticals."""
     if request.method == 'POST':
@@ -1404,6 +1411,7 @@ def settings_company(request):
 
 
 @login_required
+@staff_only
 def settings_rocks(request):
     """Manage Annual Rocks and Quarterly Rocks."""
     if request.method == 'POST':
@@ -1487,6 +1495,7 @@ def settings_rocks(request):
 
 
 @login_required
+@staff_only
 def settings_measurements(request):
     """Manage Metrics and KPIs."""
     if request.method == 'POST':
@@ -1741,7 +1750,7 @@ def work_in_progress(request):
 
     initial_period = 'mtd'
     if focus_id:
-        focus_action = Action.objects.filter(pk=focus_id).first()
+        focus_action = Action.objects.filter(pk=focus_id, project__in=visible_projects(request.user)).first()
         launch = focus_action.launch.isoformat() if (focus_action and focus_action.launch) else None
         if launch:
             for key in ('mtd', 'qtd', 'ytd', 'nmo', 'nq', 'ny'):
@@ -1942,16 +1951,12 @@ def manage_users(request):
     ADMIN_ROLES = ('executive', 'business_unit_leader')  # roles that administer a company
 
     user = request.user
-    profile = getattr(user, 'profile', None)
-    is_global_admin = (user.is_superuser or user.administered_orgs.exists()
-                       or (profile and profile.has_role('executive')))
-    if is_global_admin:
-        companies = Company.objects.all().order_by('name')
-    else:
-        companies = Company.objects.filter(
-            memberships__user=user, memberships__role='admin',
-        ).distinct().order_by('name')
-    if not is_global_admin and not companies.exists():
+    # Companies this user may manage: everything for a superuser; otherwise the
+    # companies in organizations they administer plus companies where they hold an
+    # admin membership (Executive / BU Leader). Never other organizations'.
+    from business_unit.access import manageable_companies
+    companies = manageable_companies(user)
+    if not companies.exists():
         from business_unit.access import contact_admin
         admin = contact_admin(user)
         return render(request, 'app/access_denied.html', {
@@ -1962,12 +1967,22 @@ def manage_users(request):
             'contact_name': (admin.get_full_name() or admin.username) if admin else None,
         }, status=403)
 
+    def _can_set_roles(member):
+        """Roles live on the user, so they apply everywhere the user has access.
+        Only change them when every company the user belongs to is one this admin
+        manages; someone who also works for another organization keeps the roles
+        that organization gave them."""
+        return user.is_superuser or not CompanyMembership.objects.filter(user=member).exclude(
+            company__in=companies).exists()
+
     def _set_roles(member, roles_list):
-        """Set the user's Kiboko roles; mirror company-admin membership from them."""
+        """Set the user's Kiboko roles; mirror company-admin membership from them
+        (only in the companies this admin manages)."""
         member.profile.roles = roles_list
         member.profile.save(update_fields=['roles'])
         elevated = any(r in ADMIN_ROLES for r in roles_list)
-        CompanyMembership.objects.filter(user=member).update(role='admin' if elevated else 'member')
+        CompanyMembership.objects.filter(user=member, company__in=companies).update(
+            role='admin' if elevated else 'member')
 
     def _is_last_admin(company, member):
         """True if `member` is the only admin of `company` (block removal/demotion)."""
@@ -2046,7 +2061,11 @@ def manage_users(request):
                     member.save(update_fields=['first_name', 'last_name'])
                 CompanyMembership.objects.get_or_create(
                     company=company, user=member, defaults={'role': 'member'})
-                _set_roles(member, roles_list)          # the roles chosen on the add row
+                if _can_set_roles(member):
+                    _set_roles(member, roles_list)      # the roles chosen on the add row
+                else:
+                    messages.info(request, f'{email} also belongs to another organization, so they keep '
+                                           'the roles that organization set. Their access here is as a member.')
                 from business_unit import email as mail
                 from app.integrations import google_oauth
                 invited = mail.send(member.email, f'You’ve been added to {company.name} on Kiboko', 'invite', {
@@ -2074,6 +2093,9 @@ def manage_users(request):
                 elevated = any(r in ADMIN_ROLES for r in roles_list)
                 if not roles_list:
                     messages.error(request, 'Define at least one role before saving.')
+                elif not _can_set_roles(member):
+                    messages.error(request, f'{member.email or member.username} also belongs to another '
+                                            'organization, so only that organization can change their roles.')
                 elif not elevated and _is_last_admin(company, member):
                     messages.error(request, f'{company.name} must keep at least one admin '
                                             '(Executive or Business Unit Leader).')

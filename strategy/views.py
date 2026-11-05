@@ -7,11 +7,13 @@ from .forms import StrategyAdd, StrategyEdit, CommentForm
 from .models import Project, Objective, Metric, KPI
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from business_unit.access import staff_only
 
 # Create your views here.
 @login_required
 
 #Add New Quarterly Rock
+@staff_only
 def strategy(request):
     form = StrategyAdd(request.POST or None)
     if request.method == 'POST':
@@ -27,6 +29,7 @@ def strategy(request):
 
 #Edit Quarterly Rock
 @login_required
+@staff_only
 def strategy_edit(request, strategy_id):
     strategy = get_object_or_404(Project, pk=strategy_id)
     if request.method == "POST":
@@ -42,6 +45,7 @@ def strategy_edit(request, strategy_id):
 
 # View All Quarterly Rocks Page
 @login_required
+@staff_only
 def strategy_view(request):
     context = {}
     strategies = Project.objects.all()
@@ -50,11 +54,13 @@ def strategy_view(request):
 
 #View Quarterly Rock Detail
 @login_required
+@staff_only
 def strategy_detail(request, strategy_id):
 	strategy = get_object_or_404(Project, pk=strategy_id)
 	return render(request, 'strategy/detail.html', {'strategy': strategy})
 
 @login_required
+@staff_only
 def add_comment_to_strategy(request, strategy_id):
     strategy = get_object_or_404(Project, pk=strategy_id)
     if request.method == "POST":
@@ -71,6 +77,7 @@ def add_comment_to_strategy(request, strategy_id):
 
 
 @login_required
+@staff_only
 def edit_rocks(request):
     """SuperUser-only view to manage Annual Rocks and Quarterly Rocks."""
     if not request.user.is_superuser and not request.user.groups.filter(name='A-Team').exists():
@@ -114,6 +121,7 @@ def edit_rocks(request):
 
 
 @login_required
+@staff_only
 def measurement(request):
     """SuperUser-only view to manage Metrics and KPIs via transfer lists."""
     if not request.user.is_superuser:

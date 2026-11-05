@@ -36,6 +36,18 @@ def _get_company_id(request):
     return scoped_company_id(request)
 
 
+def _project_or_404(request, project_id, edit=False):
+    """The project, if this user may see it (404 otherwise, so other organizations'
+    ids don't reveal anything). With edit=True, also refuse read-only access
+    (the shared demo for non-members) with 403."""
+    from django.core.exceptions import PermissionDenied
+    from business_unit.access import can_edit_project, visible_projects
+    project = get_object_or_404(visible_projects(request.user), pk=project_id)
+    if edit and not can_edit_project(request.user, project):
+        raise PermissionDenied('This project is read-only for you.')
+    return project
+
+
 def _scope(qs, vertical_id, company_id):
     """Scope to a BusinessUnit, or (on the Summary roll-up) to the selected
     company so project lists never span companies/clients."""
@@ -280,9 +292,11 @@ def estimator_baseline(request):
     from app.integrations import ga4_dashboard
     from project.services import impact
     from business_unit.models import BusinessUnit
+    from business_unit.access import visible_bu_ids
     bu_id = request.GET.get('vertical')
+    visible = visible_bu_ids(request.user)
     bu = (BusinessUnit.objects.filter(pk=bu_id).select_related('company').first()
-          if bu_id else None)
+          if bu_id and str(bu_id).isdigit() and (visible is None or int(bu_id) in visible) else None)
     if not bu:
         return JsonResponse({'connected': False, 'reason': 'no-business-unit'})
     try:
@@ -314,7 +328,7 @@ def estimator_baseline(request):
 def project_detail(request, project_id, tab='overview'):
     """A Project as a tabbed workspace: Overview, Actions, Performance, Activity.
     Each tab has its own URL so links (e.g. from the WIP Gantt) land on it."""
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id)
     completed = project.status in COMPLETED_STATUSES
     tabs = ['overview', 'actions'] + (['performance'] if completed else []) + ['activity']
     if tab not in tabs:
@@ -370,7 +384,7 @@ def action_progress(actions):
 @require_POST
 def add_action(request, project_id):
     """Add an execution Action to a Project."""
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     if project.status in COMPLETED_STATUSES:
         messages.error(request, 'Actions can’t be added to a completed project.')
         return redirect('project:project_tab', project_id=project.id, tab='actions')
@@ -391,7 +405,7 @@ def add_action(request, project_id):
 
 @login_required
 def project_edit(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     next_url = (request.POST.get('next') or request.GET.get('next')
                 or reverse('project:project_detail', kwargs={'project_id': project.id}))
     edit_company_id = (project.vertical.company_id if project.vertical_id and project.vertical
@@ -424,7 +438,7 @@ def project_edit(request, project_id):
 
 @login_required
 def add_comment_to_project(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     next = request.POST.get('next', '/')
     if request.method == 'POST':
         text = (request.POST.get('text') or '').strip()
@@ -501,7 +515,7 @@ def executive_approval(request):
 def approve_on_deck(request, project_id):
     """Executive greenlight: move a scored / executive-approval project straight to
     On Deck without the Kanban board (validation enforces executive-only)."""
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     ok, err = apply_move(project, 'on_deck', user=request.user)
     if ok:
         who = request.user.get_full_name() or request.user.username
@@ -518,7 +532,7 @@ def approve_on_deck(request, project_id):
 @require_POST
 def approve_action(request, project_id):
     """A business-unit lead approves a project into the pipeline (-> Pending LOE)."""
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     if not can_approve(request.user, project):
         messages.error(request, 'Only a business-unit lead can approve this project.')
     elif not is_ready_for_review(project):
@@ -540,7 +554,7 @@ def set_loe(request, project_id):
     Complete -- both feed the algorithmic score -> Ready to Score."""
     from project.project_field_options import EFFORT_SIZE_CHOICES, CAPABILITY_CHOICES
     from project.services import impact
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     if not can_set_loe(request.user, project):
         messages.error(request, 'Only a developer can set effort and capability.')
         return redirect('project:approve_projects')
@@ -624,7 +638,7 @@ def analyst_review(request, project_id):
     """Analyst screen: verify or adjust the projected value by setting expected
     post-launch levels for one or more of the six levers (parallel intake gate)."""
     from project.services import impact
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id)
     if not can_set_revenue(request.user, project):
         messages.error(request, 'Only an analyst can review the projected value.')
         return redirect('project:project_detail', project_id=project.id)
@@ -647,7 +661,7 @@ def set_analyst_review(request, project_id):
     """Save the analyst's value sign-off / adjustments (parallel intake gate)."""
     from django.utils import timezone as _tz
     from project.services import impact
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     if not can_set_revenue(request.user, project):
         messages.error(request, 'Only an analyst can review the projected value.')
         return redirect('project:project_detail', project_id=project.id)
@@ -707,13 +721,27 @@ def set_analyst_review(request, project_id):
     return redirect('project:approve_projects')
 
 
+def _safe_next(request, default):
+    """The posted/queried `next` URL if it points inside Kiboko, else `default`."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    nxt = request.POST.get('next') or request.GET.get('next')
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()},
+                                               require_https=request.is_secure()):
+        return nxt
+    return default
+
+
 @login_required
+@require_POST
 def approve_project(request, project_id):
-    project = get_object_or_404(Project, pk=project_id)
-    next_url = request.GET.get('next', request.POST.get('next', '/project/approve/'))
-    project.approved = not project.approved
-    project.save()
-    return HttpResponseRedirect(next_url)
+    """Toggle a project's approval (business-unit leads only)."""
+    project = _project_or_404(request, project_id, edit=True)
+    if not can_approve(request.user, project):
+        messages.error(request, 'Only a business-unit lead can approve this project.')
+    else:
+        project.approved = not project.approved
+        project.save()
+    return HttpResponseRedirect(_safe_next(request, '/project/approve/'))
 
 
 @login_required
@@ -779,10 +807,10 @@ def archive(request):
 def archive_project(request, project_id):
     """Archive a completed project. Anyone can archive; it then leaves Completed
     Projects for the Archive."""
-    p = get_object_or_404(Project, pk=project_id)
+    p = _project_or_404(request, project_id, edit=True)
     Project.objects.filter(pk=p.pk).update(archived=True)   # bypass save()/recompute
     messages.success(request, f'Archived “{p.name}”.')
-    return redirect(request.POST.get('next') or 'project:completed_projects')
+    return redirect(_safe_next(request, reverse('project:completed_projects')))
 
 
 # ---------------------------------------------------------------------------
@@ -831,7 +859,7 @@ def kanban_move(request):
     if not project_id or not target_lane:
         return JsonResponse({'ok': False, 'error': 'Missing project_id or target_lane'}, status=400)
 
-    project = get_object_or_404(Project, pk=project_id)
+    project = _project_or_404(request, project_id, edit=True)
     from_lane = get_lane(project)
     ok, err = apply_move(project, target_lane, user=request.user)
     if not ok:

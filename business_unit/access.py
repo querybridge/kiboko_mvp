@@ -155,6 +155,22 @@ def has_plan_feature(user, feature):
     return plan_tier(user) == 'enterprise'
 
 
+def manageable_companies(user):
+    """Companies whose people this user may manage (Manage Users): all for a
+    superuser; otherwise companies in organizations they administer plus companies
+    where they hold an admin membership. Never another organization's."""
+    from django.db.models import Q
+    from business_unit.models import Company
+    if not user or not user.is_authenticated:
+        return Company.objects.none()
+    if user.is_superuser:
+        return Company.objects.all().order_by('name')
+    return Company.objects.filter(
+        Q(organization__in=user.administered_orgs.all())
+        | Q(memberships__user=user, memberships__role='admin')
+    ).distinct().order_by('name')
+
+
 def allowed_bu_ids(user, company):
     """Set of BusinessUnit ids the user may see in the company, or None = all.
 
@@ -166,3 +182,55 @@ def allowed_bu_ids(user, company):
     if m is None:
         return None  # platform-demo viewer etc. -> no per-BU restriction
     return m.allowed_bu_ids()
+
+
+def visible_bu_ids(user):
+    """BusinessUnit ids the user may see across every company they can view, or
+    None for all (superuser). Respects a membership's per-BU limit."""
+    from business_unit.models import BusinessUnit
+    if not user or not user.is_authenticated:
+        return set()
+    if user.is_superuser:
+        return None
+    ids = set()
+    for company in visible_companies(user):
+        company_bus = set(BusinessUnit.objects.filter(company=company).values_list('id', flat=True))
+        allowed = allowed_bu_ids(user, company)
+        ids |= company_bus if allowed is None else (company_bus & set(allowed))
+    return ids
+
+
+def visible_projects(user):
+    """Projects the user may open: those in business units they can see."""
+    from strategy.models import Project
+    ids = visible_bu_ids(user)
+    return Project.objects.all() if ids is None else Project.objects.filter(vertical_id__in=ids)
+
+
+def can_edit_project(user, project):
+    """Whether the user may change a project they can see. The shared platform demo
+    is read-only to anyone who isn't one of its members; role checks in each view
+    still apply on top of this."""
+    if user.is_superuser:
+        return True
+    company = project.vertical.company if project.vertical_id else None
+    if company is None:
+        return False
+    if company.organization and company.organization.is_platform_demo:
+        return is_org_admin_of(user, company) or company.memberships.filter(user=user).exists()
+    return True
+
+
+def staff_only(view):
+    """Legacy screens that span every organization (old Rocks / Company /
+    Measurements settings and the strategy app): Kiboko superusers only. Everyone
+    else gets a 404, so the pages don't advertise themselves."""
+    import functools
+    from django.http import Http404
+
+    @functools.wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not (request.user.is_authenticated and request.user.is_superuser):
+            raise Http404
+        return view(request, *args, **kwargs)
+    return wrapper

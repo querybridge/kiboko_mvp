@@ -1,15 +1,13 @@
 """Cross-tenant isolation: a user in organization A must never see or change
 organization B's data.
 
-Tests marked @unittest.expectedFailure document a known leak (see the # LEAK
-comment above each). They pass as "expected failures" until the leak is fixed;
-once fixed, the run reports an "unexpected success" -- remove the decorator then.
+Tests commented "Was a leak" covered real cross-organization leaks found on
+2026-11-05 and fixed the same day; they now guard against regressions.
 Email is mocked; no message leaves the test run.
 """
 import datetime
 import io
 import json
-import unittest
 from decimal import Decimal
 from unittest import mock
 
@@ -150,7 +148,7 @@ class GuardsThatHold(IsolationBase):
     def test_budget_post_refuses_foreign_business_unit(self):
         self.login_a()
         resp = self.client.post(f'/app/goals/?vertical={self.bu_b.id}', {'budget_1': '1'})
-        self.assertEqual(resp.status_code, 403)
+        # The foreign unit is dropped from the scope (company summary, which ignores saves).
         self.assertEqual(MonthlyGoal.objects.get(vertical=self.bu_b).budget, B_BUDGET)
 
     def test_insights_add_project_refuses_foreign_business_unit(self):
@@ -179,67 +177,58 @@ class GuardsThatHold(IsolationBase):
 
 
 # ---------------------------------------------------------------------------
-# Known leaks: B's projects are fetched by id with no tenant check
+# Fixed leaks: B's projects are fetched by id with no tenant check
 # (get_object_or_404(Project, pk=...) in project/views.py and strategy/views.py)
 # ---------------------------------------------------------------------------
 class ProjectByIdLeaks(IsolationBase):
 
-    # LEAK: /project/<id>/ renders any org's project (name, value, owner, actions).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/ renders any org's project (name, value, owner, actions).
     def test_project_overview(self):
         self.login_a()
         self.assertBlocked(self.client.get(f'/project/{self.p_b.id}/'))
 
-    # LEAK: /project/<id>/actions/ lists any org's actions.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/actions/ lists any org's actions.
     def test_project_actions_tab(self):
         self.login_a()
         self.assertBlocked(self.client.get(f'/project/{self.p_b.id}/actions/'))
 
-    # LEAK: /project/<id>/performance/ shows any org's realized performance.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/performance/ shows any org's realized performance.
     def test_project_performance_tab(self):
         self.login_a()
         self.assertBlocked(self.client.get(f'/project/{self.p_b_done.id}/performance/'))
 
-    # LEAK: /project/<id>/edit/ opens any org's project in the edit form.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/edit/ opens any org's project in the edit form.
     def test_project_edit_form(self):
         self.login_a()
         self.assertBlocked(self.client.get(f'/project/{self.p_b.id}/edit/'))
 
-    # LEAK: /project/<id>/add-action/ accepts posts on any org's project.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/add-action/ accepts posts on any org's project.
     def test_add_action(self):
         self.login_a()
         self.client.post(f'/project/{self.p_b.id}/add-action/', {'name': 'Injected', 'owner': self.a_admin.id})
         self.assertFalse(Action.objects.filter(project=self.p_b, name='Injected').exists())
 
-    # LEAK: /project/<id>/comment/ writes a comment onto any org's project.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/comment/ writes a comment onto any org's project.
     def test_comment(self):
         self.login_a()
         self.client.post(f'/project/{self.p_b.id}/comment/', {'text': 'Injected comment'})
         self.assertFalse(ProjectComment.objects.filter(project=self.p_b, text='Injected comment').exists())
 
-    # LEAK: /project/<id>/approve/ toggles approval on any org's project (any logged-in user, even GET).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/approve/ toggles approval on any org's project (any logged-in user, even GET).
     def test_approve_toggle(self):
         self.login_a(self.a_member)
         self.client.get(f'/project/{self.p_b.id}/approve/')
         self.p_b.refresh_from_db()
         self.assertTrue(self.p_b.approved)
 
-    # LEAK: /project/<id>/archive/ archives any org's completed project (any logged-in user).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/archive/ archives any org's completed project (any logged-in user).
     def test_archive(self):
         self.login_a(self.a_member)
         self.client.post(f'/project/{self.p_b_done.id}/archive/')
         self.p_b_done.refresh_from_db()
         self.assertFalse(self.p_b_done.archived)
 
-    # LEAK: /project/kanban/move/ moves any org's project (role checked, tenant not).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/kanban/move/ moves any org's project (role checked, tenant not).
     def test_kanban_move(self):
         self.login_a()
         self.client.post('/project/kanban/move/', json.dumps({'project_id': self.p_b.id, 'target_lane': 'blocked'}),
@@ -247,34 +236,29 @@ class ProjectByIdLeaks(IsolationBase):
         self.p_b.refresh_from_db()
         self.assertEqual(self.p_b.status, 'WIP')
 
-    # LEAK: /project/<id>/set-loe/ sizes any org's intake project (A's org admin counts as executive).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/set-loe/ sizes any org's intake project (A's org admin counts as executive).
     def test_set_loe(self):
         self.login_a()
         self.client.post(f'/project/{self.p_b_intake.id}/set-loe/', {'effort_size': 'XL', 'capability': 'fully'})
         self.p_b_intake.refresh_from_db()
         self.assertEqual(self.p_b_intake.effort_size, '')
 
-    # LEAK: /project/<id>/analyst-review/ renders any org's project and baselines.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /project/<id>/analyst-review/ renders any org's project and baselines.
     def test_analyst_review_page(self):
         self.login_a()
         self.assertBlocked(self.client.get(f'/project/{self.p_b_intake.id}/analyst-review/'))
 
-    # LEAK: /strategy/<id>/ renders any org's project (legacy page).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /strategy/<id>/ renders any org's project (legacy page).
     def test_strategy_detail(self):
         self.login_a()
         self.assertBlocked(self.client.get(f'/strategy/{self.p_b.id}/'))
 
-    # LEAK: /strategy/<id>/edit/ opens any org's project (legacy page).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /strategy/<id>/edit/ opens any org's project (legacy page).
     def test_strategy_edit(self):
         self.login_a()
         self.assertBlocked(self.client.get(f'/strategy/{self.p_b.id}/edit/'))
 
-    # LEAK: /strategy/<id>/comment/ writes onto any org's project (legacy page).
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /strategy/<id>/comment/ writes onto any org's project (legacy page).
     def test_strategy_comment(self):
         self.login_a()
         before = ProjectComment.objects.filter(project=self.p_b).count()
@@ -283,7 +267,7 @@ class ProjectByIdLeaks(IsolationBase):
 
 
 # ---------------------------------------------------------------------------
-# Known leaks: list pages trust raw ?company= / ?vertical= (business_unit.scope
+# Fixed leaks: list pages trust raw ?company= / ?vertical= (business_unit.scope
 # reads the query string before the context processor validates it) and are
 # unscoped when the session has no company yet (first page after login).
 # ---------------------------------------------------------------------------
@@ -296,48 +280,39 @@ class ListScopeLeaks(IsolationBase):
             assert self.client.session['scope_company'] == str(self.co_a.id)
         return self.client.get(url, params or {})
 
-    # LEAK: Backlog on the first request of a session is unscoped -> every org's projects.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Backlog on the first request of a session is unscoped -> every org's projects.
     def test_backlog_unscoped_first_request(self):
         self.assertNoB(self._get('/project/view.html', prime=False))
 
-    # LEAK: Backlog with ?company=<B> lists B's projects.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Backlog with ?company=<B> lists B's projects.
     def test_backlog_foreign_company_param(self):
         self.assertNoB(self._get('/project/view.html', {'company': self.co_b.id}))
 
-    # LEAK: Backlog with ?vertical=<B unit> lists B's projects.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Backlog with ?vertical=<B unit> lists B's projects.
     def test_backlog_foreign_vertical_param(self):
         self.assertNoB(self._get('/project/view.html', {'vertical': self.bu_b.id}))
 
-    # LEAK: Kanban with ?company=<B> shows B's cards.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Kanban with ?company=<B> shows B's cards.
     def test_kanban_foreign_company_param(self):
         self.assertNoB(self._get('/project/kanban/', {'company': self.co_b.id}))
 
-    # LEAK: Completed Projects with ?company=<B> lists B's completed work.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Completed Projects with ?company=<B> lists B's completed work.
     def test_completed_foreign_company_param(self):
         self.assertNoB(self._get('/project/completed/', {'company': self.co_b.id}), B_DONE)
 
-    # LEAK: Archive with ?company=<B> lists B's archived projects.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Archive with ?company=<B> lists B's archived projects.
     def test_archive_foreign_company_param(self):
         self.assertNoB(self._get('/project/archive/', {'company': self.co_b.id}), B_SHELVED)
 
-    # LEAK: Approve Projects with ?company=<B> lists B's intake queue.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Approve Projects with ?company=<B> lists B's intake queue.
     def test_approve_queue_foreign_company_param(self):
         self.assertNoB(self._get('/project/approve/', {'company': self.co_b.id}), B_INTAKE)
 
-    # LEAK: Work In Progress gantt with ?company=<B> includes B's actions.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Work In Progress gantt with ?company=<B> includes B's actions.
     def test_wip_foreign_company_param(self):
         self.assertNoB(self._get('/app/work-in-progress/', {'company': self.co_b.id}), B_ACTION)
 
-    # LEAK: Budget page with ?vertical=<B unit> shows B's monthly budget.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Budget page with ?vertical=<B unit> shows B's monthly budget.
     def test_budget_page_foreign_vertical_param(self):
         resp = self._get('/app/goals/', {'vertical': self.bu_b.id})
         self.assertNotIn('987654', resp.content.decode().replace(',', ''))
@@ -347,8 +322,7 @@ class PipelineScopeCheck(IsolationBase):
     """The Project Value Pipeline (/app/) sums WIP/On Deck value per objective.
     With a foreign ?company= the B project's value must not be counted."""
 
-    # LEAK: /app/ (Project Value Pipeline) with ?company=<B> lists B's WIP actions.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): /app/ (Project Value Pipeline) with ?company=<B> lists B's WIP actions.
     def test_pipeline_foreign_company_param(self):
         self.login_a()
         resp = self.client.get('/app/', {'company': self.co_b.id})
@@ -356,18 +330,16 @@ class PipelineScopeCheck(IsolationBase):
 
 
 # ---------------------------------------------------------------------------
-# Known leaks: data writes and admin screens not tied to the user's org
+# Fixed leaks: data writes and admin screens not tied to the user's org
 # ---------------------------------------------------------------------------
 class AdminScreenLeaks(IsolationBase):
 
-    # LEAK: Upload Actuals lists every org's business units in its picker.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Upload Actuals lists every org's business units in its picker.
     def test_upload_actuals_picker(self):
         self.login_a()
         self.assertNoB(self.client.get('/app/actuals/'), 'Beta Unit')
 
-    # LEAK: Upload Actuals writes revenue into any org's business unit.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Upload Actuals writes revenue into any org's business unit.
     def test_upload_actuals_write(self):
         self.login_a()
         csv_file = io.BytesIO(b'Date,Actual Revenue\n2026-01-05,123\n')
@@ -375,22 +347,19 @@ class AdminScreenLeaks(IsolationBase):
         self.client.post('/app/actuals/', {'vertical': self.bu_b.id, 'csv_file': csv_file})
         self.assertFalse(DailyActual.objects.filter(vertical=self.bu_b).exists())
 
-    # LEAK: Manage Users shows every company's members to any org admin or Executive.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Manage Users shows every company's members to any org admin or Executive.
     def test_manage_users_lists_other_orgs(self):
         self.login_a()
         self.assertNoB(self.client.get('/app/manage-users/'), B_EMAIL, 'Beta Co')
 
-    # LEAK: Manage Users lets any org admin add themselves (or anyone) to another org's company.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Manage Users lets any org admin add themselves (or anyone) to another org's company.
     def test_manage_users_add_member_to_other_org(self):
         self.login_a()
         self.client.post('/app/manage-users/', {'action': 'add_member', 'company': self.co_b.id,
                                                 'email': self.a_admin.email, 'roles': ['executive']})
         self.assertFalse(CompanyMembership.objects.filter(company=self.co_b, user=self.a_admin).exists())
 
-    # LEAK: Manage Users lets any org admin remove another org's members.
-    @unittest.expectedFailure
+    # Was a leak (fixed 2026-11-05): Manage Users lets any org admin remove another org's members.
     def test_manage_users_remove_member_of_other_org(self):
         extra = User.objects.create_user('beta_staff', 'staff@beta-co.test', 'pw')
         m = CompanyMembership.objects.create(company=self.co_b, user=extra, role='member')
@@ -398,3 +367,64 @@ class AdminScreenLeaks(IsolationBase):
         self.client.post('/app/manage-users/', {'action': 'remove_member', 'company': self.co_b.id,
                                                 'membership_id': m.id})
         self.assertTrue(CompanyMembership.objects.filter(pk=m.pk).exists())
+
+
+# ---------------------------------------------------------------------------
+# Found while fixing the above (2026-11-05)
+# ---------------------------------------------------------------------------
+class FurtherGuards(IsolationBase):
+
+    def test_legacy_cross_org_screens_are_staff_only(self):
+        self.login_a()
+        for url in ('/app/rocks/', '/app/company/', '/app/measurements/', '/strategy/view.html',
+                    f'/strategy/{self.p_a.id}/'):
+            self.assertEqual(self.client.get(url).status_code, 404, url)
+        self.client.post('/app/rocks/', {'action': 'delete_quarterly_rock', 'item_id': self.p_b.id})
+        self.client.post('/app/company/', {'action': 'delete_vertical', 'item_id': self.bu_b.id})
+        self.assertTrue(Project.objects.filter(pk=self.p_b.pk).exists())
+        self.assertTrue(BusinessUnit.objects.filter(pk=self.bu_b.pk).exists())
+
+    def test_estimator_baseline_refuses_foreign_business_unit(self):
+        self.login_a()
+        data = self.client.get('/project/estimator-baseline/', {'vertical': self.bu_b.id}).json()
+        self.assertEqual(data, {'connected': False, 'reason': 'no-business-unit'})
+
+    def test_own_projects_still_open(self):
+        self.login_a(self.a_member)
+        self.assertEqual(self.client.get(f'/project/{self.p_a.id}/').status_code, 200)
+        self.assertContains(self.client.get('/project/view.html'), 'Alpha roadmap')
+
+    def test_approve_toggle_needs_post_a_lead_and_a_local_next(self):
+        self.login_a(self.a_member)
+        self.assertEqual(self.client.get(f'/project/{self.p_a.id}/approve/').status_code, 405)
+        self.client.post(f'/project/{self.p_a.id}/approve/')
+        self.p_a.refresh_from_db()
+        self.assertTrue(self.p_a.approved)                     # plain member can't toggle
+        self.login_a()
+        resp = self.client.post(f'/project/{self.p_a.id}/approve/', {'next': 'https://evil.example/'})
+        self.assertEqual(resp['Location'], '/project/approve/')
+
+    def test_demo_projects_are_read_only_to_non_members(self):
+        demo_org = Organization.objects.create(name='Demo', slug='demo', is_platform_demo=True,
+                                               billing_exempt=True, plan_status='active')
+        demo_co = Company.objects.create(organization=demo_org, name='Demo Co', slug='demo-co')
+        demo_bu = BusinessUnit.objects.create(name='Demo Unit', company=demo_co)
+        demo_p = Project.objects.create(name='Demo project', why='x', owner=self.b_admin, vertical=demo_bu,
+                                        department=self.dept)
+        visitor = User.objects.create_user('visitor', 'visitor@gamma-co.test', 'pw')   # no company: sees demo
+        self.client.force_login(visitor)
+        self.assertEqual(self.client.get(f'/project/{demo_p.id}/').status_code, 200)
+        self.assertEqual(self.client.post(f'/project/{demo_p.id}/comment/', {'text': 'x'}).status_code, 403)
+        self.assertFalse(ProjectComment.objects.filter(project=demo_p, text='x').exists())
+
+    def test_manage_users_cannot_change_roles_set_by_another_org(self):
+        # B's admin is added to A's company by A's admin with a plain role: B keeps
+        # their own roles and their admin membership in Beta Co.
+        self.b_admin.profile.roles = ['executive']
+        self.b_admin.profile.save()
+        self.login_a()
+        self.client.post('/app/manage-users/', {'action': 'add_member', 'company': self.co_a.id,
+                                                'email': B_EMAIL, 'roles': ['business_unit_user']})
+        self.b_admin.profile.refresh_from_db()
+        self.assertEqual(list(self.b_admin.profile.roles), ['executive'])
+        self.assertEqual(CompanyMembership.objects.get(company=self.co_b, user=self.b_admin).role, 'admin')
