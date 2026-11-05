@@ -42,9 +42,11 @@ _load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Off unless .env says DEBUG=True (local development only).
+DEBUG = os.environ.get('DEBUG', '').strip().lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = ['*']
+# Comma-separated in .env, e.g. ALLOWED_HOSTS=kiboko.pythonanywhere.com
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
 
 
 # Application definition
@@ -194,8 +196,8 @@ GOOGLE_OAUTH_SCOPES = [
 ]
 
 # --- Per-environment overrides -------------------------------------------
-# Keep this committed settings.py at dev defaults. Put server-specific values
-# (DEBUG=False, SECRET_KEY, ALLOWED_HOSTS, DATABASES, etc.) in a gitignored
+# SECRET_KEY, DEBUG and ALLOWED_HOSTS come from .env (above). Put other
+# server-specific values (DATABASES, OAuth credentials, etc.) in a gitignored
 # dashboard_tmpl/local_settings.py so `git pull` never conflicts with the server
 # config. Anything defined there overrides the values above.
 try:

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Kiboko | {% block title %}{% endblock %}</title>
+  <link rel="icon" href="/static/images/kiboko-favicon.ico" sizes="any">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      try { if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('theme-light'); } catch (e) {}
+    })();
+  </script>
+  <style>
+    :root { --bg: #0E081A; --card: #170E2B; --border: #2F1F55; --text: #F4EEFC; --text-2: #C8BCDF;
+      --muted: #A493C4; --btn-bg: #BAA3F0; --btn-text: #170E2B; --btn-hover: #D6C5F7; --link: #D6C5F7; }
+    html.theme-light { --bg: #F4F2F8; --card: #FFFFFF; --border: #DDD6EC; --text: #1C1530; --text-2: #3E3658;
+      --muted: #5C5474; --btn-bg: #432A85; --btn-text: #FFFFFF; --btn-hover: #321F66; --link: #432A85; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { display: flex; align-items: center; justify-content: center; padding: 24px 16px;
+      background: var(--bg); color: var(--text);
+      font-family: Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .err-card { width: 100%; max-width: 440px; text-align: center; background: var(--card);
+      border: 1px solid var(--border); border-radius: 14px; padding: 36px 28px 30px; }
+    .err-logo { height: 40px; width: auto; margin-bottom: 26px; }
+    .logo-for-light { display: none; }
+    html.theme-light .logo-for-dark { display: none; }
+    html.theme-light .logo-for-light { display: inline-block; }
+    .err-code { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    h1 { font-family: "Space Grotesk", Inter, sans-serif; font-size: 26px; font-weight: 700; margin: 8px 0 10px; }
+    p { font-size: 15px; line-height: 1.5; color: var(--text-2); margin: 0 0 26px; }
+    .err-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .err-btn { display: inline-block; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 700;
+      text-decoration: none; background: var(--btn-bg); color: var(--btn-text); border: 0; cursor: pointer; }
+    .err-btn:hover { background: var(--btn-hover); }
+    .err-link { display: inline-block; padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--link);
+      text-decoration: underline; text-underline-offset: 3px; }
+    .err-btn:focus-visible, .err-link:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main class="err-card">
+    <img src="/static/images/kiboko-logo-white.svg" alt="Kiboko" class="err-logo logo-for-dark"><img src="/static/images/kiboko-logo-purple.svg" alt="Kiboko" class="err-logo logo-for-light">
+    <div class="err-code">{% block code %}{% endblock %}</div>
+    <h1>{% block heading %}{% endblock %}</h1>
+    <p>{% block message %}{% endblock %}</p>
+    <div class="err-actions">
+      <a href="/" class="err-btn" id="err-back">Go back</a>
+      <a href="/" class="err-link">Go to home</a>
+    </div>
+  </main>
+  <script>
+    (function () {
+      // Return to the previous page when there is one; otherwise "Go back" falls through to home.
+      var back = document.getElementById('err-back');
+      var cameFromHere = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
+      if (cameFromHere && window.history.length > 1) {
+        back.addEventListener('click', function (e) { e.preventDefault(); window.history.back(); });
+      }
+    })();
+  </script>
+</body>
+</html>

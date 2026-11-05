@@ -42,37 +42,22 @@ The virtualenv name `kiboko` is what we'll reference in the Web tab later.
 
 ---
 
-## 4. Local production settings
+## 4. Environment settings (.env)
 
-The committed `dashboard_tmpl/settings.py` has development defaults (`DEBUG=True`, hard-coded `SECRET_KEY`, `ALLOWED_HOSTS=['*']`). Keep dev defaults local; override on PythonAnywhere via a `local_settings.py` (already gitignored):
-
-```bash
-cat > dashboard_tmpl/local_settings.py <<'EOF'
-import os
-DEBUG = False
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'change-me-in-pa-env')
-ALLOWED_HOSTS = ['<username>.pythonanywhere.com']
-# If you add a custom domain later, append it to the list.
-EOF
-```
-
-Then add this at the **bottom** of `dashboard_tmpl/settings.py` (only if it isn't already imported):
-
-```python
-try:
-    from .local_settings import *  # noqa: F401,F403
-except ImportError:
-    pass
-```
-
-> If you're going to manage that import line via the repo, make the change locally, commit, and `git pull` on PythonAnywhere. Don't commit `local_settings.py` itself — it stays per-environment.
-
-Set the secret key as an env var (next step picks it up):
+`dashboard_tmpl/settings.py` reads `DJANGO_SECRET_KEY`, `DEBUG` and `ALLOWED_HOSTS`
+from a gitignored `.env` in the project root. Django refuses to start without a
+secret key; `DEBUG` is off unless `.env` turns it on. Create it on the server
+(the key is generated straight into the file, so it is never typed or pasted):
 
 ```bash
-echo "export DJANGO_SECRET_KEY='$(python -c 'import secrets; print(secrets.token_urlsafe(50))')'" >> ~/.bashrc
-source ~/.bashrc
+cd ~/kiboko_mvp
+python -c "from django.core.management.utils import get_random_secret_key as g; open('.env','w').write('DJANGO_SECRET_KEY=' + g() + '\n')"
+printf 'DEBUG=False\nALLOWED_HOSTS=<username>.pythonanywhere.com\n' >> .env
 ```
+
+Add a custom domain to `ALLOWED_HOSTS` later as a comma-separated list. Other
+server-only values (`DATABASES`, Google OAuth credentials) go in the gitignored
+`dashboard_tmpl/local_settings.py`, which overrides everything in settings.py.
 
 ---
 
