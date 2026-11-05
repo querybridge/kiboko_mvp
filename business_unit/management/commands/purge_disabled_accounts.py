@@ -36,20 +36,27 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         dry = opts['dry_run']
         today = datetime.date.today()
+        checked, acted = 0, []
+
+        def say(line):
+            acted.append(line)
+            self.stdout.write(line)
+
         for org in Organization.objects.filter(is_platform_demo=False, billing_exempt=False).select_related('org_admin'):
+            checked += 1
             disabled = org.is_locked
             if not disabled:
-                if org.purge_after and not dry:
-                    org.purge_after = None
-                    org.purge_warned_at = None
-                    org.save(update_fields=['purge_after', 'purge_warned_at'])
                 if org.purge_after:
-                    self.stdout.write(f'{org.name}: active again, deletion date cleared')
+                    say(f'{org.name}: active again, deletion date cleared')
+                    if not dry:
+                        org.purge_after = None
+                        org.purge_warned_at = None
+                        org.save(update_fields=['purge_after', 'purge_warned_at'])
                 continue
 
             if org.purge_after is None:
                 purge_on = today + datetime.timedelta(days=org.PURGE_DAYS)
-                self.stdout.write(f'{org.name}: disabled, data will be deleted on {purge_on}')
+                say(f'{org.name}: disabled, data will be deleted on {purge_on}')
                 if not dry:
                     org.purge_after = purge_on
                     org.save(update_fields=['purge_after'])
@@ -60,13 +67,16 @@ class Command(BaseCommand):
             if org.purge_after <= today:
                 counts = purge_organization(org, dry_run=dry)
                 summary = ', '.join(f'{k} {v}' for k, v in sorted(counts.items()) if v)
-                self.stdout.write(f'{org.name}: {"would delete" if dry else "deleted"} ({summary})')
+                say(f'{org.name}: {"would delete" if dry else "deleted"} ({summary})')
                 continue
 
             if (org.purge_after - today).days <= WARN_DAYS and org.purge_warned_at is None:
-                self.stdout.write(f'{org.name}: final warning, deletion on {org.purge_after}')
+                say(f'{org.name}: final warning, deletion on {org.purge_after}')
                 if not dry:
                     mail.send(_recipients(org), 'Your Kiboko data will be deleted in 7 days', 'account_purge_warning',
                               {'org': org, 'purge_on': org.purge_after})
                     org.purge_warned_at = timezone.now()
                     org.save(update_fields=['purge_warned_at'])
+
+        outcome = f'{len(acted)} action(s)' if acted else 'nothing to do'
+        self.stdout.write(f'{"Dry run: " if dry else ""}{checked} organization(s) checked, {outcome}.')
