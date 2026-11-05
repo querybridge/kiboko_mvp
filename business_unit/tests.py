@@ -294,3 +294,26 @@ class FeedbackTests(TestCase):
                'page': '/app/help/', 'message': 'Line one\nLine <two>'}
         self.assertIn('Line <two>', render_to_string('emails/feedback.txt', ctx))
         self.assertIn('Line &lt;two&gt;', render_to_string('emails/feedback.html', ctx))
+
+
+class DiminishingReturnsTests(TestCase):
+    """Risk-adjusted value must never fall as the target rises (log curve)."""
+    def test_full_credit_within_one_swing(self):
+        from project.services.impact import diminishing_factor
+        for z in (-2, 0, 0.5, 1):
+            self.assertEqual(diminishing_factor(z), 1.0)
+
+    def test_expected_rises_but_ever_more_slowly(self):
+        from project.services.impact import diminishing_factor
+        zs = [1 + i * 0.25 for i in range(0, 200)]
+        credited = [z * diminishing_factor(z) for z in zs]
+        steps = [b - a for a, b in zip(credited, credited[1:])]
+        self.assertTrue(all(s > 0 for s in steps))                          # never declines
+        self.assertTrue(all(b <= a + 1e-12 for a, b in zip(steps, steps[1:])))  # flattens
+
+    def test_plausibility_uses_the_curve(self):
+        from project.services.impact import plausibility, diminishing_factor
+        levels = [100, 102, 98, 101, 99, 100, 103, 97]
+        lo, hi = plausibility(108, levels, center=100), plausibility(130, levels, center=100)
+        self.assertAlmostEqual(lo['factor'], diminishing_factor(lo['z']))
+        self.assertGreater(hi['z'] * hi['factor'], lo['z'] * lo['factor'])

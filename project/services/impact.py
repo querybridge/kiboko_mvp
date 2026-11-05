@@ -215,13 +215,32 @@ def realized_fraction(launch, ramp_days, today=None, year_end=None):
     return total / DAYS_IN_YEAR
 
 
+# Diminishing returns on a stretch target. Within one normal weekly swing (z <= 1)
+# the gain counts in full; beyond it each further step of stretch earns less,
+# following a logarithm: credited stretch = 1 + K * ln(1 + (z - 1) / K). Its rate
+# of change, K / (K + z - 1), is 1 at z = 1 (no kink) and falls toward 0 but never
+# below it, so a bigger target always adds value, just more slowly. K sets how
+# quickly returns diminish (larger = more generous).
+DIMINISHING_K = 1.0
+
+
+def diminishing_factor(z, k=DIMINISHING_K):
+    """Share of the gross gain credited for a target `z` weekly swings above the
+    current level: credited stretch / z. 1.0 when z <= 1."""
+    import math
+    if z <= 1.0:
+        return 1.0
+    return (1.0 + k * math.log1p((z - 1.0) / k)) / z
+
+
 def plausibility(target, levels, center=None):
     """How plausible is `target` given the lever's recent weekly `levels`?
     Distance is measured from `center` (the current level / baseline, a volume-
     weighted rate) in units of weekly volatility, so the gauge references the same
     number the baseline shows; `center` falls back to the weekly mean when None.
     Returns z-score, weeks reached, band, gauge position, and a risk factor P
-    (used to auto-discount the algorithmic score). Empty history -> neutral P=1."""
+    (diminishing_factor: risk-adjusted value never falls as the target rises,
+    it just grows more slowly). Empty history -> neutral P=1."""
     vals = [float(x) for x in (levels or []) if x == x]
     if len(vals) < PLAUSIBILITY_MIN_WEEKS:
         return {'ok': False, 'factor': 1.0}
@@ -239,7 +258,7 @@ def plausibility(target, levels, center=None):
         band, color = 'Aggressive', '#fdae61'
     else:
         band, color = 'Implausible', '#d7191c'
-    P = 1.0 if z <= 1.0 else max(0.15, 1.0 - (z - 1.0) / 3.0)
+    P = diminishing_factor(z)
     return {'ok': True, 'z': z, 'ref': ref, 'mean': mean, 'std': std, 'n': len(vals),
             'reached': reached, 'hist_max': max(vals), 'hist_min': min(vals),
             'band': band, 'color': color, 'position': min(1.0, max(0.0, (z + 1) / 5)),
