@@ -143,6 +143,10 @@
 
   .est-footnote { color: var(--text-muted); font-size: 11.5px; margin-top: 14px; line-height: 1.5; }
   .est-panel .form-group { margin-bottom: 12px; }
+  /* Amount on one line, one-time / monthly underneath (the column is narrow). */
+  .de-row .est-ig { width: 100%; }
+  .de-row select { width: 100%; margin-top: 8px; }
+  .de-note { margin: 5px 0 0; }
   .intake-actions { margin-top: 8px; }
   .col-half { padding-right: 6px; }
   .col-half + .col-half { padding-right: 15px; padding-left: 6px; }
@@ -309,12 +313,17 @@
                 </div>
                 <div class="col-half col-sm-6">
                   <div class="form-group">
-                    <label for="disp_de">Direct expense <small class="text-muted">(one-time)</small></label>
-                    <div class="input-group est-ig">
-                      <span class="input-group-addon ig-pre">$</span>
-                      <input type="text" class="form-control" id="disp_de" autocomplete="off" inputmode="decimal">
+                    <label for="disp_de">Direct expense <small class="text-muted" id="de_unit">(one-time)</small></label>
+                    <div class="de-row">
+                      <div class="input-group est-ig">
+                        <span class="input-group-addon ig-pre">$</span>
+                        <input type="text" class="form-control" id="disp_de" autocomplete="off" inputmode="decimal">
+                        <span class="input-group-addon ig-suf" id="de_suf" style="display:none;">/mo</span>
+                      </div>
+                      {{ form.expense_type }}
                     </div>
                     {{ form.direct_expense }}
+                    <div class="est-hint de-note" id="de_note"></div>
                   </div>
                 </div>
               </div>
@@ -579,8 +588,37 @@
     el.className = 'baseline-delta ' + cls;
   }
 
+  // Mirror impact.months_live_this_year / expense_costs: an ongoing monthly cost
+  // runs for each month the project is live this fiscal year, and x12 after that.
+  var expType = $('id_expense_type');
+  function monthsLiveThisYear(launchStr) {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var yearEnd = new Date(today.getFullYear(), 11, 31);
+    var ld = launchStr ? new Date(launchStr + 'T00:00:00') : new Date(today);
+    if (isNaN(ld)) ld = new Date(today);
+    var start = ld > today ? ld : today;
+    if (start > yearEnd) return 0;
+    return (Math.round((yearEnd - start) / 86400000) + 1) / (365 / 12);
+  }
+  function updateExpense() {
+    var monthly = expType && expType.value === 'monthly';
+    var amt = parseFloat(HID.de.value) || 0, note = $('de_note');
+    $('de_unit').textContent = monthly ? '(per month, ongoing)' : '(one-time)';
+    $('de_suf').style.display = monthly ? '' : 'none';
+    if (!note) return;
+    if (!(amt > 0)) { note.textContent = ''; return; }
+    if (monthly) {
+      var m = monthsLiveThisYear(launch && launch.value);
+      note.textContent = fmtUSD(amt * m, 0) + ' this year (' + m.toFixed(1) + ' months live), then ' +
+                         fmtUSD(amt * 12, 0) + ' every year after.';
+    } else {
+      note.textContent = 'Counted once, against this year’s value.';
+    }
+  }
+
   function recalc() {
     updateAccent();
+    updateExpense();
     updatePlaus();
     updateBaselineDelta();
     refreshDisplays();
@@ -818,7 +856,7 @@
     if (GA4) autofill(); else if (!(bu && bu.value)) fetchBaseline();   // refresh the nudge
     recalc();
   });
-  [ramp, launch].forEach(function (el) {
+  [ramp, launch, expType].forEach(function (el) {
     if (el) { el.addEventListener('input', recalc); el.addEventListener('change', recalc); }
   });
   if (bu) bu.addEventListener('change', fetchBaseline);

@@ -8,7 +8,8 @@ from django.contrib.auth.models import User
 import datetime
 from .model_field_options import *
 from project.project_field_options import (AEE_ALIGNMENT_CHOICES, status_options,
-                                            EFFORT_SIZE_CHOICES, LEVER_CHOICES, CAPABILITY_CHOICES)
+                                            EFFORT_SIZE_CHOICES, LEVER_CHOICES, CAPABILITY_CHOICES,
+                                            EXPENSE_TYPE_CHOICES)
 
 # Create your all your models here
 
@@ -133,6 +134,9 @@ class Project(models.Model):
     ramp_days = models.PositiveSmallIntegerField(default=30)
     capability = models.CharField(max_length=12, choices=CAPABILITY_CHOICES, blank=True, default='')  # developer only
     direct_expense = models.IntegerField(default=0)
+    # one_time: direct_expense is paid once. monthly: direct_expense is a new
+    # ongoing cost per month, counted for each month the project is live.
+    expense_type = models.CharField(max_length=10, choices=EXPENSE_TYPE_CHOICES, default='one_time')
     plausibility_factor = models.FloatField(default=1.0)        # target plausibility risk-adjustment (P)
     # --- Analyst value review (intake gate, parallel to developer LOE) ---
     # An Analyst verifies the auto-estimated value, or adjusts it by setting
@@ -208,6 +212,7 @@ class Project(models.Model):
             s0_annual=float(self.s0_annual), launch=self.target_completion,
             ramp_days=self.ramp_days, capability=self.capability or 'mostly',
             effort=self.effort_size or 'M', direct_expense=self.direct_expense or 0,
+            expense_type=self.expense_type or 'one_time',
             margin_factor=EstimatorSettings.margin_for(self._company()),
             plausibility_factor=self.plausibility_factor or 1.0)
 

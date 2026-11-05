@@ -40,6 +40,12 @@ AEE_ALIGNMENT_CHOICES = (
 	('expand_purchase', 'Expand Purchase'),
 )
 
+# Direct expense: paid once, or a new ongoing monthly cost (e.g. a tool subscription).
+EXPENSE_TYPE_CHOICES = (
+	('one_time', 'One-time'),
+	('monthly', 'Monthly (ongoing)'),
+)
+
 # Lead-developer effort sizing (t-shirt sizes) -- feeds the algorithmic score.
 EFFORT_SIZE_CHOICES = (
 	('XXS', 'XXS'),

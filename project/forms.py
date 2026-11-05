@@ -25,7 +25,7 @@ class ProjectForm(ModelForm):
     def __init__(self, *args, user=None, company_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         for f in ('target_completion', 'target_from', 's0_annual', 'direct_expense',
-                  'ramp_days', 'plausibility_factor',
+                  'expense_type', 'ramp_days', 'plausibility_factor',
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note'):
             self.fields[f].required = False
         self.fields['plausibility_factor'].initial = 1.0
@@ -99,6 +99,7 @@ class ProjectForm(ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        cleaned['expense_type'] = cleaned.get('expense_type') or 'one_time'
         # Unique project name per company (case-insensitive), so lazy duplicates
         # and re-suggested ideas don't fragment the backlog. Different companies
         # may reuse a name; archived projects don't block reuse.
@@ -142,7 +143,7 @@ class ProjectForm(ModelForm):
         fields = ['name', 'objective', 'owner', 'vertical', 'department',
                   'target_completion', 'why', 'definition_of_done',
                   'lever', 'target_from', 'target_to', 's0_annual', 'ramp_days',
-                  'direct_expense', 'plausibility_factor',
+                  'direct_expense', 'expense_type', 'plausibility_factor',
                   'evidence_backed', 'evidence_kind', 'evidence_prior_level', 'evidence_note']
         labels = {
             'vertical': 'Business Unit',
@@ -156,6 +157,7 @@ class ProjectForm(ModelForm):
             's0_annual': 'Annual sales baseline ($)',
             'ramp_days': 'Ramp to full effect (days)',
             'direct_expense': 'Direct expense ($)',
+            'expense_type': 'Expense is',
         }
         help_texts = {
             'objective': 'The annual objective this supports (its AEE element is inherited).',
@@ -186,6 +188,7 @@ class ProjectForm(ModelForm):
             'target_to': forms.HiddenInput(),
             's0_annual': forms.HiddenInput(),
             'direct_expense': forms.HiddenInput(),
+            'expense_type': Select(attrs={'class': 'form-control'}),
             'ramp_days': NumberInput(attrs={'min': 1, 'class': 'form-control'}),
             'plausibility_factor': forms.HiddenInput(),
             'evidence_backed': forms.CheckboxInput(),

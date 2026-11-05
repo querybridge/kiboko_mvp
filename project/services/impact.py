@@ -265,8 +265,29 @@ def plausibility(target, levels, center=None):
             'factor': P}
 
 
+def months_live_this_year(launch, today=None, year_end=None):
+    """Months from go-live (or today, if already live) to fiscal year end -- how
+    many months an ongoing cost runs in the same window the realized value covers."""
+    today = today or date.today()
+    year_end = year_end or date(today.year, 12, 31)
+    start = max(launch or today, today)
+    if start > year_end:
+        return 0.0
+    return ((year_end - start).days + 1) / (DAYS_IN_YEAR / 12.0)
+
+
+def expense_costs(direct_expense, expense_type='one_time', launch=None, today=None):
+    """(cost this fiscal year, cost per full year) for a direct expense.
+    One-time: the amount, once (it is not repeated in later years).
+    Monthly: the amount per month for each month live this year, and x12 a year."""
+    amount = float(direct_expense or 0)
+    if expense_type == 'monthly':
+        return amount * months_live_this_year(launch, today=today), amount * 12.0
+    return amount, amount
+
+
 def estimate(*, target_from, target_to, s0_annual, launch, ramp_days,
-             capability='mostly', effort='M', direct_expense=0.0,
+             capability='mostly', effort='M', direct_expense=0.0, expense_type='one_time',
              margin_factor=DEFAULT_MARGIN, plausibility_factor=1.0, fit=1.0, today=None):
     """Return the impact components + raw algorithmic priority for one project."""
     target_from = float(target_from or 0) or 1e-9
@@ -276,12 +297,16 @@ def estimate(*, target_from, target_to, s0_annual, launch, ramp_days,
     realized_annual = gross_annual * rf
     C = CAPABILITY.get(capability, ('', 0.85))[1]
     expected_realized = realized_annual * C * float(plausibility_factor)
-    net_annual = gross_annual * margin_factor - float(direct_expense or 0)
+    cost_in_year, cost_annual = expense_costs(direct_expense, expense_type, launch, today=today)
+    net_annual = gross_annual * margin_factor - cost_annual
     effort_cost = LOE_COST.get(effort, 1.4)
-    kiboko_raw = (expected_realized * margin_factor - float(direct_expense or 0)) * fit / effort_cost
+    # Priority compares this year's expected margin with this year's cost, so an
+    # ongoing cost counts for the months it runs alongside the realized value.
+    kiboko_raw = (expected_realized * margin_factor - cost_in_year) * fit / effort_cost
     return {
         'pct_delta': pct, 'gross_annual': gross_annual, 'realized_fraction': rf,
         'realized_annual': realized_annual, 'expected_realized': expected_realized,
+        'expense_in_year': cost_in_year, 'expense_annual': cost_annual,
         'net_annual': net_annual, 'kiboko_raw': kiboko_raw,
     }
 

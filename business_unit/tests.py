@@ -317,3 +317,28 @@ class DiminishingReturnsTests(TestCase):
         lo, hi = plausibility(108, levels, center=100), plausibility(130, levels, center=100)
         self.assertAlmostEqual(lo['factor'], diminishing_factor(lo['z']))
         self.assertGreater(hi['z'] * hi['factor'], lo['z'] * lo['factor'])
+
+
+class DirectExpenseTests(TestCase):
+    """One-time vs ongoing monthly direct expense in the estimate."""
+    def test_one_time_counts_once(self):
+        from project.services.impact import expense_costs
+        self.assertEqual(expense_costs(12000, 'one_time', datetime.date(2026, 7, 1), today=datetime.date(2026, 1, 1)),
+                         (12000.0, 12000.0))
+
+    def test_monthly_counts_months_live_this_year_and_x12_after(self):
+        from project.services.impact import expense_costs
+        in_year, annual = expense_costs(1000, 'monthly', datetime.date(2026, 7, 1), today=datetime.date(2026, 1, 1))
+        self.assertAlmostEqual(in_year, 1000 * 184 / (365 / 12), places=2)   # Jul 1 - Dec 31 = 184 days
+        self.assertEqual(annual, 12000.0)
+        # launching after year end: nothing this year, still a yearly run-rate
+        self.assertEqual(expense_costs(1000, 'monthly', datetime.date(2027, 2, 1), today=datetime.date(2026, 1, 1))[0], 0.0)
+
+    def test_monthly_cost_lowers_priority_and_net(self):
+        from project.services.impact import estimate
+        kw = dict(target_from=100, target_to=110, s0_annual=1_000_000, launch=datetime.date(2026, 3, 1),
+                  ramp_days=30, today=datetime.date(2026, 1, 1))
+        one = estimate(direct_expense=1000, expense_type='one_time', **kw)
+        mon = estimate(direct_expense=1000, expense_type='monthly', **kw)
+        self.assertLess(mon['kiboko_raw'], one['kiboko_raw'])
+        self.assertAlmostEqual(one['net_annual'] - mon['net_annual'], 11000.0)
