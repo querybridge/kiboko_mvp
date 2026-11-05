@@ -693,3 +693,10 @@ html.theme-light::-webkit-scrollbar-thumb:hover { background: var(--purple-500);
 
 /* Theme toggle icon */
 .sidebar-collapse-toggle a + a { margin-left: 4px; }
+
+/* Privacy | Terms under the sidebar's bottom actions; hidden when collapsed. */
+.sidebar-legal { text-align: center; font-size: 12px; padding: 0 0 14px; color: var(--text-muted); }
+.sidebar-legal a { color: var(--text-secondary); text-decoration: none; }
+.sidebar-legal a:hover, .sidebar-legal a:focus-visible { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.sidebar-legal span { margin: 0 8px; color: var(--text-muted); }
+body.nav-sm .sidebar-legal { display: none; }

@@ -1,0 +1,104 @@
+{% extends "legal/_legal_base.html" %}
+{% block title %}Privacy Policy{% endblock %}
+{% block body %}
+<h1>Privacy Policy</h1>
+<p class="lg-updated">Last updated: November 5, 2026</p>
+
+<p>This Privacy Policy explains how Kiboko Method LLC ("Kiboko," "we," "us") collects, uses, stores and shares information when you use the Kiboko application at kiboko.app and related services (the "Service"). Kiboko is a business tool. Our customers are organizations, and the people who use Kiboko do so on behalf of their organization.</p>
+
+<div class="lg-callout">
+  <p><strong>The short version</strong></p>
+  <ul>
+    <li>Kiboko does not use Google Analytics or any other tracking, advertising or analytics software.</li>
+    <li>We don't sell your information or share it for advertising.</li>
+    <li>Kiboko stores your <strong>Project Data</strong> (your account, projects and the work you do in Kiboko) on servers in the United States.</li>
+    <li>Kiboko does not store your <strong>Analytics Data</strong>. Your Google Analytics data stays on Google's servers, and Kiboko requests it to display it to you.</li>
+    <li>If you connect BigQuery, the database is yours. Kiboko queries it to display results and does not copy your raw records. It keeps daily summary totals as part of your Project Data.</li>
+    <li>After an account is closed, for non-payment or cancellation, its Project Data stays available for 90 days and is then permanently deleted.</li>
+    <li>Kiboko does not collect data from visitors to your website. Your analytics tools do, and you are responsible for the consent they require.</li>
+  </ul>
+</div>
+
+<h2>1. Information we collect</h2>
+<p>This policy separates two kinds of data. <strong>Project Data</strong> is what Kiboko stores for your account, described in this section. <strong>Analytics Data</strong> is the data in your Google Analytics properties and BigQuery datasets, described in section 3. Kiboko does not store Analytics Data, except for the figures that section 3 says become Project Data.</p>
+<h3>Information you give us (Project Data)</h3>
+<ul>
+  <li><strong>Account information:</strong> name, email address, username, company name, role and password. Passwords are stored only as a one-way hash.</li>
+  <li><strong>Content you create:</strong> projects, actions, estimates, scores, goals, comments, feedback and any figures you upload, type or save into Kiboko.</li>
+  <li><strong>Trial sign-up:</strong> the email address you give us to receive a trial code, and the date you agreed to our Terms and this policy.</li>
+  <li><strong>Billing information:</strong> payments are handled by Stripe. Kiboko never receives or stores your full card number. We keep the Stripe customer and subscription references, your plan, and your payment status.</li>
+</ul>
+<h3>Information from connected data sources (Analytics Data)</h3>
+<p>Described in section 3 below.</p>
+<h3>Information collected automatically</h3>
+<ul>
+  <li><strong>Server logs:</strong> like most web services, our servers record IP address, browser type, the pages requested and the time of each request. We use these logs for security, troubleshooting and capacity planning.</li>
+  <li><strong>Essential cookies only:</strong> Kiboko uses a session cookie to keep you signed in and a security cookie that protects forms. Your light or dark theme choice is saved in your own browser. We do not use advertising or analytics cookies.</li>
+</ul>
+
+<h2>2. No tracking software</h2>
+<p>Kiboko does not use Google Analytics, advertising pixels, session recording or any other third-party tracking or analytics software. We do not sell personal information, and we do not share it for cross-context behavioral advertising.</p>
+
+<h2>3. Connected data sources</h2>
+<h3>Google sign-in and Google Analytics (Google API connection)</h3>
+<p>If you sign in with Google or connect Google Analytics, you authorize Kiboko to access data from your Google Analytics properties through Google's APIs, for the purpose of displaying it to you in Kiboko. Your Google Analytics data remains on Google's servers. Kiboko requests it from Google when you view a page that needs it.</p>
+<p>Kiboko does not store your Google Analytics data. To make those requests, Kiboko stores the access token Google issues for your account, and your Google account's name and email address. Figures you save into a project, for example the baseline and target attached to a project estimate, become Project Data.</p>
+<p>Kiboko's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. We use Google data only to provide the features you see in Kiboko. We do not use it for advertising, we do not sell it, and people at Kiboko do not read it except with your permission, for security, or as the law requires.</p>
+<p>You can disconnect Kiboko at any time from your Google Account's <a href="https://myaccount.google.com/permissions" rel="noopener">third-party access settings</a>.</p>
+
+<h3>BigQuery connection</h3>
+<p>Customers who use the BigQuery connection set up and own their own BigQuery database and give Kiboko read access to it. Kiboko queries that database and displays the results. Kiboko does not copy your raw event, visitor or order-level records into its own systems.</p>
+<p>To keep dashboards fast and your query costs low, Kiboko keeps daily summary totals calculated from those queries, for example a day's visits, carts, orders and sales, broken out by device, channel and product category. These totals, and any figures you save into a project, are Project Data and follow the retention rules in section 7. You can remove Kiboko's access at any time by revoking its permissions on your BigQuery project.</p>
+
+<h3>Your website visitors</h3>
+<p>Kiboko does not collect data from people who visit your websites, and does not place cookies or code on your websites. That data is collected by your websites and the analytics tools you install on them, such as Google Analytics. You are responsible for giving your visitors the notices and obtaining the consent that the laws and policies in your region require. Kiboko displays what it finds in your Analytics Data; see section 6 of our <a href="{% url 'legal_terms' %}">Terms of Service</a>.</p>
+
+<h2>4. How we use information</h2>
+<ul>
+  <li>To provide, maintain and secure the Service.</li>
+  <li>To send service emails, such as invitations, trial codes, password resets, project updates and billing notices.</li>
+  <li>To follow up with people who have started a trial but have not yet subscribed, about their trial, getting set up, and subscribing. You can opt out of these follow-up emails at any time by following the instructions in the email or by writing to <a href="mailto:info@kibokomethod.com">info@kibokomethod.com</a>.</li>
+  <li>To process payments and manage subscriptions.</li>
+  <li>To respond to support requests and feedback.</li>
+  <li>To prevent fraud and abuse and to meet legal obligations.</li>
+</ul>
+
+<h2>5. Who we share information with</h2>
+<p>We share information only with service providers that help us run Kiboko, under contracts that limit their use of it to providing their service to us:</p>
+<ul>
+  <li><strong>PythonAnywhere:</strong> application hosting and database (United States).</li>
+  <li><strong>Twilio SendGrid:</strong> delivery of service emails.</li>
+  <li><strong>Stripe:</strong> payment processing and subscription billing.</li>
+  <li><strong>Google:</strong> Google sign-in, the Google Analytics APIs and BigQuery, when you choose to connect them. Kiboko pages also load fonts from Google Fonts.</li>
+</ul>
+<p>We may also disclose information if the law requires it, to protect the rights and safety of Kiboko or others, or as part of a merger or sale of the business, in which case this policy continues to apply.</p>
+<p>Within your organization, people with access to your Kiboko account (for example your administrators and teammates) can see the content shared in that account.</p>
+
+<h2>6. Where data is stored</h2>
+<p>Project Data is stored on servers located in the United States. Analytics Data stays in your Google account, in the location you or Google chose for it.</p>
+
+<h2>7. How long we keep data</h2>
+<p>We keep Project Data while your account is active. If an account is disabled, because of non-payment or because the customer cancels, its Project Data remains available for 90 days so the account can be reactivated or the data exported. After 90 days, the Project Data is permanently deleted. Copies in our routine backups are removed as those backups expire.</p>
+<p>The 90-day period applies to Project Data only. Kiboko does not hold your Analytics Data, so it remains in your Google account under your settings and Google's terms. If you revoke Kiboko's access in your Google account or BigQuery project, the access token or credentials Kiboko holds stop working. We delete them on request, and when the account's Project Data is deleted.</p>
+<p>If you request a trial code but do not create an account, we keep your email address to follow up about the trial until you opt out or ask us to delete it. Server logs are kept only as long as needed for security and troubleshooting.</p>
+
+<h2>8. Security</h2>
+<p>Kiboko is served only over encrypted connections (HTTPS). Passwords are hashed, access to data is limited to the people in your organization who need it, and access to our systems is restricted. No system is perfectly secure. If we learn of a breach that affects your information, we will notify you as the law requires.</p>
+
+<h2>9. Your choices and rights</h2>
+<ul>
+  <li>You can update your name, username and password in User Settings.</li>
+  <li>Your organization's administrator can add and remove users.</li>
+  <li>You can ask us to access, correct, export or delete your personal information by emailing <a href="mailto:info@kibokomethod.com">info@kibokomethod.com</a>. Where your organization controls the account, we may refer your request to them.</li>
+  <li>Depending on where you live, you may have additional rights under local law. We will not discriminate against you for using them.</li>
+</ul>
+
+<h2>10. Children</h2>
+<p>Kiboko is a business service and is not directed to children under 16. We do not knowingly collect information from them.</p>
+
+<h2>11. Changes to this policy</h2>
+<p>If we change this policy, we will update the date above. If a change is significant, we will notify account administrators by email or in the app before it takes effect.</p>
+
+<h2>12. Contact</h2>
+<p>Questions about this policy or your information: <a href="mailto:info@kibokomethod.com">info@kibokomethod.com</a>.</p>
+{% endblock %}

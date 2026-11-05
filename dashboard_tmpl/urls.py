@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.urls import path, include
 from django.contrib import admin
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 
 from app import auth_views
 
@@ -32,6 +32,9 @@ urlpatterns = [
     path('project/', include('project.urls', namespace='project')),
     path('users/', include('users.urls', namespace='users')),
     path('app/', include('app.urls')),
+    # Public legal pages (open to signed-out and billing-locked users)
+    path('legal/privacy/', TemplateView.as_view(template_name='legal/privacy.html'), name='legal_privacy'),
+    path('legal/terms/', TemplateView.as_view(template_name='legal/terms.html'), name='legal_terms'),
     # Stripe: Checkout, Customer Portal, webhook (reachable while billing-locked)
     path('billing/', include('business_unit.billing_urls', namespace='billing')),
 ]

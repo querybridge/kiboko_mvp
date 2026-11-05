@@ -54,6 +54,11 @@ _LANDER_ROLE_PRIORITY = ['executive', 'business_unit_leader', 'analyst',
                          'developer', 'business_unit_user']
 
 
+# Date of the current Terms of Service / Privacy Policy. Bump it (and the
+# "Last updated" line on both pages) when either changes materially.
+LEGAL_VERSION = '2026-11-05'
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default='staff')  # legacy
@@ -62,6 +67,9 @@ class UserProfile(models.Model):
     # Set when an admin creates the account with a temporary password; forces a
     # password change on first login (Google accounts never need one).
     must_change_password = models.BooleanField(default=False)
+    # Clickwrap record: when this user agreed to the Terms and Privacy Policy, and which version.
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    terms_version = models.CharField(max_length=20, blank=True, default='')
     # Blank = use the role-based default (resolved_lander_key).
     default_lander = models.CharField(max_length=20, choices=LANDER_CHOICES,
                                       blank=True, default='')

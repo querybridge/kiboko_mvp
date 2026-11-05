@@ -41,12 +41,26 @@ _load_dotenv(os.path.join(BASE_DIR, '.env'))
 # Set DJANGO_SECRET_KEY in the gitignored .env at the project root.
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
 
+
+
+def _env_bool(name, default=False):
+    value = os.environ.get(name, '').strip().lower()
+    return value in ('1', 'true', 'yes', 'on') if value else default
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
 # Off unless .env says DEBUG=True (local development only).
-DEBUG = os.environ.get('DEBUG', '').strip().lower() in ('1', 'true', 'yes', 'on')
+DEBUG = _env_bool('DEBUG')
 
 # Comma-separated in .env, e.g. ALLOWED_HOSTS=kiboko.pythonanywhere.com
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
+
+# HTTPS whenever DEBUG is off. PythonAnywhere terminates TLS and passes
+# X-Forwarded-Proto. SECURE_SSL_REDIRECT=False in .env is the escape hatch.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', not DEBUG)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 
 # Application definition

@@ -80,6 +80,7 @@ def get_started(request):
     from django.db import transaction
     from django.utils import timezone
     from business_unit.models import Plan, Organization, Company, CompanyMembership, TrialCode
+    from users.models import LEGAL_VERSION
     from business_unit import email as mail
 
     if request.user.is_authenticated:
@@ -187,6 +188,8 @@ def get_started(request):
                 errors.append('The passwords do not match.')
             if form['plan'] not in valid_slugs:
                 errors.append('Choose a plan.')
+            if not request.POST.get('agree_terms'):
+                errors.append('Agree to the Terms of Service and Privacy Policy to start your trial.')
             if errors:
                 for e in errors:
                     messages.error(request, e)
@@ -212,6 +215,9 @@ def get_started(request):
                     organization=org, name=form['company'],
                     slug=_unique_slug(Company, form['company']))
                 CompanyMembership.objects.create(user=user, company=company, role='admin')
+                user.profile.terms_accepted_at = timezone.now()
+                user.profile.terms_version = LEGAL_VERSION
+                user.profile.save(update_fields=['terms_accepted_at', 'terms_version'])
                 trial.used_at = timezone.now()
                 trial.organization = org
                 trial.save(update_fields=['used_at', 'organization'])

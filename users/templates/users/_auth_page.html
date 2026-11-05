@@ -1,0 +1,16 @@
+{% extends "app/base_site.html" %}
+{% block sidebar %}{% endblock sidebar %}
+{% block top_navigation %}{% endblock top_navigation %}
+{% block stylesheets %}{{ block.super }}
+{% include "users/_auth_styles.html" %}
+{% endblock stylesheets %}
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">
+      <img src="/static/images/kiboko-logo-white.svg" alt="Kiboko" class="login-logo logo-for-dark"><img src="/static/images/kiboko-logo-purple.svg" alt="Kiboko" class="login-logo logo-for-light">
+    </div>
+    {% block card %}{% endblock card %}
+  </div>
+</div>
+{% endblock content %}

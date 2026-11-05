@@ -22,6 +22,7 @@ class ForcePasswordChangeMiddleware:
                     or path.startswith('/static/')
                     or path.startswith('/media/')
                     or path.startswith('/admin/')
+                    or path.startswith('/legal/')
                 )
                 if not allowed:
                     # The profile page shows an amber "temporary password" alert;

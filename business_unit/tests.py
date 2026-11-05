@@ -28,7 +28,8 @@ class TrialSignupTests(TestCase):
 
     def _details(self, **kw):
         data = {'action': 'create', 'first_name': 'Ada', 'last_name': 'Lee', 'company': 'Acme',
-                'plan': 'standard', 'password': 'longpassword', 'password_confirm': 'longpassword'}
+                'plan': 'standard', 'password': 'longpassword', 'password_confirm': 'longpassword',
+                'agree_terms': '1'}
         data.update(kw)
         return data
 
@@ -87,6 +88,18 @@ class TrialSignupTests(TestCase):
         tc.refresh_from_db()
         self.assertIsNotNone(tc.used_at)
         self.assertIsNone(TrialCode.redeemable('ada@acme.co', tc.code))
+        from users.models import LEGAL_VERSION
+        prof = org.org_admin.profile
+        self.assertIsNotNone(prof.terms_accepted_at)
+        self.assertEqual(prof.terms_version, LEGAL_VERSION)
+
+    def test_terms_must_be_accepted(self):
+        self._send()
+        tc = TrialCode.objects.get(email='ada@acme.co')
+        self.client.post('/users/get-started/', {'action': 'verify', 'code': tc.code})
+        self.client.post('/users/get-started/', self._details(agree_terms=''))
+        self.assertFalse(User.objects.filter(email='ada@acme.co').exists())
+        self.assertEqual(self._step(), 'details')
 
     def test_detail_errors_keep_fields_and_stay_on_step_three(self):
         self._send()

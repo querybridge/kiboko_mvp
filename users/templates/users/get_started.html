@@ -75,6 +75,12 @@
   .gs-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .gs-field { margin-bottom: 14px; }
   .gs-test-note { font-size: 12px; color: var(--text-muted, #8b7fa6); margin-top: 12px; text-align: center; }
+  .gs-agree { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 12px; font-size: 13px; line-height: 1.45;
+    font-weight: normal; text-transform: none; letter-spacing: normal; color: var(--text-secondary, #C8BCDF); cursor: pointer; }
+  .gs-agree input { margin-top: 2px; width: 16px; height: 16px; flex: none; accent-color: var(--purple-400, #9B7FE0); }
+  .gs-legal { font-size: 11.5px; line-height: 1.5; color: var(--text-muted, #8b7fa6); text-align: center; margin: 12px 0 0; }
+  .gs-agree a, .gs-legal a { color: var(--purple-200, #D6C5F7); text-decoration: underline; text-underline-offset: 3px; }
+  html.theme-light .gs-agree a, html.theme-light .gs-legal a { color: var(--purple-700, #432A85); }
   @media (max-width: 560px) { .gs-grid2 { grid-template-columns: 1fr; } }
 </style>
 {% endblock stylesheets %}
@@ -112,6 +118,7 @@
       <div class="gs-field"><label for="gs-email">Work email</label>
         <input type="email" id="gs-email" name="email" placeholder="you@company.com" autocomplete="email" required autofocus></div>
       <button type="submit" class="btn btn-primary btn-block">Email me a code</button>
+      <p class="gs-legal">We'll use this email for your trial code and to follow up about your trial. You can opt out at any time. See our <a href="{% url 'legal_privacy' %}" target="_blank" rel="noopener">Privacy Policy</a> and <a href="{% url 'legal_terms' %}" target="_blank" rel="noopener">Terms of Service</a>.</p>
       <ul class="gs-perks">
         <li><i class="fa fa-check"></i>{{ trial_days }} days free</li>
         <li><i class="fa fa-check"></i>No card needed</li>
@@ -187,6 +194,10 @@
         <div class="gs-field"><label>Password</label><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" required></div>
         <div class="gs-field"><label>Confirm password</label><input type="password" name="password_confirm" autocomplete="new-password" required></div>
       </div>
+      <label class="gs-agree">
+        <input type="checkbox" name="agree_terms" value="1" required>
+        <span>I agree to the <a href="{% url 'legal_terms' %}" target="_blank" rel="noopener">Terms of Service</a> and <a href="{% url 'legal_privacy' %}" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+      </label>
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:6px;">Start my {{ trial_days }}-day trial</button>
       <div class="gs-test-note">
         <i class="fa fa-lock"></i> No card needed. You can add payment any time from Billing; you won’t be charged before the trial ends.
