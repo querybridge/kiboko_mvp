@@ -428,3 +428,70 @@ class FurtherGuards(IsolationBase):
         self.b_admin.profile.refresh_from_db()
         self.assertEqual(list(self.b_admin.profile.roles), ['executive'])
         self.assertEqual(CompanyMembership.objects.get(company=self.co_b, user=self.b_admin).role, 'admin')
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: objectives belong to a company
+# ---------------------------------------------------------------------------
+class ObjectiveIsolation(IsolationBase):
+
+    def setUp(self):
+        super().setUp()
+        from strategy.models import Objective
+        self.obj_b = Objective.objects.create(company=self.co_b, name='Beta secret objective',
+                                              aee_alignment='engage_customers', year=datetime.date.today().year)
+        self.obj_a = Objective.objects.filter(company=self.co_a).first()
+
+    def test_new_company_gets_default_objectives(self):
+        from strategy.models import DEFAULT_OBJECTIVES, Objective
+        names = sorted(Objective.objects.filter(company=self.co_a).values_list('name', flat=True))
+        self.assertEqual(names, sorted(n for n, _ in DEFAULT_OBJECTIVES))
+
+    def test_objectives_page_shows_only_own_company(self):
+        self.login_a()
+        resp = self.client.get('/app/objectives/', {'company': self.co_b.id})
+        self.assertNotContains(resp, 'Beta secret objective')
+        self.assertContains(resp, self.obj_a.name)
+
+    def test_cannot_edit_another_companys_objective(self):
+        self.login_a()
+        resp = self.client.post(f'/app/objectives/{self.obj_b.id}/edit/',
+                                {'name': 'Hijacked', 'aee_alignment': 'engage_customers'})
+        self.assertEqual(resp.status_code, 404)
+        self.obj_b.refresh_from_db()
+        self.assertEqual(self.obj_b.name, 'Beta secret objective')
+
+    def test_added_objective_belongs_to_scoped_company(self):
+        from strategy.models import Objective
+        self.login_a()
+        self.client.post('/app/objectives/add/', {'name': 'Alpha new', 'aee_alignment': 'attract_traffic'})
+        self.assertEqual(Objective.objects.get(name='Alpha new').company, self.co_a)
+
+    def test_plain_member_cannot_add_objectives(self):
+        from strategy.models import Objective
+        self.login_a(self.a_member)
+        self.assertEqual(self.client.post('/app/objectives/add/', {
+            'name': 'Member objective', 'aee_alignment': 'attract_traffic'}).status_code, 403)
+        self.assertFalse(Objective.objects.filter(name='Member objective').exists())
+
+    def test_project_form_offers_and_accepts_only_own_objectives(self):
+        from project.forms import ProjectForm
+        form = ProjectForm(user=self.a_admin, company_id=self.co_a.id)
+        offered = set(form.fields['objective'].queryset)
+        self.assertIn(self.obj_a, offered)
+        self.assertNotIn(self.obj_b, offered)
+
+    def test_objective_must_match_the_projects_company(self):
+        from project.forms import ProjectForm
+        from strategy.models import Objective
+        other = Objective.objects.create(company=self.co_b, name='Other', aee_alignment='attract_traffic')
+        mismatch = ProjectForm(user=self.a_admin)
+        mismatch.cleaned_data = {'objective': other, 'vertical': self.bu_a}
+        mismatch._errors = {}
+        ProjectForm.clean(mismatch)
+        self.assertIn('objective', mismatch.errors)
+
+    def test_pipeline_tiles_only_show_own_objectives(self):
+        self.login_a()
+        resp = self.client.get('/app/', {'company': self.co_b.id})
+        self.assertNotContains(resp, 'Beta secret objective')

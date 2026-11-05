@@ -66,6 +66,25 @@ class Measure(models.Model):
 ## Objective (Annual) DB Model        ##
 ########################################
 
+# Starter objectives every new company gets, one per AEE element, so projects can
+# be added on day one. Companies rename or replace them on the Objectives page.
+DEFAULT_OBJECTIVES = [
+    ('Increase Shopper Volume', 'attract_traffic'),
+    ('Increase Close Rate', 'engage_customers'),
+    ('Increase Average Order Value', 'expand_purchase'),
+]
+
+
+def seed_default_objectives(company, year=None):
+    """Give `company` the starter objectives if it has none yet."""
+    import datetime
+    if Objective.objects.filter(company=company).exists():
+        return
+    year = year or datetime.date.today().year
+    Objective.objects.bulk_create(Objective(company=company, name=name, aee_alignment=aee, year=year)
+                                  for name, aee in DEFAULT_OBJECTIVES)
+
+
 class Objective(models.Model):
     """Top-level annual strategic priority, measured by a KPI.
 
@@ -77,6 +96,10 @@ class Objective(models.Model):
     year = models.IntegerField(null=True, blank=True)
     kpi = models.ForeignKey(KPI, on_delete=models.SET_NULL, null=True, blank=True)
     aee_alignment = models.CharField(max_length=50, choices=AEE_ALIGNMENT_CHOICES, blank=True, default='')
+    # Each company keeps its own objectives (they are its strategy). Blank only on
+    # rows no company used when this field was added; those show to superusers only.
+    company = models.ForeignKey('business_unit.Company', on_delete=models.CASCADE, null=True, blank=True,
+                                related_name='objectives')
 
     class Meta:
         verbose_name = 'Objective'

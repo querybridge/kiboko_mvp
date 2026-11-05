@@ -38,7 +38,9 @@ class Command(BaseCommand):
         from app.insights import _BY_KEY
         from strategy.models import Objective
 
-        obj_by_aee = {o.aee_alignment: o for o in Objective.objects.exclude(aee_alignment='')}
+        # Objectives are per company; the export names the demo company's.
+        obj_by_aee = {o.aee_alignment: o for o in Objective.objects.filter(
+            company__organization__is_platform_demo=True).exclude(aee_alignment='')}
         direction_label = {'win': 'Win', 'loss': 'Loss'}
 
         qs = MetricRecommendation.objects.all() if opts['all'] else \

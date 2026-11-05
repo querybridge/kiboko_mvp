@@ -21,7 +21,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 
 logger = logging.getLogger(__name__)
-from django.http import HttpResponseForbidden
+from django.http import Http404, HttpResponseForbidden
 
 from app.forms import StrategyForm
 from users.models import ROLE_CHOICES, UserProfile
@@ -670,7 +670,7 @@ def index(request):
     # Completed/launched value is Actual revenue, so it's excluded here.
     from strategy.models import Project
     annual_rocks_data = []
-    for rock in Objective.objects.filter(year=date.today().year):
+    for rock in Objective.objects.filter(year=date.today().year, company_id=company_id):
         base_qs = _scope_to(Project.objects.filter(objective=rock, archived=False), vertical_id, company_id)
         count = base_qs.filter(status='WIP').count()
         value = base_qs.filter(status='WIP').aggregate(Sum('value'))
@@ -1198,15 +1198,18 @@ def edit_goals(request):
 
 @login_required
 def objectives(request):
-    """Manage annual Objectives (AEE > Objective > Project > Action). Executives
-    add/edit; everyone else sees a read-only list."""
-    from project.services.kanban import is_executive
+    """Manage the scoped company's annual Objectives (AEE > Objective > Project >
+    Action). Its executives add/edit; everyone else sees a read-only list."""
+    from business_unit.access import can_manage_objectives
+    from business_unit.models import Company
     from strategy.models import Objective
+    company = Company.objects.filter(pk=scoped_company_id(request)).first()
     return render(request, 'app/objectives.html', {
         'title': 'Objectives',
-        'objectives': Objective.objects.order_by('-year', 'name'),
+        'company': company,
+        'objectives': Objective.objects.filter(company=company).order_by('-year', 'name'),
         'aee_choices': _aee_choices(),
-        'can_manage_objectives': is_executive(request.user),
+        'can_manage_objectives': can_manage_objectives(request.user, company),
         'year': date.today().year,
     })
 
@@ -1216,9 +1219,11 @@ def objectives(request):
 def add_objective(request):
     """Create an annual Objective (executives only). Every objective must align
     to an AEE element -- the Projects/Actions beneath it inherit it."""
-    from project.services.kanban import is_executive
+    from business_unit.access import can_manage_objectives
+    from business_unit.models import Company
     from strategy.models import Objective
-    if not is_executive(request.user):
+    company = Company.objects.filter(pk=scoped_company_id(request)).first()
+    if not can_manage_objectives(request.user, company):
         return HttpResponseForbidden('Only executives can add objectives.')
     name = (request.POST.get('name') or '').strip()
     aee = (request.POST.get('aee_alignment') or '').strip()
@@ -1230,7 +1235,7 @@ def add_objective(request):
         yr = int(request.POST.get('year') or date.today().year)
     except (TypeError, ValueError):
         yr = date.today().year
-    Objective.objects.create(name=name[:150], year=yr, aee_alignment=aee,
+    Objective.objects.create(company=company, name=name[:150], year=yr, aee_alignment=aee,
                              description=(request.POST.get('description') or '').strip())
     messages.success(request, f'Added objective "{name}".')
     return redirect('app:objectives')
@@ -1241,11 +1246,11 @@ def add_objective(request):
 def edit_objective(request, objective_id):
     """Edit an existing annual Objective (executives only) -- name, year, AEE,
     and description. AEE stays required so Projects/Actions always inherit one."""
-    from project.services.kanban import is_executive
+    from business_unit.access import can_manage_objectives
     from strategy.models import Objective
-    if not is_executive(request.user):
-        return HttpResponseForbidden('Only executives can edit objectives.')
-    obj = get_object_or_404(Objective, pk=objective_id)
+    obj = get_object_or_404(Objective.objects.select_related('company'), pk=objective_id)
+    if not can_manage_objectives(request.user, obj.company):
+        raise Http404
     name = (request.POST.get('name') or '').strip()
     aee = (request.POST.get('aee_alignment') or '').strip()
     if not name or aee not in {c[0] for c in _aee_choices()}:
@@ -1642,8 +1647,8 @@ def analytics_grow_sales(request):
     # so the template can style it lighter than the prominent AEE label.
     yr = date.today().year
     for card_key, aee in (('attract', 'attract_traffic'), ('engage', 'engage_customers'), ('expand', 'expand_purchase')):
-        obj = (Objective.objects.filter(aee_alignment=aee, year=yr).first()
-               or Objective.objects.filter(aee_alignment=aee).first())
+        company_objectives = Objective.objects.filter(company_id=scoped_company_id(request), aee_alignment=aee)
+        obj = company_objectives.filter(year=yr).first() or company_objectives.first()
         if obj and card_key in cards:
             cards[card_key]['objective'] = obj.name
     ctx.update({'cards': cards, 'charts_json': json.dumps(charts)})
@@ -2627,7 +2632,8 @@ def insights_add_project(request):
                                 'own data and performance, so projects are added per unit.')
         return redirect(request.POST.get('next') or 'app:insights')
     kw = I.objective_keyword(rec.metric)
-    objective = Objective.objects.filter(name__icontains=kw).first() if kw else None
+    objective = (Objective.objects.filter(company=bu.company, name__icontains=kw).first()
+                 if kw else None)
     metric_label = dict(I.METRIC_CHOICES).get(rec.metric, rec.metric)
     moving = 'improving' if rec.direction == 'win' else 'declining'
 

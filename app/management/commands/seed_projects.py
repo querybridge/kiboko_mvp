@@ -73,10 +73,12 @@ class Command(BaseCommand):
             go_live = date(year, rng.randint(1, 6), rng.randint(1, 28)) if status in ('WIP', 'Complete', 'Launched') else None
             approved = status not in ('Incomplete Entry',)
 
+            vertical = rng.choice(verticals)
+            company_objectives = [o for o in objectives if o.company_id == vertical.company_id]
             p = Project(
                 name=name[:75], why=why, definition_of_done=why[:350],
-                objective=objectives[i % len(objectives)] if objectives else None,
-                owner=rng.choice(users), vertical=rng.choice(verticals),
+                objective=company_objectives[i % len(company_objectives)] if company_objectives else None,
+                owner=rng.choice(users), vertical=vertical,
                 department=rng.choice(departments), value=revenue, effort_size=size,
                 status=status, approved=approved, archived=(status == 'Launched'),
                 target_completion=go_live, year=year,

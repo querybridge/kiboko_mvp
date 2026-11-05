@@ -234,3 +234,14 @@ def staff_only(view):
             raise Http404
         return view(request, *args, **kwargs)
     return wrapper
+
+
+def can_manage_objectives(user, company):
+    """Add / edit a company's objectives: superuser, the company's org admin, or a
+    member of the company holding the Executive role."""
+    if not user or not user.is_authenticated or company is None:
+        return False
+    if user.is_superuser or is_org_admin_of(user, company):
+        return True
+    prof = getattr(user, 'profile', None)
+    return bool(prof and prof.has_role('executive') and company.memberships.filter(user=user).exists())

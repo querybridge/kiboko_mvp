@@ -97,6 +97,17 @@ class ProjectForm(ModelForm):
         self.fields['owner'].queryset = User.objects.filter(
             id__in=owner_ids).order_by('first_name', 'last_name', 'username')
 
+        # Objectives belong to a company: offer only those of the companies above
+        # (keeping the current one valid on edit). Name the company when several show.
+        from django.db.models import Q
+        from strategy.models import Objective
+        keep = inst.objective_id if inst and inst.pk else None
+        self.fields['objective'].queryset = (Objective.objects.filter(Q(company__in=companies) | Q(pk=keep))
+                                             .select_related('company').order_by('company__name', '-year', 'name'))
+        if len(companies) > 1:
+            self.fields['objective'].label_from_instance = (
+                lambda o: f'{o} — {o.company.name}' if o.company_id else str(o))
+
     def clean(self):
         cleaned = super().clean()
         cleaned['expense_type'] = cleaned.get('expense_type') or 'one_time'
@@ -116,6 +127,10 @@ class ProjectForm(ModelForm):
                 dupes = dupes.exclude(pk=self.instance.pk)
             if dupes.exists():
                 self.add_error('name', 'A project with this name already exists — use a distinct name.')
+        # The objective must be the project's own company's.
+        objective, vertical = cleaned.get('objective'), cleaned.get('vertical')
+        if objective and vertical and objective.company_id and objective.company_id != vertical.company_id:
+            self.add_error('objective', f'Pick one of {vertical.company.name}’s objectives.')
         # Lever must pull the objective's AEE element (AEE > Objective > Project).
         objective, lever = cleaned.get('objective'), cleaned.get('lever')
         if objective and lever:

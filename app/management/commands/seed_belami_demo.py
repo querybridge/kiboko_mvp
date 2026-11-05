@@ -274,7 +274,7 @@ class Command(BaseCommand):
         obj = {}
         for aee, oname in AEE_OBJECTIVES.items():
             o, _ = Objective.objects.get_or_create(
-                name=oname, defaults={'aee_alignment': aee, 'year': today.year})
+                company=belami, name=oname, defaults={'aee_alignment': aee, 'year': today.year})
             if o.aee_alignment != aee:
                 o.aee_alignment = aee
                 o.save(update_fields=['aee_alignment'])

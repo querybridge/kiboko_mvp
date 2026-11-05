@@ -73,7 +73,7 @@ class Command(BaseCommand):
             or list(User.objects.all()[:3])
         teams = list(Team.objects.all())
         measures = list(Measure.objects.all())
-        objectives = {k: Objective.objects.filter(name__icontains=kw, year=year).first()
+        objectives = {k: Objective.objects.filter(company=demo, name__icontains=kw, year=year).first()
                       for k, kw in OBJ_KEYWORD.items()}
 
         created = 0
