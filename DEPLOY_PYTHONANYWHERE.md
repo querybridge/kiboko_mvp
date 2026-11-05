@@ -44,10 +44,10 @@ The virtualenv name `kiboko` is what we'll reference in the Web tab later.
 
 ## 4. Local production settings
 
-The committed `gentelella/settings.py` has development defaults (`DEBUG=True`, hard-coded `SECRET_KEY`, `ALLOWED_HOSTS=['*']`). Keep dev defaults local; override on PythonAnywhere via a `local_settings.py` (already gitignored):
+The committed `dashboard_tmpl/settings.py` has development defaults (`DEBUG=True`, hard-coded `SECRET_KEY`, `ALLOWED_HOSTS=['*']`). Keep dev defaults local; override on PythonAnywhere via a `local_settings.py` (already gitignored):
 
 ```bash
-cat > gentelella/local_settings.py <<'EOF'
+cat > dashboard_tmpl/local_settings.py <<'EOF'
 import os
 DEBUG = False
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'change-me-in-pa-env')
@@ -56,7 +56,7 @@ ALLOWED_HOSTS = ['<username>.pythonanywhere.com']
 EOF
 ```
 
-Then add this at the **bottom** of `gentelella/settings.py` (only if it isn't already imported):
+Then add this at the **bottom** of `dashboard_tmpl/settings.py` (only if it isn't already imported):
 
 ```python
 try:
@@ -137,7 +137,7 @@ path = '/home/<username>/kiboko_mvp'
 if path not in sys.path:
     sys.path.insert(0, path)
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'gentelella.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'dashboard_tmpl.settings'
 
 # Optional: load secrets from a .env-style file or set them in the Web tab "Environment variables" section.
 os.environ.setdefault('DJANGO_SECRET_KEY', '<paste-your-secret-key>')
@@ -206,4 +206,4 @@ Then click **Reload** on the Web tab to pick up the new code.
 - **CSS still shows the old theme**: the design system stylesheet is cache-busted via `?v=N` in `app/templates/app/base_site.html`. If you've changed CSS but the version param didn't bump, update it.
 - **`localStorage` theme not persisting in Safari private mode**: expected — Safari throws on `setItem`. The toggle still works for the session.
 - **Free tier outbound network whitelist**: free PythonAnywhere accounts can only reach a whitelisted set of hosts. Google Fonts (`fonts.googleapis.com`, `fonts.gstatic.com`) is on the whitelist, but if you add other CDNs, check first.
-- **Time zone**: `gentelella/settings.py` sets `TIME_ZONE`. Adjust if reports look offset; PythonAnywhere servers are UTC.
+- **Time zone**: `dashboard_tmpl/settings.py` sets `TIME_ZONE`. Adjust if reports look offset; PythonAnywhere servers are UTC.

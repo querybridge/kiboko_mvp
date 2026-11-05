@@ -16,7 +16,7 @@ Everything that should be built/addressed before going live. Priority tags:
   data; a refresh token impersonates a user's GA4. Encrypt with
   `django-cryptography`/Fernet (key in env) before any real client data lands.
 - **[MUST] Rotate `SECRET_KEY` and move it out of code.** It's hardcoded in
-  `gentelella/settings.py` and committed to git → effectively compromised.
+  `dashboard_tmpl/settings.py` and committed to git → effectively compromised.
   Generate a new one, load from env/`local_settings.py`, never commit it.
 - **[MUST] Production settings hardening.** `DEBUG=True`, `ALLOWED_HOSTS=['*']`
   today. For prod (via server `local_settings.py`): `DEBUG=False`,

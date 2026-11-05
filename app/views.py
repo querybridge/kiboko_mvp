@@ -9,7 +9,6 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.template import loader
 from django.urls import reverse
 from django.utils.html import format_html
 from django.http import HttpResponse, HttpResponseRedirect
@@ -1078,14 +1077,6 @@ def _build_gantt_data(active_projects):
             'ny': {'start': ny_start.isoformat(), 'end': ny_end.isoformat()},
         },
     }
-
-
-@login_required
-def gentella_html(request):
-    context = {}
-    load_template = request.path.split('/')[-1]
-    template = loader.get_template('app/' + load_template)
-    return HttpResponse(template.render(context, request))
 
 
 @login_required

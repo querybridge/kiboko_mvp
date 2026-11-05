@@ -297,7 +297,7 @@ Celery beat with:
 - `google-analytics-data` (Standard / Data API)
 - `google-cloud-bigquery`, `pandas` (Premium / BigQuery — as in the original)
 - `django-cryptography` (+ `cryptography`) for encrypted credential fields
-- Encryption key + any OAuth client secrets in gitignored `gentelella/local_settings.py`
+- Encryption key + any OAuth client secrets in gitignored `dashboard_tmpl/local_settings.py`
 
 ---
 

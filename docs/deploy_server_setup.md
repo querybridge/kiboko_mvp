@@ -6,12 +6,12 @@ The site is served by the **Web tab** WSGI app at the `*.pythonanywhere.com` dom
 — **never `runserver`** on the server (it binds the container's loopback and isn't
 reachable).
 
-Driver: **PyMySQL** (pure-Python; registered as MySQLdb in `gentelella/__init__.py`).
+Driver: **PyMySQL** (pure-Python; registered as MySQLdb in `dashboard_tmpl/__init__.py`).
 `mysqlclient` is intentionally not used — it won't build on the local Mac's Python.
 
 ## What git does NOT carry (set these out-of-band)
 `git pull` updates code only. Secrets + DB config live in
-**`gentelella/local_settings.py`** (gitignored), which must exist on each machine:
+**`dashboard_tmpl/local_settings.py`** (gitignored), which must exist on each machine:
 
 ```python
 GOOGLE_OAUTH_CLIENT_ID = '...'
@@ -39,7 +39,7 @@ the gitignored `mysql_creds.md` locally — never commit them.
 real owner and `seed_tenancy_demo` grants that superuser admin access.
 
 1. **PA → Databases tab:** create a MySQL database; note host / name / user / password.
-2. Put the `DATABASES` block (above) in the server's `gentelella/local_settings.py`.
+2. Put the `DATABASES` block (above) in the server's `dashboard_tmpl/local_settings.py`.
 3. Install the driver + build the schema:
    ```bash
    cd /home/kiboko/kiboko_mvp && PY=/home/kiboko/.virtualenvs/kiboko/bin/python
