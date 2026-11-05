@@ -1891,6 +1891,20 @@ def data_connection(request):
            'google_enabled': google_oauth.is_enabled(),
            'bigquery_available': bqmod.is_available()}
 
+    # --- Premium: disconnect (delete the key and the daily summary table) -----
+    if request.method == 'POST' and request.POST.get('action') == 'bigquery_disconnect':
+        from business_unit.access import can_disconnect_bigquery
+        from business_unit.models import GA4DailyRollup
+        company = Company.objects.filter(pk=request.POST.get('company'), bigquery__isnull=False).first()
+        if company is None or not can_disconnect_bigquery(request.user, company):
+            return HttpResponseForbidden('You can’t disconnect BigQuery for that company.')
+        GA4DailyRollup.objects.filter(company=company).delete()
+        BigQueryConnection.objects.filter(company=company).delete()
+        messages.success(request, f'BigQuery disconnected for {company.name}. Kiboko deleted the service-account '
+                                  'key and the daily summary table. Remove the service account’s access in '
+                                  'Google Cloud too if you no longer need it.')
+        return redirect('app:data_connection')
+
     # --- Premium: connect a Company via a BigQuery service account ------------
     if request.method == 'POST' and request.POST.get('action') == 'bigquery_connect':
         from business_unit.access import can_manage_bigquery
@@ -1928,9 +1942,11 @@ def data_connection(request):
         return redirect('app:data_connection')
 
     # Premium companies this user already has connected.
-    ctx['premium_companies'] = list(
-        Company.objects.filter(bigquery__isnull=False, memberships__user=request.user).distinct()
-        if not request.user.is_superuser else Company.objects.filter(bigquery__isnull=False))
+    from business_unit.access import can_disconnect_bigquery
+    ctx['premium_companies'] = [
+        {'company': c, 'can_disconnect': can_disconnect_bigquery(request.user, c)}
+        for c in (Company.objects.filter(bigquery__isnull=False, memberships__user=request.user).distinct()
+                  if not request.user.is_superuser else Company.objects.filter(bigquery__isnull=False))]
     ctx['standard_events'] = BigQueryConnection.STANDARD_EVENTS
     from business_unit.access import can_manage_bigquery
     ctx['can_provision_premium'] = can_manage_bigquery(request.user)
@@ -2302,17 +2318,31 @@ def billing(request):
             billing_svc.sync_customer(org)
             messages.success(request, 'Billing address saved.')
         elif action == 'cancel_account':
+            # Stop renewal in Stripe; a paid subscription runs to the end of its period.
+            if not billing_svc.set_cancel_at_period_end(org, True):
+                messages.error(request, 'We couldn’t cancel the subscription with our payment provider. '
+                                        'Please try again, or email info@kibokomethod.com.')
+                return redirect('app:billing')
             org.plan_status = 'canceled'
             org.canceled_at = timezone.now()
-            org.purge_after = datetime.date.today() + datetime.timedelta(days=org.PURGE_DAYS)
-            org.save(update_fields=['plan_status', 'canceled_at', 'purge_after'])
+            # Nothing paid up: disabled now, so the 90-day clock starts today.
+            # Otherwise it starts when the paid period ends (purge_disabled_accounts).
+            org.purge_after = (None if org.has_payment
+                               else datetime.date.today() + datetime.timedelta(days=org.PURGE_DAYS))
+            org.purge_warned_at = None
+            org.save(update_fields=['plan_status', 'canceled_at', 'purge_after', 'purge_warned_at'])
             # No flash message here — the persistent canceled banner below already
             # states the retention window and offers Reactivate.
         elif action == 'reactivate':
-            org.plan_status = 'trial' if org.trial_started else 'active'
+            if not billing_svc.set_cancel_at_period_end(org, False):
+                messages.error(request, 'We couldn’t restart the subscription with our payment provider. '
+                                        'Please try again, or email info@kibokomethod.com.')
+                return redirect('app:billing')
+            org.plan_status = 'active' if org.has_payment else ('trial' if org.trial_started else 'active')
             org.canceled_at = None
             org.purge_after = None
-            org.save(update_fields=['plan_status', 'canceled_at', 'purge_after'])
+            org.purge_warned_at = None
+            org.save(update_fields=['plan_status', 'canceled_at', 'purge_after', 'purge_warned_at'])
             messages.success(request, 'Welcome back — your account is active again.')
         return redirect('app:billing')
 

@@ -134,6 +134,27 @@ def portal_url(org, return_url):
         'customer': org.stripe_customer_id, 'return_url': return_url}).url
 
 
+def set_cancel_at_period_end(org, cancel):
+    """Stop (cancel=True) or resume (False) renewal of the org's Stripe
+    subscription. Cancelling keeps it paid up to the end of the current period;
+    Stripe then deletes it and the webhook clears stripe_subscription_id, which
+    locks the account. Returns True if Stripe accepted the change (or there is
+    no subscription to change)."""
+    if not org.stripe_subscription_id:
+        return True
+    sc = client()
+    if sc is None:
+        log.error('Stripe not configured; could not %s subscription %s for org %s',
+                  'cancel' if cancel else 'resume', org.stripe_subscription_id, org.id)
+        return False
+    try:
+        sc.v1.subscriptions.update(org.stripe_subscription_id, params={'cancel_at_period_end': bool(cancel)})
+        return True
+    except Exception:
+        log.exception('Stripe could not update subscription %s for org %s', org.stripe_subscription_id, org.id)
+        return False
+
+
 def confirm_checkout(org, session_id):
     """On return from Checkout, record the subscription right away (the webhook
     does the same; this just avoids a lag before the page reflects it)."""

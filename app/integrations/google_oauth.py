@@ -13,9 +13,12 @@ Activation: set GOOGLE_OAUTH_CLIENT_ID / _SECRET / _REDIRECT_URI in
 local_settings.py. Until then ``is_enabled()`` returns False and the app uses the
 existing login.
 """
+import logging
 import os
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 GOOGLE_AUTH_URI = 'https://accounts.google.com/o/oauth2/auth'
 GOOGLE_TOKEN_URI = 'https://oauth2.googleapis.com/token'
@@ -150,3 +153,22 @@ def upsert_identity(user, creds, claims):
     identity, _ = GoogleIdentity.objects.update_or_create(
         google_sub=claims['sub'], defaults=defaults)
     return identity
+
+
+def disconnect(identity):
+    """Revoke Kiboko's Google access for this identity and delete the stored
+    token. Revoking is best effort (an already-revoked or expired token is fine);
+    the local record is always deleted. Returns True if Google confirmed."""
+    import requests
+    revoked = False
+    if identity.refresh_token:
+        try:
+            resp = requests.post('https://oauth2.googleapis.com/revoke',
+                                 data={'token': identity.refresh_token},
+                                 headers={'Content-Type': 'application/x-www-form-urlencoded'}, timeout=10)
+            revoked = resp.status_code == 200
+        except requests.RequestException:
+            logger.warning('Google token revoke failed for identity %s', identity.pk, exc_info=True)
+    identity.delete()
+    return revoked
+

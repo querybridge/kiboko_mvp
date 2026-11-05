@@ -121,3 +121,24 @@ days to catch late data).
 - Until a company/range is synced, reads **fall back to a live BigQuery scan**
   (correct, just costs per view) — a missed run degrades gracefully.
 - Free PythonAnywhere accounts allow one scheduled task; paid tiers allow more.
+
+## Scheduled Task: daily 90-day deletion of disabled accounts
+The Privacy Policy and Terms promise that an account's data is permanently
+deleted 90 days after it is disabled (cancelled, or locked for non-payment).
+`purge_disabled_accounts` keeps that promise:
+
+- a newly disabled organization gets `purge_after = today + 90` and its owner an email;
+- an organization that paid or reactivated has the date cleared;
+- 7 days before the date the owner gets one final reminder;
+- on or after the date, everything Kiboko stores for it is deleted
+  (`business_unit/purge.py`). Demo and comped organizations are never touched.
+
+**Add it on PythonAnywhere → _Tasks_ tab → _Scheduled tasks_**, daily (e.g. `10:00` UTC):
+```bash
+cd /home/kiboko/kiboko_mvp && /home/kiboko/.virtualenvs/kiboko/bin/python manage.py purge_disabled_accounts
+```
+Before the first scheduled run, see what it would do:
+```bash
+python manage.py purge_disabled_accounts --dry-run
+```
+Emails need SendGrid configured; without it the clock still runs, but owners get no notice.

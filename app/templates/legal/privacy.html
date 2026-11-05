@@ -12,15 +12,15 @@
     <li>Kiboko does not use Google Analytics or any other tracking, advertising or analytics software.</li>
     <li>We don't sell your information or share it for advertising.</li>
     <li>Kiboko stores your <strong>Project Data</strong> (your account, projects and the work you do in Kiboko) on servers in the United States.</li>
-    <li>Kiboko does not store your <strong>Analytics Data</strong>. Your Google Analytics data stays on Google's servers, and Kiboko requests it to display it to you.</li>
-    <li>If you connect BigQuery, the database is yours. Kiboko queries it to display results and does not copy your raw records. It keeps daily summary totals as part of your Project Data.</li>
-    <li>After an account is closed, for non-payment or cancellation, its Project Data stays available for 90 days and is then permanently deleted.</li>
+    <li>Kiboko does not copy your <strong>Analytics Data</strong>. Your Google Analytics data stays on Google's servers, and Kiboko requests it to display it to you.</li>
+    <li>If you connect BigQuery, the database is yours. Kiboko queries it to display results and does not copy your raw records. For speed, Kiboko stores a <strong>daily summary table</strong> of totals on its US servers.</li>
+    <li>After an account is closed, for non-payment or cancellation, its Project Data and daily summary table stay for 90 days and are then permanently deleted.</li>
     <li>Kiboko does not collect data from visitors to your website. Your analytics tools do, and you are responsible for the consent they require.</li>
   </ul>
 </div>
 
 <h2>1. Information we collect</h2>
-<p>This policy separates two kinds of data. <strong>Project Data</strong> is what Kiboko stores for your account, described in this section. <strong>Analytics Data</strong> is the data in your Google Analytics properties and BigQuery datasets, described in section 3. Kiboko does not store Analytics Data, except for the figures that section 3 says become Project Data.</p>
+<p>This policy separates two kinds of data. <strong>Project Data</strong> is what Kiboko stores for your account, described in this section. <strong>Analytics Data</strong> is the data in your Google Analytics properties and BigQuery datasets, described in section 3. Kiboko does not copy Analytics Data, except for the daily summary table and the figures that section 3 describes, which Kiboko stores as Project Data.</p>
 <h3>Information you give us (Project Data)</h3>
 <ul>
   <li><strong>Account information:</strong> name, email address, username, company name, role and password. Passwords are stored only as a one-way hash.</li>
@@ -44,11 +44,11 @@
 <p>If you sign in with Google or connect Google Analytics, you authorize Kiboko to access data from your Google Analytics properties through Google's APIs, for the purpose of displaying it to you in Kiboko. Your Google Analytics data remains on Google's servers. Kiboko requests it from Google when you view a page that needs it.</p>
 <p>Kiboko does not store your Google Analytics data. To make those requests, Kiboko stores the access token Google issues for your account, and your Google account's name and email address. Figures you save into a project, for example the baseline and target attached to a project estimate, become Project Data.</p>
 <p>Kiboko's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. We use Google data only to provide the features you see in Kiboko. We do not use it for advertising, we do not sell it, and people at Kiboko do not read it except with your permission, for security, or as the law requires.</p>
-<p>You can disconnect Kiboko at any time from your Google Account's <a href="https://myaccount.google.com/permissions" rel="noopener">third-party access settings</a>.</p>
+<p>You can disconnect at any time with <strong>Disconnect Google</strong> in User Settings, which revokes Kiboko's access and deletes the stored token, or from your Google Account's <a href="https://myaccount.google.com/permissions" rel="noopener">third-party access settings</a>.</p>
 
 <h3>BigQuery connection</h3>
 <p>Customers who use the BigQuery connection set up and own their own BigQuery database and give Kiboko read access to it. Kiboko queries that database and displays the results. Kiboko does not copy your raw event, visitor or order-level records into its own systems.</p>
-<p>To keep dashboards fast and your query costs low, Kiboko keeps daily summary totals calculated from those queries, for example a day's visits, carts, orders and sales, broken out by device, channel and product category. These totals, and any figures you save into a project, are Project Data and follow the retention rules in section 7. You can remove Kiboko's access at any time by revoking its permissions on your BigQuery project.</p>
+<p><strong>Daily summary table.</strong> To keep dashboards fast and your query costs low, Kiboko stores a daily summary table on its servers in the United States. It holds one row of totals per day calculated from your BigQuery data, for example that day's visits, carts, orders and sales, broken out by device, channel and product category. It holds no visitor-level or order-level records. The table, and any figures you save into a project, are Project Data: they stay while your account is active and for 90 days after it is cancelled or disabled, then are permanently deleted (section 7). You can remove Kiboko's access at any time with <strong>Disconnect</strong> on the Data Connection page, which deletes the stored service-account key and the daily summary table, and by revoking its permissions on your BigQuery project.</p>
 
 <h3>Your website visitors</h3>
 <p>Kiboko does not collect data from people who visit your websites, and does not place cookies or code on your websites. That data is collected by your websites and the analytics tools you install on them, such as Google Analytics. You are responsible for giving your visitors the notices and obtaining the consent that the laws and policies in your region require. Kiboko displays what it finds in your Analytics Data; see section 6 of our <a href="{% url 'legal_terms' %}">Terms of Service</a>.</p>
@@ -79,7 +79,7 @@
 
 <h2>7. How long we keep data</h2>
 <p>We keep Project Data while your account is active. If an account is disabled, because of non-payment or because the customer cancels, its Project Data remains available for 90 days so the account can be reactivated or the data exported. After 90 days, the Project Data is permanently deleted. Copies in our routine backups are removed as those backups expire.</p>
-<p>The 90-day period applies to Project Data only. Kiboko does not hold your Analytics Data, so it remains in your Google account under your settings and Google's terms. If you revoke Kiboko's access in your Google account or BigQuery project, the access token or credentials Kiboko holds stop working. We delete them on request, and when the account's Project Data is deleted.</p>
+<p>The 90-day period covers all Project Data, including the daily summary table for BigQuery customers. Kiboko does not hold a copy of your Analytics Data itself, so it remains in your Google account under your settings and Google's terms. Disconnecting Google or BigQuery in Kiboko deletes the stored token or key right away. If you revoke access only on Google's side, those credentials stop working, and we delete them on request or when the account's Project Data is deleted. Before deletion, the account owner gets an email when the 90 days start and a reminder 7 days before the end.</p>
 <p>If you request a trial code but do not create an account, we keep your email address to follow up about the trial until you opt out or ask us to delete it. Server logs are kept only as long as needed for security and troubleshooting.</p>
 
 <h2>8. Security</h2>

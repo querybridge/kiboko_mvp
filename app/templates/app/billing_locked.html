@@ -7,9 +7,10 @@
       <i class="fa fa-lock" style="font-size:40px; color:var(--text-muted); margin-bottom:14px;"></i>
       <h3 style="margin-top:0;">{{ organization.name }}’s Kiboko subscription needs attention</h3>
       <p class="text-muted" style="font-size:15px; max-width:520px; margin:12px auto 0;">
-        {% if organization.plan_status == 'past_due' %}The last payment didn’t go through.{% else %}The free trial has ended.{% endif %}
+        {% if organization.plan_status == 'past_due' %}The last payment didn’t go through.{% elif organization.is_canceled %}The account was cancelled.{% else %}The free trial has ended.{% endif %}
         Your organization admin{% if organization.org_admin %}, {{ organization.org_admin.get_full_name|default:organization.org_admin.email }},{% endif %}
-        can restore access by adding a payment method on the Billing page. Your data is safe in the meantime.</p>
+        can restore access on the Billing page.
+        {% if organization.purge_after %}Your data is kept until {{ organization.purge_after|date:"M d, Y" }}, then permanently deleted.{% else %}Your data is safe in the meantime.{% endif %}</p>
       <p style="margin-top:22px;"><a href="{% url 'users:logout' %}" class="btn btn-default">Sign out</a></p>
     </div>
   </div></div>

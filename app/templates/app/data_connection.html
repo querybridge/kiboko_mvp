@@ -45,8 +45,23 @@
                 product-category economics that Standard can't compute.</li>
               <li><strong>Roll-ups across sites</strong> &mdash; true company-wide totals.</li>
             </ul>
+            <p class="text-muted"><small>For speed, Kiboko stores a daily summary table (one row of totals per day,
+              no visitor- or order-level records) on its US servers. It is deleted 90 days after the account is
+              cancelled or disabled. See the <a href="{% url 'legal_privacy' %}">Privacy Policy</a>.</small></p>
             {% if premium_companies %}
-              <p class="text-muted">Connected: {% for c in premium_companies %}<strong>{{ c.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+              <p class="text-muted" style="margin-bottom:6px;">Connected:</p>
+              <ul class="list-unstyled" style="margin-bottom:12px;">
+                {% for p in premium_companies %}
+                <li style="margin-bottom:6px;"><strong>{{ p.company.name }}</strong>
+                  {% if p.can_disconnect %}
+                  <button type="button" class="btn btn-default btn-xs" style="margin-left:8px;"
+                          data-toggle="modal" data-target="#bqDisconnectModal"
+                          data-company="{{ p.company.id }}" data-name="{{ p.company.name }}">
+                    <i class="fa fa-chain-broken"></i> Disconnect</button>
+                  {% endif %}
+                </li>
+                {% endfor %}
+              </ul>
             {% endif %}
 
             {% if can_provision_premium %}
@@ -171,4 +186,52 @@
       </div>
     </div>
   </div>
+<div class="modal fade" id="bqDisconnectModal" tabindex="-1" role="dialog" aria-labelledby="bqDisconnectTitle" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <form method="post" class="modal-content">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="bigquery_disconnect">
+      <input type="hidden" name="company" id="bqDisconnectCompany" value="">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="bqDisconnectTitle"><i class="fa fa-exclamation-triangle" style="color:var(--status-danger, #B42318);"></i>
+          Disconnect BigQuery for <span id="bqDisconnectName"></span>?</h4>
+      </div>
+      <div class="modal-body">
+        <p><strong>This permanently deletes from Kiboko:</strong></p>
+        <ul>
+          <li>the daily summary table holding this company's history in Kiboko, and</li>
+          <li>the service-account key Kiboko uses to read your BigQuery data.</li>
+        </ul>
+        <p>It is gone forever and can't be recovered. Your data in BigQuery itself is not affected.</p>
+        <p><strong>If you connect again, or start a new Kiboko account, data collection starts over from that day.</strong>
+          The history Kiboko has gathered until now won't come back.</p>
+        <div class="checkbox" style="margin-bottom:0;">
+          <label><input type="checkbox" id="bqDisconnectAck"> I understand this can't be undone.</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Keep connected</button>
+        <button type="submit" class="btn btn-danger" id="bqDisconnectGo" disabled>Disconnect and delete</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock content %}
+
+{% block javascripts %}
+  {{ block.super }}
+  <script>
+    jQuery(function ($) {
+      var $modal = $('#bqDisconnectModal'), $ack = $('#bqDisconnectAck'), $go = $('#bqDisconnectGo');
+      $modal.on('show.bs.modal', function (e) {
+        var $btn = $(e.relatedTarget);
+        $('#bqDisconnectCompany').val($btn.data('company'));
+        $('#bqDisconnectName').text($btn.data('name'));
+        $ack.prop('checked', false);
+        $go.prop('disabled', true);
+      });
+      $ack.on('change', function () { $go.prop('disabled', !this.checked); });
+    });
+  </script>
+{% endblock javascripts %}

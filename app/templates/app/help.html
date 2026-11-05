@@ -392,7 +392,10 @@
                 link works once and expires in 3 days. Google accounts have no Kiboko password; use Sign in
                 with Google.</li>
               <li><strong>User Settings</strong> (click your name, top right) changes your password, username,
-                landing page and email notifications.</li>
+                landing page and email notifications. <strong>Disconnect Google</strong> there revokes Kiboko's
+                Google access and deletes the stored token.</li>
+              <li>A BigQuery connection can be removed with <strong>Disconnect</strong> on Settings &rarr; Data
+                Connection, which deletes the service-account key and the daily summary table.</li>
             </ul>
 
             <h4>Emails from Kiboko</h4>
@@ -412,6 +415,11 @@
                 <strong>Settings &rarr; Billing</strong>. Billing is visible to account owners only.</li>
               <li>If an account is cancelled or unpaid, its data stays available for 90 days and is then
                 permanently deleted. Data in your Google Analytics or BigQuery is not affected.</li>
+              <li>The account owner is emailed when the 90 days start and again 7 days before deletion.
+                Paying or reactivating before then stops the clock.</li>
+              <li>With the BigQuery connection, Kiboko stores a <strong>daily summary table</strong> (one row of totals
+                per day) on its US servers so dashboards load fast. It's deleted with the rest of your account's data,
+                90 days after cancellation or disablement.</li>
             </ul>
 
             <h4>Who can see what</h4>

@@ -1,0 +1,11 @@
+{% autoescape off %}Hi,
+
+The Kiboko account for {{ org.name }} is disabled{% if org.plan_status == 'canceled' %} because it was cancelled{% else %} because no payment is on file{% endif %}.
+
+Your data is kept for {{ days }} days. On {{ purge_on|date:"F j, Y" }} it will be permanently deleted, including your projects, goals and any daily summary table.
+
+To keep it, add a payment method or reactivate on the Billing page before then:
+{{ site_url }}/app/billing/
+
+Questions? Reply to this email or write to info@kibokomethod.com.
+{% endautoescape %}

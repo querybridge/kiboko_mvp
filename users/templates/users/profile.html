@@ -96,6 +96,23 @@
     </div>
     <div class="col-md-6 col-sm-12">
       <div class="x_panel">
+        <div class="x_title"><h2>Google connection</h2><div class="clearfix"></div></div>
+        <div class="x_content">
+          {% if google_identity %}
+          <p>Connected as <strong>{{ google_identity.email }}</strong>. Kiboko uses this to read your Google
+            Analytics data for display.</p>
+          <button type="button" class="btn btn-default" data-toggle="modal" data-target="#googleDisconnectModal">
+            <i class="fa fa-chain-broken"></i> Disconnect Google</button>
+          <p class="text-muted" style="font-size:12px; margin-top:10px;">This revokes Kiboko's access with Google and
+            deletes the stored token. Signing in with Google again reconnects it.</p>
+          {% else %}
+          <p class="text-muted">No Google account is connected.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-sm-12">
+      <div class="x_panel">
         <div class="x_title"><h2>Email notifications</h2><div class="clearfix"></div></div>
         <div class="x_content">
           {% if user.email %}
@@ -119,5 +136,28 @@
     </div>
   </div>
   {% endif %}
+</div>
+<div class="modal fade" id="googleDisconnectModal" tabindex="-1" role="dialog" aria-labelledby="googleDisconnectTitle" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <form method="post" class="modal-content">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="disconnect_google">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="googleDisconnectTitle"><i class="fa fa-exclamation-triangle" style="color:var(--status-danger, #B42318);"></i>
+          Disconnect Google?</h4>
+      </div>
+      <div class="modal-body">
+        <p>Kiboko will lose access to your Google Analytics, and the stored Google token is <strong>permanently
+          deleted from Kiboko</strong>.</p>
+        <p>Dashboards that read Google Analytics through your account will stop showing data until you connect again.
+          Your data in Google Analytics itself is not affected.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Keep connected</button>
+        <button type="submit" class="btn btn-danger">Disconnect Google</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock content %}

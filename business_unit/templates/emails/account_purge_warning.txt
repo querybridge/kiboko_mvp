@@ -1,0 +1,7 @@
+{% autoescape off %}Hi,
+
+This is a final reminder: the data for {{ org.name }} on Kiboko will be permanently deleted on {{ purge_on|date:"F j, Y" }}. It cannot be recovered after that.
+
+To keep it, add a payment method or reactivate on the Billing page before then:
+{{ site_url }}/app/billing/
+{% endautoescape %}

@@ -41,7 +41,9 @@
   <div class="row"><div class="col-md-12">
     <div class="alert alert-warning"><i class="fa fa-lock"></i>
       {% if organization.plan_status == 'past_due' %}Your last payment didn’t go through. Update your payment method to restore access for your team.
+      {% elif organization.is_canceled %}Your account is cancelled and access has ended.
       {% else %}Your free trial has ended. Add a payment method to restore access for your team.{% endif %}
+      {% if organization.purge_after %}Your data will be <strong>permanently deleted on {{ organization.purge_after|date:"M d, Y" }}</strong> unless you {% if organization.is_canceled %}reactivate{% else %}add payment{% endif %} before then.{% endif %}
     </div>
   </div></div>
   {% endif %}
@@ -50,8 +52,11 @@
   <div class="row"><div class="col-md-12">
     <div class="alert alert-warning">
       <i class="fa fa-exclamation-triangle"></i>
-      Your account is <strong>canceled</strong>. Your data stays available until
+      Your account is <strong>canceled</strong>.
+      {% if organization.purge_after %}Your data stays available until
       <strong>{{ organization.purge_after|date:"M d, Y" }}</strong>, then it is deleted forever.
+      {% else %}Your subscription stays active until the end of the current billing period. Your data is then
+      kept for 90 days and deleted forever.{% endif %}
       <form method="post" style="display:inline; margin-left:8px;">{% csrf_token %}
         <input type="hidden" name="action" value="reactivate">
         <button type="submit" class="btn btn-success btn-xs"><i class="fa fa-undo"></i> Reactivate account</button>
@@ -143,10 +148,11 @@
     <div class="bl-danger">
       <h4><i class="fa fa-exclamation-triangle"></i> Cancel account</h4>
       <p class="text-muted" style="margin-bottom:14px;">
-        Cancelling ends your subscription. Your data stays available for
-        <strong>90 days</strong>, then it is <strong>deleted forever</strong>. You can reactivate any time before then.
+        Cancelling stops renewal; a paid subscription runs to the end of the current billing period. After
+        access ends, your data (including any daily summary table) stays for <strong>90 days</strong>, then it is
+        <strong>deleted forever</strong>. You can reactivate any time before then.
       </p>
-      <form method="post" onsubmit="return confirm('Cancel this account? Your data will be kept for 90 days, then permanently deleted.');">
+      <form method="post" onsubmit="return confirm('Cancel this account? When access ends, your data is kept for 90 days, then permanently deleted.');">
         {% csrf_token %}
         <input type="hidden" name="action" value="cancel_account">
         <button type="submit" class="btn btn-danger"><i class="fa fa-times-circle"></i> Cancel my account</button>

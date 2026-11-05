@@ -1,0 +1,8 @@
+{% extends "emails/_base.html" %}
+{% block body %}
+<p>Hi,</p>
+<p>The Kiboko account for <strong>{{ org.name }}</strong> is disabled{% if org.plan_status == 'canceled' %} because it was cancelled{% else %} because no payment is on file{% endif %}.</p>
+<p>Your data is kept for {{ days }} days. On <strong>{{ purge_on|date:"F j, Y" }}</strong> it will be permanently deleted, including your projects, goals and any daily summary table.</p>
+{% include "emails/_button.html" with url=site_url|add:"/app/billing/" label="Open Billing" %}
+<p style="color:#6A5A8C; font-size:13px;">Questions? Reply to this email or write to info@kibokomethod.com.</p>
+{% endblock %}

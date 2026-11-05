@@ -100,7 +100,11 @@ class Organization(models.Model):
 	paused_at = models.DateTimeField(null=True, blank=True, help_text='Admin paused this account')
 	canceled_at = models.DateTimeField(null=True, blank=True, help_text='Account canceled by the org admin')
 	purge_after = models.DateField(null=True, blank=True,
-	                               help_text='Canceled data is deleted forever on/after this date (canceled_at + 90 days)')
+	                               help_text='Set when the account is disabled (cancelled, or locked for non-payment): '
+	                                         'all its data is deleted forever on/after this date (disabled + 90 days). '
+	                                         'Cleared if it is reactivated or paid first.')
+	purge_warned_at = models.DateTimeField(null=True, blank=True,
+	                                       help_text='When the "deleted in 7 days" email went to the account owner')
 	created = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
@@ -142,13 +146,18 @@ class Organization(models.Model):
 
 	@property
 	def is_locked(self):
-		"""True when the org may not use the app until payment is set up: the trial
-		ran out with no payment on file, or Stripe reports the payment past due.
-		Platform demo and internal orgs (no trial clock) are never locked."""
+		"""True when the org may not use the app: the trial ran out with no payment
+		on file, Stripe reports the payment past due, or the account was cancelled
+		and its paid period is over. A locked org counts as disabled, which starts
+		the 90-day deletion clock (purge_disabled_accounts). Platform demo and
+		internal orgs (no trial clock) are never locked."""
 		if self.is_platform_demo or self.billing_exempt:
 			return False
 		if self.plan_status == 'past_due':
 			return True
+		if self.plan_status == 'canceled':
+			# Cancelled: open until the paid period runs out (Stripe then removes the subscription).
+			return not self.has_payment
 		return self.plan_status == 'trial' and self.trial_days_left == 0 and not self.has_payment
 
 	@property

@@ -245,3 +245,15 @@ def can_manage_objectives(user, company):
         return True
     prof = getattr(user, 'profile', None)
     return bool(prof and prof.has_role('executive') and company.memberships.filter(user=user).exists())
+
+
+def can_disconnect_bigquery(user, company):
+    """Remove a company's BigQuery connection: superuser, the company's org
+    admin, or a member of it with the Executive or Developer role."""
+    if not user or not user.is_authenticated or company is None:
+        return False
+    if user.is_superuser or is_org_admin_of(user, company):
+        return True
+    prof = getattr(user, 'profile', None)
+    return bool(prof and (prof.has_role('executive') or prof.has_role('developer'))
+                and company.memberships.filter(user=user).exists())

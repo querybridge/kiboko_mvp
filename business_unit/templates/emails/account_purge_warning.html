@@ -1,0 +1,6 @@
+{% extends "emails/_base.html" %}
+{% block body %}
+<p>Hi,</p>
+<p>This is a final reminder: the data for <strong>{{ org.name }}</strong> on Kiboko will be permanently deleted on <strong>{{ purge_on|date:"F j, Y" }}</strong>. It cannot be recovered after that.</p>
+{% include "emails/_button.html" with url=site_url|add:"/app/billing/" label="Keep my data" %}
+{% endblock %}

@@ -290,6 +290,14 @@ def profile(request):
                 messages.success(request, 'Landing page updated.')
                 return redirect('users:profile')
             messages.error(request, 'Pick a valid landing page.')
+        elif action == 'disconnect_google':
+            from app.integrations import google_oauth
+            identity = getattr(request.user, 'google_identity', None)
+            if identity is not None:
+                google_oauth.disconnect(identity)
+                messages.success(request, 'Google disconnected. Kiboko no longer has access to your Google '
+                                          'Analytics, and the stored token is deleted.')
+            return redirect('users:profile')
         elif action == 'set_email_prefs':
             from business_unit import email as mail
             if request.user.email:
@@ -308,5 +316,6 @@ def profile(request):
         'lander_choices': LANDER_CHOICES,
         'current_lander': (prof.default_lander if prof else ''),
         'resolved_lander': (prof.resolved_lander_key() if prof else 'pipeline'),
+        'google_identity': getattr(request.user, 'google_identity', None),
         'email_prefs': [(key, label, not (request.user.email and mail.is_opted_out(request.user.email, key)))
                         for key, label in (('project_updates', 'Project updates'),)]})
