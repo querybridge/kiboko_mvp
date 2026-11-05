@@ -269,6 +269,22 @@ class StrategyForm(ModelForm):
 ## Revenue Models                     ##
 ########################################
 
+class RateGoal(models.Model):
+    """Optional annual Avg Order Value and Close Rate goals for a business unit,
+    set on the Edit Budget page by a BU lead or above. A blank value means the
+    Performance panel uses the unit's own average over the prior 12 months."""
+    vertical = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE, related_name='rate_goals')
+    year = models.IntegerField()
+    aov = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    close_rate = models.DecimalField(max_digits=7, decimal_places=5, null=True, blank=True)  # 0.01500 = 1.5%
+
+    class Meta:
+        unique_together = [['vertical', 'year']]
+
+    def __str__(self):
+        return f'{self.year} [{self.vertical}] AOV {self.aov} / close {self.close_rate}'
+
+
 class MonthlyGoal(models.Model):
     month = models.DateField()  # Store as first day of month
     vertical = models.ForeignKey(BusinessUnit, on_delete=models.CASCADE, null=True, blank=True)

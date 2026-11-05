@@ -25,7 +25,7 @@ from django.http import Http404, HttpResponseForbidden
 
 from app.forms import StrategyForm
 from users.models import ROLE_CHOICES, UserProfile
-from app.models import MonthlyGoal, DailyActual
+from app.models import MonthlyGoal, DailyActual, RateGoal
 from business_unit.models import Department, BusinessUnit
 from business_unit.scope import scoped_vertical_id, scoped_company_id
 from business_unit.feature_gate import feature_required
@@ -833,13 +833,13 @@ def _build_initiatives_summary(vertical_id=None, company_id=None):
     return rows
 
 
-PERFORMANCE_AOV_GOAL = 475.0           # target average order value ($)
-PERFORMANCE_CLOSE_RATE_GOAL = 0.0150   # target close rate (1.5%)
-
-
 def _build_performance_data(today, vertical_id=None, actuals=None, company_id=None):
     """Aggregate Sales / Visits / Close Rate / AOV per period (MTD/QTD/YTD)
     with deltas vs same period last year and vs prorated goal.
+
+    Close Rate and AOV targets come from RateGoal when a BU lead has set them for
+    every business unit in scope; otherwise from the scope's own average over the
+    12 months before the period. Visits target = sales budget / AOV / close rate.
 
     ``actuals`` (optional) is a GA4 daily-actuals map from a Standard connection;
     when present, sales/visits/orders come from GA4 instead of DailyActual.
@@ -891,14 +891,14 @@ def _build_performance_data(today, vertical_id=None, actuals=None, company_id=No
             'aov': (revenue / orders) if orders else 0,
         }
 
-    def _sales_goal_for(start, end):
-        """Sum prorated daily budget across [start, end]."""
+    def _sales_goal_for(start, end, bu_id=None):
+        """Sum prorated daily budget across [start, end] (one unit with bu_id)."""
         total = Decimal('0')
         cur = date(start.year, start.month, 1)
         while cur <= end:
             days_in_month = calendar.monthrange(cur.year, cur.month)[1]
             month_end = date(cur.year, cur.month, days_in_month)
-            qs = _scope_to(MonthlyGoal.objects.filter(month=cur), vertical_id, company_id)
+            qs = _scope_to(MonthlyGoal.objects.filter(month=cur), bu_id or vertical_id, company_id)
             month_budget = qs.aggregate(s=Sum('budget'))['s'] or Decimal('0')
             daily = month_budget / Decimal(days_in_month) if days_in_month else Decimal('0')
 
@@ -920,13 +920,59 @@ def _build_performance_data(today, vertical_id=None, actuals=None, company_id=No
             return None
         return (actual - baseline) / baseline
 
+    scope_bu_ids = ([vertical_id] if vertical_id else
+                    list(BusinessUnit.objects.filter(company_id=company_id).values_list('id', flat=True))
+                    if company_id else [])
+
+    def _set_goals(start, end, derived_aov):
+        """(aov, close_rate) from the BU leads' RateGoals for the period's year,
+        each only when every unit in scope has it. Several units combine as
+        sales / orders and orders / visits, weighting each unit by its budget."""
+        goals = {g.vertical_id: g for g in RateGoal.objects.filter(vertical_id__in=scope_bu_ids, year=start.year)}
+        if not scope_bu_ids or len(goals) < len(scope_bu_ids):
+            return None, None
+        all_aov = all(g.aov for g in goals.values())
+        all_cr = all(g.close_rate for g in goals.values())
+        if len(scope_bu_ids) == 1:
+            g = goals[scope_bu_ids[0]]
+            return (float(g.aov) if all_aov else None), (float(g.close_rate) if all_cr else None)
+        budgets = {bu: _sales_goal_for(start, end, bu) for bu in scope_bu_ids}
+        if not sum(budgets.values()):
+            budgets = {bu: 1.0 for bu in scope_bu_ids}          # no budgets: weight units equally
+        # A unit without an AOV goal is weighted with the scope's own 12-month AOV.
+        unit_aov = {bu: float(goals[bu].aov) if goals[bu].aov else (derived_aov or 1.0) for bu in scope_bu_ids}
+        orders = {bu: budgets[bu] / unit_aov[bu] for bu in scope_bu_ids}
+        aov = (sum(budgets.values()) / sum(orders.values())) if all_aov else None
+        cr = (sum(orders.values()) / sum(orders[bu] / float(goals[bu].close_rate) for bu in scope_bu_ids)
+              if all_cr else None)
+        return aov, cr
+
+    def _rate_targets(start, end):
+        """{aov, close_rate} target values plus a short note on where each came from."""
+        anchor = min(start, today)
+        trailing = _aggregate(anchor - timedelta(days=365), anchor - timedelta(days=1))
+        derived_aov = trailing['aov'] or None
+        derived_cr = trailing['close_rate'] or None
+        set_aov, set_cr = _set_goals(start, end, derived_aov)
+        out = {}
+        for key, set_val, derived in (('aov', set_aov, derived_aov), ('close_rate', set_cr, derived_cr)):
+            if set_val:
+                out[key] = (set_val, 'vs Goal', f'Goal set for {start.year} by your business unit lead.')
+            else:
+                out[key] = (derived, 'vs 12-mo avg',
+                            'No goal set, so the target is your own average over the 12 months before this period.')
+        return out
+
     result = {}
     for key, (start, end, is_future) in periods.items():
         cur = _aggregate(start, end)
         ly = _aggregate(_ly_bound(start), _ly_bound(end))
 
         sales_goal = _sales_goal_for(start, end)
-        visits_goal = (sales_goal / PERFORMANCE_AOV_GOAL / PERFORMANCE_CLOSE_RATE_GOAL) if sales_goal else 0
+        targets = _rate_targets(start, end)
+        aov_goal, aov_label, aov_note = targets['aov']
+        cr_goal, cr_label, cr_note = targets['close_rate']
+        visits_goal = (sales_goal / aov_goal / cr_goal) if (sales_goal and aov_goal and cr_goal) else 0
 
         if is_future:
             # No actuals yet — show the target for the period and how it compares
@@ -938,11 +984,12 @@ def _build_performance_data(today, vertical_id=None, actuals=None, company_id=No
                 'visits': {'value': visits_goal, 'unit': 'integer',
                            'delta_ly': _delta(visits_goal, ly['visits']) if visits_goal else None,
                            'delta_goal': None},
-                'close_rate': {'value': PERFORMANCE_CLOSE_RATE_GOAL, 'unit': 'percent',
-                               'delta_ly': _delta(PERFORMANCE_CLOSE_RATE_GOAL, ly['close_rate']),
-                               'delta_goal': None},
-                'aov': {'value': PERFORMANCE_AOV_GOAL, 'unit': 'currency',
-                        'delta_ly': _delta(PERFORMANCE_AOV_GOAL, ly['aov']), 'delta_goal': None},
+                'close_rate': {'value': cr_goal, 'unit': 'percent',
+                               'delta_ly': _delta(cr_goal, ly['close_rate']) if cr_goal else None,
+                               'delta_goal': None, 'goal_label': cr_label, 'goal_note': cr_note},
+                'aov': {'value': aov_goal, 'unit': 'currency',
+                        'delta_ly': _delta(aov_goal, ly['aov']) if aov_goal else None,
+                        'delta_goal': None, 'goal_label': aov_label, 'goal_note': aov_note},
             }
             result[key] = cards
             continue
@@ -964,13 +1011,15 @@ def _build_performance_data(today, vertical_id=None, actuals=None, company_id=No
                 'value': cur['close_rate'],
                 'unit': 'percent',
                 'delta_ly': _delta(cur['close_rate'], ly['close_rate']),
-                'delta_goal': _delta(cur['close_rate'], PERFORMANCE_CLOSE_RATE_GOAL),
+                'delta_goal': _delta(cur['close_rate'], cr_goal),
+                'goal_label': cr_label, 'goal_note': cr_note,
             },
             'aov': {
                 'value': cur['aov'],
                 'unit': 'currency',
                 'delta_ly': _delta(cur['aov'], ly['aov']),
-                'delta_goal': _delta(cur['aov'], PERFORMANCE_AOV_GOAL),
+                'delta_goal': _delta(cur['aov'], aov_goal),
+                'goal_label': aov_label, 'goal_note': aov_note,
             },
         }
         result[key] = cards
@@ -1110,12 +1159,26 @@ def edit_goals(request):
 
     is_summary = vertical_id is None
 
+    from business_unit.access import can_manage_goals
+    bu = None if is_summary else BusinessUnit.objects.filter(pk=vertical_id).first()
+    can_edit = bool(bu and can_manage_goals(request.user, bu))
+
     if request.method == 'POST' and not is_summary:
-        from business_unit.access import can_manage_goals
-        bu = BusinessUnit.objects.filter(pk=vertical_id).first()
-        if not bu or not can_manage_goals(request.user, bu):
+        if not can_edit:
             return HttpResponseForbidden(
                 'Only owners, executives, and business-unit leads can edit the budget.')
+        if request.POST.get('action') == 'save_rate_goals':
+            def _num(field, scale=1):
+                raw = (request.POST.get(field) or '').replace(',', '').replace('$', '').replace('%', '').strip()
+                try:
+                    val = Decimal(raw) / scale if raw else None
+                except InvalidOperation:
+                    return None
+                return val if val and val > 0 else None
+            RateGoal.objects.update_or_create(vertical=bu, year=year, defaults={
+                'aov': _num('aov_goal'), 'close_rate': _num('close_rate_goal', 100)})
+            messages.success(request, 'Close rate and AOV goals saved.')
+            return redirect(f'/app/goals/?vertical={vertical_id}')
         for m in range(1, 13):
             month_date = date(year, m, 1)
             budget_val = request.POST.get(f'budget_{m}', '0')
@@ -1193,7 +1256,44 @@ def edit_goals(request):
         'last_year': last_year,
         'prev_year': prev_year,
         'is_summary': is_summary,
+        'can_edit': can_edit,
+        'rates': _rate_goal_display(RateGoal.objects.filter(vertical=bu, year=year).first() if bu else None,
+                                    _trailing_rates(request, vertical_id, company_id)),
     })
+
+
+def _rate_goal_display(goal, trailing):
+    """Formatted goal inputs and 12-month-average hints for the budget page."""
+    aov_avg = f"${trailing['aov']:,.2f}" if trailing['aov'] else ''
+    cr_avg = f"{trailing['close_rate'] * 100:.2f}%" if trailing['close_rate'] else ''
+    return {
+        'aov_input': f'{goal.aov:.2f}' if goal and goal.aov else '',
+        'cr_input': f'{goal.close_rate * 100:.2f}' if goal and goal.close_rate else '',
+        'aov_avg': aov_avg, 'cr_avg': cr_avg,
+        'aov_shown': (f'${goal.aov:,.2f} (goal)' if goal and goal.aov
+                      else f'{aov_avg} (12-month avg)' if aov_avg else '\u2014'),
+        'cr_shown': (f'{goal.close_rate * 100:.2f}% (goal)' if goal and goal.close_rate
+                     else f'{cr_avg} (12-month avg)' if cr_avg else '\u2014'),
+    }
+
+
+def _trailing_rates(request, vertical_id, company_id):
+    """{'aov', 'close_rate'} over the last 12 months for the scope (GA4 when
+    connected, else DailyActual); None where there's no data. Used as the
+    default targets and as hints next to the goal inputs."""
+    from app.integrations import ga4_dashboard
+    end = date.today() - timedelta(days=1)
+    start = end - timedelta(days=364)
+    actuals = ga4_dashboard.ga4_daily_actuals(request, start, end)
+    if actuals is not None:
+        a = _actuals_map_agg(actuals, start, end)
+        revenue, visits, orders = a['revenue'], a['visits'], a['orders']
+    else:
+        agg = _scope_to(DailyActual.objects.filter(date__gte=start, date__lte=end), vertical_id, company_id
+                        ).aggregate(rev=Sum('revenue'), v=Sum('visits'), o=Sum('orders'))
+        revenue, visits, orders = float(agg['rev'] or 0), agg['v'] or 0, agg['o'] or 0
+    return {'aov': (revenue / orders) if orders else None,
+            'close_rate': (orders / visits) if visits else None}
 
 
 @login_required

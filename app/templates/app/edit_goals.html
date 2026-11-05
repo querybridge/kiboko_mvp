@@ -5,9 +5,14 @@
 {% block stylesheets %}
   {{ block.super }}
   <style>
-    .pct-positive { color: #26B99A; }
-    .pct-negative { color: #E74C3C; }
-    th.year-header { background-color: #f5f5f5; }
+    .pct-positive { color: var(--status-success, #1F7A4D); }
+    .pct-negative { color: var(--status-danger, #B42318); }
+    th.year-header { background-color: var(--bg-surface-muted, #EFEBF6); }
+    /* Totals row: theme surface + full-strength text so it reads in dark and light. */
+    tfoot tr.budget-total td { font-weight: 700; background-color: var(--bg-surface-muted, #EFEBF6);
+      color: var(--text-primary, #1C1530); border-top: 2px solid var(--border-subtle, #DDD6EC); }
+    tfoot tr.budget-total td.pct-positive { color: var(--status-success, #1F7A4D); }
+    tfoot tr.budget-total td.pct-negative { color: var(--status-danger, #B42318); }
   </style>
 {% endblock stylesheets %}
 
@@ -83,7 +88,7 @@
                     {% endfor %}
                   </tbody>
                   <tfoot>
-                    <tr style="font-weight: bold; background-color: #f9f9f9;">
+                    <tr class="budget-total">
                       <td>Total</td>
                       <td>${{ totals.budget|floatformat:0|intcomma }}</td>
                       <td>${{ totals.ly_budget|floatformat:0|intcomma }}</td>
@@ -99,10 +104,51 @@
                     </tr>
                   </tfoot>
                 </table>
-                {% if not is_summary %}
+                {% if can_edit %}
                 <button type="submit" class="btn btn-success">Save Budget</button>
                 {% endif %}
               </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 col-sm-12 col-xs-12">
+          <div class="x_panel">
+            <div class="x_title">
+              <h2>Close Rate &amp; AOV Goals <small>{{ year }}</small></h2>
+              <div class="clearfix"></div>
+            </div>
+            <div class="x_content">
+              <p class="text-muted">The Performance panel compares Close Rate and Avg Order Value to these goals.
+                Leave a goal blank to use your own average over the prior 12 months instead.
+                The Visits target is the sales budget &divide; AOV &divide; close rate.</p>
+              {% if can_edit %}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_rate_goals">
+                <div class="form-group">
+                  <label for="aov_goal">Avg Order Value goal ($)</label>
+                  <input type="text" inputmode="decimal" id="aov_goal" name="aov_goal" class="form-control"
+                         value="{{ rates.aov_input }}" placeholder="Blank = 12-month avg{% if rates.aov_avg %}, {{ rates.aov_avg }}{% endif %}">
+                </div>
+                <div class="form-group">
+                  <label for="close_rate_goal">Close Rate goal (%)</label>
+                  <input type="text" inputmode="decimal" id="close_rate_goal" name="close_rate_goal" class="form-control"
+                         value="{{ rates.cr_input }}" placeholder="Blank = 12-month avg{% if rates.cr_avg %}, {{ rates.cr_avg }}{% endif %}">
+                </div>
+                <button type="submit" class="btn btn-success">Save Goals</button>
+              </form>
+              {% else %}
+              <dl class="dl-horizontal" style="margin-bottom:0;">
+                <dt>Avg Order Value</dt>
+                <dd>{{ rates.aov_shown }}</dd>
+                <dt>Close Rate</dt>
+                <dd>{{ rates.cr_shown }}</dd>
+              </dl>
+              {% if is_summary %}<p class="text-muted" style="margin-top:10px;">Select a business unit to set its goals.</p>{% endif %}
+              {% endif %}
             </div>
           </div>
         </div>

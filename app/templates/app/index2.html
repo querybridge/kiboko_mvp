@@ -933,7 +933,8 @@
             .append(chevron(card.delta_ly))
             .append($('<span></span>').text(fmtDelta(card.delta_ly))))
           .append($('<div class="perf-delta"></div>').addClass(trafficClass(card.delta_goal))
-            .append($('<span class="perf-key"></span>').text('vs Budget'))
+            .attr('title', card.goal_note || '')
+            .append($('<span class="perf-key"></span>').text(card.goal_label || 'vs Budget'))
             .append(chevron(card.delta_goal))
             .append($('<span></span>').text(fmtDelta(card.delta_goal))));
         $grid.append($card);

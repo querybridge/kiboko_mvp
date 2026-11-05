@@ -78,11 +78,13 @@
             </p>
             <p>Key areas, in sidebar order:</p>
             <ul>
+              <li><strong>Getting Started</strong> &mdash; the setup checklist for a new account.</li>
               <li><strong>Analytics</strong> &mdash; Performance Storyboard, Grow Sales, Attract Traffic,
                 Engage Customers, Expand Purchases. Decompose sales into levers and compare periods.</li>
               <li><strong>Insights</strong> &mdash; Wins &amp; Losses that bridge Analytics to a proposed project.</li>
               <li><strong>Project Prioritization</strong> &mdash; the <strong>Project Pipeline Value</strong>
-                (forecast + pipeline value), <strong>Approve Projects</strong>, and <strong>Score Projects</strong>.</li>
+                (forecast + pipeline value), <strong>Approve Projects</strong>, <strong>Score Projects</strong>, and
+                <strong>Executive Approval</strong>.</li>
               <li><strong>Project Control</strong> &mdash; <strong>Kanban</strong>, <strong>Work In Progress</strong>
                 (the gantt), and the <strong>Backlog</strong>.</li>
               <li><strong>Project Review</strong> &mdash; <strong>Completed Projects</strong> (Realized
@@ -90,7 +92,11 @@
               <li><strong>Add Project</strong> &mdash; the Project Intake Form with the Impact Estimator.</li>
               <li><strong>Settings</strong> &mdash; Edit Budget, Edit Objectives, Data Connection, Manage Users,
                 Score Weights, Edit Estimator, Billing.</li>
+              <li><strong>Privacy | Terms</strong> &mdash; links at the bottom of the sidebar.</li>
             </ul>
+            <p><strong>Your data stays yours:</strong> everything is scoped by the top-bar
+              <strong>Company &rarr; Business Unit &rarr; Website</strong> selectors. You only see companies
+              you belong to, and objectives, projects, budgets and users belong to one company.</p>
             <p><strong>Landing page:</strong> after sign-in you land on the page that fits your role
               (developers on the Kanban, analysts on Grow Sales, executives/BU-leaders on the Performance
               Storyboard). Change it any time in <strong>User Settings</strong>.</p>
@@ -117,8 +123,8 @@
                 Performance Storyboard</strong> and <strong>Grow Sales</strong> to see what's winning or
                 losing across Attract / Engage / Expand. Scope to a company or business unit up top.</li>
               <li><span class="panel-name">Set the objectives.</span> In <strong>Settings &rarr; Edit
-                Objectives</strong>, keep each annual objective aligned to an AEE element — every project
-                inherits that alignment.</li>
+                Objectives</strong>, keep the selected company's annual objectives aligned to an AEE
+                element — every project inherits that alignment. Each company has its own objectives.</li>
               <li><span class="panel-name">Tune scoring (once).</span> <strong>Settings &rarr; Score
                 Weights</strong> and <strong>Edit Estimator</strong> set how projects are scored and how
                 impact is estimated, per company. Set them and leave them.</li>
@@ -176,19 +182,24 @@
               </li>
               <li>
                 <span class="step-label">Set the objectives</span> &mdash;
-                <strong>Settings &rarr; Edit Objectives</strong> — create the year's Objectives, each aligned
-                to an AEE element (Attract / Engage / Expand). Every project inherits that alignment.
+                <strong>Settings &rarr; Edit Objectives</strong> — every new company starts with three
+                (Increase Shopper Volume, Increase Close Rate, Increase Average Order Value), one per AEE
+                element. Rename them or add your own for the year. Every project inherits its objective's
+                alignment. Only the company's executives and account owner can change them.
               </li>
               <li>
                 <span class="step-label">Set the budget</span> &mdash;
                 <strong>Settings &rarr; Edit Budget</strong> — pick a Business Unit and enter monthly budget
-                targets. These drive the pipeline's Budget line and Delta-to-Budget.
+                targets. These drive the pipeline's Budget line and Delta-to-Budget. Optionally set the year's
+                Close Rate and AOV goals there too; left blank, Kiboko uses your own 12-month averages.
               </li>
               <li>
                 <span class="step-label">Add your people</span> &mdash;
                 <strong>Settings &rarr; Manage Users</strong> — add members and assign roles (Executive,
-                Business Unit Leader, Business Unit User, Analyst, Developer). New accounts get a temporary
-                password and are prompted to set their own on first sign-in.
+                Business Unit Leader, Business Unit User, Analyst, Developer). Kiboko emails each new person an
+                invite with a temporary password, and they set their own on first sign-in. You can limit a
+                member to specific business units. Admins manage only their own organization's companies; a
+                person who also works for another organization keeps the roles that organization gave them.
               </li>
               <li>
                 <span class="step-label">Tune scoring (optional)</span> &mdash;
@@ -275,16 +286,20 @@
               </li>
               <li>
                 <span class="step-label">Fill in project details</span> &mdash;
-                Name, user story, definition of done, the Objective it supports, owner, Business Unit, and
-                target go-live (defaults to 30 business days out). Use <strong>Save progress</strong> to
+                Name, user story, definition of done, the Objective it supports (from the same company as
+                the Business Unit), owner, Business Unit, and target go-live (defaults to 30 business days out). Use <strong>Save progress</strong> to
                 store a draft and return to finish the estimate.
               </li>
               <li>
                 <span class="step-label">Complete the Impact Estimator</span> &mdash;
                 Pick the sales lever (scoped to the objective's AEE), set current &rarr; target level
                 (auto-filled from analytics when available). The <strong>Size of Impact</strong> scale shows
-                what a Modest &rarr; Extreme target looks like and auto-discounts an over-reach. If the target
-                rests on evidence recent data can't see, mark it <strong>Evidence-backed</strong> with a note.
+                what a Modest &rarr; Extreme target looks like. Past what the lever's history supports, each
+                extra step of target earns less credit (diminishing returns), so a bigger target always adds
+                some value but never an outsized one. Enter any <strong>Direct expense</strong> as
+                <strong>One-time</strong> or <strong>Ongoing monthly</strong>; monthly costs count for the months
+                live this year and twelve months a year after. If the target rests on evidence recent data
+                can't see, mark it <strong>Evidence-backed</strong> with a note.
               </li>
               <li>
                 <span class="step-label">Submit for approval</span> &mdash;
@@ -341,7 +356,7 @@
               <strong>Prorated Projected Value</strong>, Budget, and Delta to Budget.</p>
 
             <h4><span class="panel-name">Performance</span></h4>
-            <p>Four scorecards in order: <strong>Sales</strong>, <strong>Visits</strong>, <strong>Close Rate</strong>, and <strong>Avg Order Value</strong>. Each card shows the period value plus two deltas in smaller font: <em>vs LY</em> (same calendar-day range last year) and <em>vs Budget</em>. Traffic-light coloring uses a <strong>±5% neutral band</strong>: green = better than +5%, red = worse than &minus;5%, amber = within the neutral band. Color-coded chevrons indicate direction (up / down). The card's left border picks the worse of the two deltas so you can scan the row at a glance.</p>
+            <p>Four scorecards in order: <strong>Sales</strong>, <strong>Visits</strong>, <strong>Close Rate</strong>, and <strong>Avg Order Value</strong>. Each card shows the period value plus two deltas in smaller font: <em>vs LY</em> (same calendar-day range last year) and its target &mdash; <em>vs Budget</em> for Sales and Visits, and <em>vs Goal</em> or <em>vs 12-mo avg</em> for Close Rate and AOV (see Performance Targets below). Traffic-light coloring uses a <strong>±5% neutral band</strong>: green = better than +5%, red = worse than &minus;5%, amber = within the neutral band. Color-coded chevrons indicate direction (up / down). The card's left border picks the worse of the two deltas so you can scan the row at a glance.</p>
 
             <h4><span class="panel-name">Work in Progress (Gantt)</span></h4>
             <p>Active actions laid out on the period's date axis. Bars start at the date the action's status became <em>Active</em> and end at the planned launch date. Each bar is <strong>color-coded by the Objective its action supports</strong> — Average Order Value = green, Close Rate = yellow, Shopper Volume (Visits) = blue — with a darker fill of the same hue sized to the action's percent complete; the percentage is labeled at the bar's right edge. Open-ended (no launch) actions use a striped pattern in the objective color. Rows are grouped by <strong>Team</strong>, sorted with the densest team first, so you can see workload concentration at a glance. The vertical red line is today.</p>
@@ -363,6 +378,55 @@
           </div>
         </div>
 
+        <!-- Account, email, billing and access -->
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Your Account, Email &amp; Access</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <h4>Signing in</h4>
+            <ul>
+              <li>Sign in with your Kiboko username and password, or with <strong>Sign in with Google</strong>.</li>
+              <li><strong>Forgot password?</strong> on the sign-in page emails you a link to set a new one. The
+                link works once and expires in 3 days. Google accounts have no Kiboko password; use Sign in
+                with Google.</li>
+              <li><strong>User Settings</strong> (click your name, top right) changes your password, username,
+                landing page and email notifications.</li>
+            </ul>
+
+            <h4>Emails from Kiboko</h4>
+            <ul>
+              <li><strong>Always sent:</strong> invites, trial codes, password resets and billing notices.</li>
+              <li><strong>Project updates</strong> (you can turn these off): a new project in a business unit you
+                lead, a phase change on a project you own, and a project waiting for your score. Use the
+                <strong>Unsubscribe</strong> link at the bottom of any of these emails, your mail app's
+                unsubscribe button, or the <strong>Email notifications</strong> box in User Settings.</li>
+            </ul>
+
+            <h4>Trial and billing</h4>
+            <ul>
+              <li>A new account starts with a <strong>45-day free trial</strong> using the code emailed during
+                sign-up. No card is needed.</li>
+              <li>When the trial ends, features pause until the account owner adds payment on
+                <strong>Settings &rarr; Billing</strong>. Billing is visible to account owners only.</li>
+              <li>If an account is cancelled or unpaid, its data stays available for 90 days and is then
+                permanently deleted. Data in your Google Analytics or BigQuery is not affected.</li>
+            </ul>
+
+            <h4>Who can see what</h4>
+            <ul>
+              <li>You see only the companies you belong to. An admin can also limit you to certain business
+                units in <strong>Manage Users</strong>.</li>
+              <li>Objectives, projects, budgets, score weights and estimator settings belong to one company and
+                never show in another.</li>
+              <li>The shared demo company is view-only unless you are one of its members.</li>
+              <li>How Kiboko handles your data is described in the <a href="{% url 'legal_privacy' %}">Privacy
+                Policy</a> and <a href="{% url 'legal_terms' %}">Terms of Service</a>.</li>
+            </ul>
+          </div>
+        </div>
+
         <!-- Data Dictionary -->
         <div class="x_panel">
           <div class="x_title">
@@ -379,15 +443,15 @@
               <tbody>
                 <tr>
                   <td><strong>Objective</strong></td>
-                  <td>Top-level annual priority for the year (e.g., "Increase Average Order Value"), measured by a KPI. Has a name, description, and year. Drives the Objective tiles and serves as the <em>Objective</em> on Projects.</td>
+                  <td>A company's annual priority (e.g., "Increase Average Order Value"), aligned to one AEE element. Has a name, description and year, and belongs to one company. Drives the Objective tiles and is the <em>Objective</em> on Projects.</td>
                 </tr>
                 <tr>
                   <td><strong>Project</strong></td>
-                  <td>A focused, quarterly effort supporting an Objective, measured by a Metric. Carries Purpose, Level, Department (Business Unit), Year, Quarter. Surfaced as a row in the Projects Summary panel.</td>
+                  <td>The scored unit of work supporting an Objective in one Business Unit. Carries a user story, definition of done, owner, the Impact Estimator's lever, current &rarr; target level and projected value, effort size, and a blended score. Moves through the status flow below.</td>
                 </tr>
                 <tr>
                   <td><strong>Action</strong></td>
-                  <td>An individual unit of execution tied to a Project, measured by a Measure. The smallest tracked piece — gets scored, prioritized, executed, and launched.</td>
+                  <td>An execution step inside a Project (owner, team, target date, progress, dependencies). Tracked on the Work In Progress gantt; the project's "1 of 3 actions done" progress counts these.</td>
                 </tr>
               </tbody>
             </table>
@@ -415,7 +479,7 @@
             <dl class="field-list">
               <dt>Name</dt><dd>Short title used in lists, the gantt label, and the kanban card.</dd>
               <dt>Owner</dt><dd>User responsible for delivering the action.</dd>
-              <dt>Project</dt><dd>Linked quarterly Project.</dd>
+              <dt>Project</dt><dd>The Project this step belongs to.</dd>
               <dt>Objective</dt><dd>Linked top-level annual priority — typically inherited from the Project.</dd>
               <dt>Measure</dt><dd>The Measure used to track the action's contribution.</dd>
               <dt>Business Unit (Department)</dt><dd>Owning organizational unit.</dd>
@@ -425,27 +489,31 @@
               <dt>Progress</dt><dd>0&ndash;100 percent complete. Drives the gantt bar fill and the project <em>Avg Progress</em>.</dd>
               <dt>Launch</dt><dd>Planned go-live date. Used as the gantt bar end and the cutoff for forecast uplift.</dd>
               <dt>Active Date</dt><dd>Auto-stamped the first time status transitions to Active. Used as the gantt bar start.</dd>
-              <dt>Score (normalized)</dt><dd>0&ndash;10 weighted score derived from the six scoring criteria. Primary sort within a project.</dd>
             </dl>
+            <p>Scores belong to <strong>Projects</strong>, not Actions: the blended 0&ndash;10 priority is the
+              average of the anonymous team vote and the algorithmic estimate.</p>
 
-            <h5>Six Scoring Criteria (each 0&ndash;10)</h5>
+            <h5>Project Scoring Criteria (each 0&ndash;10; weights set per company in Score Weights)</h5>
             <table class="dict-table">
-              <thead><tr><th>Criterion</th><th>Polarity</th><th>Definition</th></tr></thead>
+              <thead><tr><th>Criterion</th><th>Set by</th><th>Definition</th></tr></thead>
               <tbody>
-                <tr><td>Customer Value</td><td>Positive</td><td>Direct customer impact / experience benefit.</td></tr>
-                <tr><td>Business Value</td><td>Positive</td><td>Strategic and financial impact to the business.</td></tr>
-                <tr><td>Cost Savings</td><td>Positive</td><td>Reductions in operating cost.</td></tr>
-                <tr><td>Operational Cost</td><td>Penalty</td><td>Additional ongoing operational expense.</td></tr>
-                <tr><td>Business Risk</td><td>Penalty</td><td>Risk exposure introduced by the action.</td></tr>
-                <tr><td>Level of Effort (LOE)</td><td>Penalty</td><td>Engineering / time cost.</td></tr>
+                <tr><td>Customer Value</td><td>Team vote</td><td>Impact on the customer experience.</td></tr>
+                <tr><td>Business Value</td><td>Team vote</td><td>Revenue / strategic value to the business.</td></tr>
+                <tr><td>Cost Savings</td><td>Team vote</td><td>Direct cost the project removes.</td></tr>
+                <tr><td>Operational Cost</td><td>Team vote</td><td>Efficiency it adds to operations.</td></tr>
+                <tr><td>Business Risk</td><td>Team vote</td><td>How risky it is to take on. Higher risk lowers the score.</td></tr>
+                <tr><td>Level of Effort</td><td>Developer</td><td>Not voted: the lead developer's effort size (XXS&ndash;XXL) feeds the algorithmic score. Smaller effort scores higher.</td></tr>
               </tbody>
             </table>
 
             <h4>Organization</h4>
             <dl class="field-list">
-              <dt>Department / Business Unit</dt><dd>Owning organizational unit (Marketing, IT, Merchandising, etc.).</dd>
-              <dt>Team</dt><dd>Functional execution unit; distinct from Department. Multiple teams can sit inside a single department.</dd>
-              <dt>Business Unit</dt><dd>A revenue line of business with its own GM and budget targets (Lighting, Patio, Home Decor).</dd>
+              <dt>Organization</dt><dd>Your Kiboko account: the plan, billing and account owner. An agency organization can hold several client companies.</dd>
+              <dt>Company</dt><dd>A business whose data you analyze (a GA4 account). Objectives, projects, budgets, score weights and members belong to a company.</dd>
+              <dt>Business Unit</dt><dd>A revenue line of business with its own lead and budget targets (e.g. Lighting, Patio); one GA4 property.</dd>
+              <dt>Website</dt><dd>A GA4 data stream inside a Business Unit.</dd>
+              <dt>Department</dt><dd>The functional group that owns a project (Marketing, IT, Merchandising, etc.).</dd>
+              <dt>Team</dt><dd>Functional execution unit for Actions; groups rows on the gantt. Distinct from Department.</dd>
               <dt>User Roles</dt><dd><code>Executive</code>, <code>Business Unit Leader</code>, <code>Business Unit User</code>, <code>Analyst</code>, <code>Developer</code>. A user may hold several; roles control edit affordances and the default landing page. (Account Owner is the Organization admin; Super User is Django-level.)</dd>
             </dl>
 
@@ -466,12 +534,15 @@
               </tbody>
             </table>
 
-            <h5>Performance Targets (constants used by the Performance panel)</h5>
+            <h5>Performance Targets</h5>
             <ul>
-              <li><strong>AOV target</strong> &mdash; $475</li>
-              <li><strong>Close Rate target</strong> &mdash; 1.5%</li>
-              <li><strong>Visits goal</strong> &mdash; derived: <code>sales_budget &divide; AOV target &divide; close-rate target</code>.</li>
-              <li><strong>Sales goal</strong> &mdash; sum of <code>MonthlyGoal.budget</code>, prorated daily across the selected period.</li>
+              <li><strong>Sales goal</strong> &mdash; the monthly budgets from <strong>Edit Budget</strong>, prorated daily across the selected period.</li>
+              <li><strong>AOV and Close Rate targets</strong> &mdash; the goals a Business Unit Leader (or above) sets
+                for the year under <strong>Edit Budget &rarr; Close Rate &amp; AOV Goals</strong>. With no goal set,
+                the target is your own average over the 12 months before the period, and the card reads
+                <em>vs 12-mo avg</em> instead of <em>vs Goal</em>. A company roll-up uses goals only when every
+                business unit in it has them, combining units by their budgets.</li>
+              <li><strong>Visits goal</strong> &mdash; derived: <code>sales goal &divide; AOV target &divide; close-rate target</code>.</li>
             </ul>
 
             <h4>Periods</h4>
