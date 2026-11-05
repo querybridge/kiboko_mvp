@@ -50,7 +50,18 @@
   .pj-status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 700;
     text-transform: uppercase; letter-spacing: .04em; background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-primary); }
   .pj-status.blocked { border-color: var(--status-danger); color: var(--status-danger); }
+  .pj-head-right { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 32px; }
+  /* Value is the number people scan for: big, bold, and in the money colour. */
+  .pj-value { text-align: right; }
+  .pj-value-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+  .pj-value-num { font-size: 34px; font-weight: 800; line-height: 1.1; color: var(--status-success); font-variant-numeric: tabular-nums; }
+  .pj-value-num small { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-left: 3px; }
+  html.theme-light .pj-value-num { color: #1E7A4C; }
+  @media (max-width: 600px) { .pj-value { text-align: left; } }
   .pj-prog { min-width: 220px; }
+  .pj-next-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .pj-next-title .pj-prog { min-width: 0; width: 190px; text-align: right; }
+  .pj-next-title .clearfix { display: none; }
   .pj-prog-text { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
   .pj-prog-bar { height: 6px; border-radius: 3px; background: var(--border-subtle); overflow: hidden; }
   .pj-prog-bar span { display: block; height: 100%; background: var(--accent-primary); }
@@ -81,15 +92,16 @@
       <h3>{{ project.name }} <small>Project</small></h3>
       <div class="pj-meta">
         <span class="pj-status{% if project.status == 'Blocked' or project.is_blocked %} blocked{% endif %}">{{ project.status|default:"No status" }}</span>
-        <span>Value <strong>${{ project.value|default:0|intcomma }}</strong></span>
         <span>Score <strong>{% if project.normalized_score %}{{ project.normalized_score|score100 }}{% else %}&mdash;{% endif %}</strong></span>
         {% if project.vertical %}<span>{{ project.vertical }}</span>{% endif %}
       </div>
     </div>
-    <a class="pj-prog" href="{% url 'project:project_tab' project.id 'actions' %}" style="text-decoration:none;">
-      <div class="pj-prog-text">{% if action_progress.total %}{{ action_progress.done }} of {{ action_progress.total }} action{{ action_progress.total|pluralize }} done &middot; {{ action_progress.pct }}%{% else %}No actions yet{% endif %}</div>
-      <div class="pj-prog-bar"><span style="width:{{ action_progress.pct }}%"></span></div>
-    </a>
+    <div class="pj-head-right">
+      <div class="pj-value">
+        <div class="pj-value-label">Projected value</div>
+        <div class="pj-value-num">${{ project.value|default:0|intcomma }}<small>/yr</small></div>
+      </div>
+    </div>
   </div>
 
   <ul class="pj-tabs">
@@ -147,6 +159,7 @@
               <div><div class="pd-label">Objective</div><div class="pd-val">{{ project.objective|default:"—" }}</div></div>
               <div><div class="pd-label">AEE alignment</div><div class="pd-val">{{ project.get_aee_alignment_display|default:"— (set on the objective)" }}</div></div>
               <div><div class="pd-label">Level of effort</div><div class="pd-val">{% if project.level_of_effort %}{{ project.level_of_effort }} / 10{% else %}—{% endif %}</div></div>
+              <div><div class="pd-label">Lever</div><div class="pd-val">{{ project.get_lever_display|default:"— (set in the Impact Estimator)" }}</div></div>
             </div>
           </div>
           <div class="pd-group">
@@ -164,7 +177,12 @@
     <!-- Next actions: a short look at the work, with the way into the Actions tab -->
     <div class="col-md-5 col-sm-12">
       <div class="x_panel">
-        <div class="x_title"><h2>Next actions</h2><div class="clearfix"></div></div>
+        <div class="x_title pj-next-title"><h2>Next actions</h2>
+          <a class="pj-prog" href="{% url 'project:project_tab' project.id 'actions' %}" style="text-decoration:none;">
+            <div class="pj-prog-text">{% if action_progress.total %}{{ action_progress.done }} of {{ action_progress.total }} action{{ action_progress.total|pluralize }} done &middot; {{ action_progress.pct }}%{% else %}No actions yet{% endif %}</div>
+            <div class="pj-prog-bar"><span style="width:{{ action_progress.pct }}%"></span></div>
+          </a>
+          <div class="clearfix"></div></div>
         <div class="x_content">
           <ul class="pj-next">
             {% for a in actions %}{% if a.progress|default:0 < 100 %}
