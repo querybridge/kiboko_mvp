@@ -39,17 +39,17 @@
 </div>
 {% endif %}
 
-<h2 class="m-h2">In flight <span class="m-h2-side">{{ in_flight_count }} · {{ in_flight_value|money }}/yr</span></h2>
+<h2 class="m-h2">WIP <span class="m-h2-side">{{ in_flight_count }} · {{ in_flight_value|money }}/yr</span></h2>
 {% if in_flight %}
 <div class="m-list">
   {% for p in in_flight %}{% include "mobile/_project_row.html" %}{% endfor %}
   {% if in_flight_count > in_flight|length %}
-  <a class="m-row m-row-more" href="{% url 'mobile:projects' %}">All {{ in_flight_count }} in flight<i class="fa fa-angle-right m-chev"></i></a>
+  <a class="m-row m-row-more" href="{% url 'mobile:projects' %}">All {{ in_flight_count }} WIP projects<i class="fa fa-angle-right m-chev"></i></a>
   {% endif %}
 </div>
-{% if late_count %}<p class="m-note m-note-bad"><i class="fa fa-clock-o"></i> {{ late_count }} in-flight project{{ late_count|pluralize }} past {{ late_count|pluralize:"its,their" }} go-live date.</p>{% endif %}
+{% if late_count %}<p class="m-note m-note-bad"><i class="fa fa-clock-o"></i> {{ late_count }} WIP project{{ late_count|pluralize }} past {{ late_count|pluralize:"its,their" }} go-live date.</p>{% endif %}
 {% else %}
-<div class="m-empty">Nothing is in flight right now.</div>
+<div class="m-empty">No projects are in WIP right now.</div>
 {% endif %}
 
 {% if soon %}

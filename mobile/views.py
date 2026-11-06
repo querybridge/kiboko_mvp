@@ -35,15 +35,15 @@ DONE_STATUSES = ('Complete', 'Launched')
 
 # Projects list filters: key -> (label, statuses)
 PROJECT_FILTERS = [
-    ('active', 'In flight', ('WIP',)),
-    ('on_deck', 'On deck', ('On Deck',)),
+    ('active', 'WIP', ('WIP',)),
+    ('on_deck', 'On Deck', ('On Deck',)),
     ('review', 'In review', ('Incomplete Entry', 'In Intake', 'Pending LOE', 'Pending Revenue',
                              'Ready to Score', 'Scored', 'Executive Approval', 'Blocked')),
     ('done', 'Done', DONE_STATUSES),
 ]
 
 STATUS_LABEL = {
-    'WIP': 'In flight', 'On Deck': 'On deck', 'Incomplete Entry': 'Draft',
+    'WIP': 'WIP', 'On Deck': 'On Deck', 'Incomplete Entry': 'Draft',
     'In Intake': 'In intake', 'Pending LOE': 'Sizing', 'Pending Revenue': 'Value review',
     'Ready to Score': 'Scoring', 'Scored': 'Awaiting approval',
     'Executive Approval': 'Awaiting approval', 'Blocked': 'Blocked',
