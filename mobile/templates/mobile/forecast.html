@@ -43,6 +43,37 @@
 {% endif %}
 {% endif %}
 
+{% if fc.blocked %}
+<h2 class="m-h2">Blocked <span class="m-h2-side">{{ fc.blocked_value|money }}/yr held up</span></h2>
+<p class="m-note">Not in the forecast. Unblocked now, these could add {{ fc.blocked_at_stake|money }} by {{ fc.end|date:"M j" }}.</p>
+<div class="m-list">
+  {% for p in fc.blocked %}
+  {% url 'mobile:project' p.id as purl %}
+  <div class="m-row m-row-stack">
+    <a class="m-row-top" href="{{ purl }}?back={{ here|urlencode }}">
+      <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span>
+      <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.owner|short_name|default:"No owner" }} · {{ p.value|money }}/yr{% if p.blocked_actions %} · {{ p.blocked_actions|length }} action{{ p.blocked_actions|length|pluralize }} blocked{% endif %}</small></span>
+      <span class="m-row-side"><b class="m-bad">{{ p.at_stake|money }}</b><small>this period</small></span>
+    </a>
+    <div class="m-blocked-why">
+      {% if p.last_comment %}
+      <p><b>{{ p.last_comment.author|short_name }}</b>{% if p.last_comment_on %} on {{ p.last_comment_on }}{% endif %} · {{ p.last_comment.created_date|timesince }} ago<br>{{ p.last_comment.text|truncatechars:110 }}</p>
+      {% elif p.blocked_actions %}
+      <p>Held up on {{ p.blocked_actions|join:", "|truncatechars:110 }}. No one has said why yet.</p>
+      {% else %}
+      <p>No one has said why yet.</p>
+      {% endif %}
+      <div class="m-blocked-btns">
+{% if p.can_ask %}
+        <a class="m-btn m-btn-primary m-btn-xs" href="{{ purl }}?back={{ here|urlencode }}#ask"><i class="fa fa-question-circle"></i> Ask why</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <h2 class="m-h2">Counted in the forecast <span class="m-h2-side">{{ fc.project_value|money }}</span></h2>
 {% if fc.counted %}
 <div class="m-list">

@@ -163,6 +163,34 @@ class PageTests(MobileBase):
         fc = self.phone_get('/m/forecast/?p=year').context['fc']
         self.assertNotIn('After year end', [p.name for p in fc['candidates']])
 
+    def test_blocked_projects_show_value_and_why(self):
+        from business_unit.models import Department
+        from project.models import Action, ActionComment
+        from strategy.models import ProjectComment
+        p = self.scored_project('Restock alerts', value=365_000, live_in=5)
+        Project.objects.filter(pk=p.pk).update(status='Blocked', is_blocked=True)
+        a = Action.objects.create(project=p, owner=self.user, name='Vendor feed', status='Blocked',
+                                  business_unit=Department.objects.create(name='General'), vertical=self.bu)
+        ProjectComment.objects.create(project=p, author=self.user, text='Waiting on legal')
+        ActionComment.objects.create(action=a, author=self.user, text='Vendor API keys not issued')
+        resp = self.phone_get('/m/forecast/?p=year')
+        fc = resp.context['fc']
+        self.assertEqual([b.name for b in fc['blocked']], ['Restock alerts'])
+        self.assertEqual(fc['blocked_value'], 365_000)
+        self.assertGreater(fc['blocked_at_stake'], 0)
+        self.assertNotIn('Restock alerts', [c.name for c in fc['candidates']])
+        b = fc['blocked'][0]
+        self.assertEqual((b.last_comment.text, b.last_comment_on), ('Vendor API keys not issued', 'Vendor feed'))
+        self.assertEqual(b.blocked_actions, ['Vendor feed'])
+        self.assertContains(resp, f'/m/projects/{p.id}/?back=')
+        self.assertContains(resp, '#ask')
+        page = self.phone_get(f'/m/projects/{p.id}/')
+        self.assertContains(page, 'id="activity"')
+        self.assertContains(page, 'id="ask"')
+        self.assertContains(page, 'm-blocked-card')
+        self.assertContains(page, 'on Vendor feed')               # action comments are in the feed
+        self.assertContains(page, 'Waiting on legal')
+
     def test_add_project_lands_on_mobile_project(self):
         resp = self.client.post('/m/add/', {
             'name': 'Guided selling quiz', 'objective': self.objective.id, 'vertical': self.bu.id,

@@ -96,6 +96,41 @@ def _score_queue(request):
     return cached
 
 
+def _latest_activity(p):
+    """The newest comment on the project or any of its actions: (comment, action name or '')."""
+    from project.models import ActionComment
+    pc = p.comments.select_related('author').order_by('-created_date').first()
+    ac = (ActionComment.objects.filter(action__project=p, action__archived=False)
+          .select_related('author', 'action').order_by('-created_date').first())
+    if ac and (not pc or ac.created_date > pc.created_date):
+        return ac, ac.action.name
+    return pc, ''
+
+
+def _blocked(request, start, end, today):
+    """Blocked projects, largest first, each with what it would add to the period if
+    unblocked now (from its go-live, never before tomorrow), its blocked actions and
+    its latest activity, so an executive can see why and ask."""
+    from business_unit.access import can_edit_project
+    from project.services.impact import forecast_value_between
+    tomorrow = today + timedelta(days=1)
+    rows = []
+    for p in _scope(Project.objects.filter(archived=False)
+                    .filter(Q(status='Blocked') | Q(is_blocked=True))
+                    .select_related('owner', 'objective', 'vertical'), request):
+        live = max(start, tomorrow, p.target_completion or tomorrow)
+        p.target_completion, planned = live, p.target_completion
+        p.at_stake = forecast_value_between(p, live, end)
+        p.target_completion = planned
+        p.blocked_actions = [a.name or 'Action' for a in p.actions.filter(archived=False)
+                             .filter(Q(status='Blocked') | Q(is_blocked=True))]
+        p.last_comment, p.last_comment_on = _latest_activity(p)
+        p.can_ask = can_edit_project(request.user, p)
+        rows.append(_decorate(p, today))
+    rows.sort(key=lambda p: (-(p.value or 0), -p.at_stake))
+    return rows
+
+
 def _nav(request, tab, **extra):
     """Context every mobile page shares: the active tab and the tab badges."""
     from project.services.kanban import is_executive
@@ -184,6 +219,8 @@ def _forecast(request, key):
         p.extra = i >= max(CLOSERS_SHOWN, shown_until or CLOSERS_SHOWN)
     closers_total = running
 
+    blocked = _blocked(request, start, end, today)
+
     def pct(v):
         return round(100 * v / budget, 1) if budget else 0
 
@@ -197,6 +234,9 @@ def _forecast(request, key):
         'gap': gap, 'ahead': gap <= 0, 'gap_abs': abs(gap),
         'pct_of_budget': pct(landing),
         'has_budget': budget > 0,
+        'blocked': blocked,
+        'blocked_value': sum(p.value or 0 for p in blocked),
+        'blocked_at_stake': sum(p.at_stake for p in blocked),
         # Landing bar segments as % of the bar's scale.
         'bar': {
             'actual': 100 * actual / scale,
@@ -373,6 +413,18 @@ def projects(request):
     }))
 
 
+def _activity(p, actions, limit=20):
+    """Project and action comments, newest first; action comments carry `on`, the action's name."""
+    from project.models import ActionComment
+    feed = list(p.comments.select_related('author').order_by('-created_date')[:limit])
+    for c in (ActionComment.objects.filter(action__in=actions).select_related('author', 'action')
+              .order_by('-created_date')[:limit]):
+        c.on = c.action.name or 'Action'
+        feed.append(c)
+    feed.sort(key=lambda c: c.created_date, reverse=True)
+    return feed[:limit]
+
+
 @login_required
 def project(request, project_id):
     from business_unit.access import can_edit_project
@@ -390,7 +442,9 @@ def project(request, project_id):
         'p': p,
         'actions': actions,
         'progress': action_progress(actions),
-        'comments': list(p.comments.select_related('author').order_by('-created_date')[:20]),
+        'comments': _activity(p, actions),
+        'blocked': p.status == 'Blocked' or p.is_blocked,
+        'blocked_actions': [a for a in actions if a.status == 'Blocked' or a.is_blocked],
         'expected': int(round(est['expected_realized'])) if est else None,
         'can_comment': editable,
         'can_greenlight': editable and p.status in GREENLIGHT_STATUSES and p.approved and is_executive(request.user),

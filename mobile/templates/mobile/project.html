@@ -30,6 +30,21 @@
 <a class="m-btn m-btn-primary" href="{% url 'mobile:score_project' p.id %}"><i class="fa fa-sliders"></i> Score this project</a>
 {% endif %}
 
+{% if blocked %}
+<div class="m-card m-blocked-card">
+  <h3><i class="fa fa-ban"></i> Blocked</h3>
+  {% if blocked_actions %}
+  <p>Held up on {{ blocked_actions|length }} action{{ blocked_actions|length|pluralize }}:</p>
+  <ul>{% for a in blocked_actions %}<li><b>{{ a.name|default:"Action" }}</b> <small>{{ a.owner|short_name }}{% if a.launch %} · due {{ a.launch|date:"M j" }}{% endif %}</small></li>{% endfor %}</ul>
+  {% else %}
+  <p>No action is marked blocked, so the reason is in the activity below or with {{ p.owner|short_name|default:"the owner" }}.</p>
+  {% endif %}
+  <div class="m-blocked-btns">
+    {% if can_comment %}<a class="m-btn m-btn-primary m-btn-sm" href="#ask"><i class="fa fa-question-circle"></i> Ask why</a>{% endif %}
+  </div>
+</div>
+{% endif %}
+
 {% if progress.total %}
 <h2 class="m-h2">Progress <span class="m-h2-side">{{ progress.done }} of {{ progress.total }} actions done</span></h2>
 <div class="m-card">
@@ -58,11 +73,11 @@
   {% if p.definition_of_done %}<h3>Definition of done</h3><p>{{ p.definition_of_done }}</p>{% endif %}
 </div>
 
-<h2 class="m-h2">Activity</h2>
+<h2 class="m-h2" id="activity">Activity</h2>
 {% if can_comment %}
 <form method="post" action="{% url 'project:add_comment_to_project' p.id %}" class="m-comment-form">
   {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
-  <textarea name="text" rows="2" placeholder="Add a comment" required maxlength="2000"></textarea>
+  <textarea name="text" id="ask" rows="2" placeholder="{% if blocked %}Ask {{ p.owner.first_name|default:'the owner' }} what's blocking this and how you can help{% else %}Add a comment{% endif %}" required maxlength="2000"></textarea>
   <button type="submit" class="m-btn m-btn-primary m-btn-sm">Post</button>
 </form>
 {% endif %}
@@ -70,7 +85,7 @@
 <div class="m-feed">
   {% for c in comments %}
   <div class="m-feed-item"><span class="m-avatar m-avatar-sm">{{ c.author|initials }}</span>
-    <div><b>{{ c.author|short_name }}</b> <small>{{ c.created_date|timesince }} ago</small><p>{{ c.text|linebreaksbr }}</p></div></div>
+    <div><b>{{ c.author|short_name }}</b> <small>{% if c.on %}on {{ c.on }} · {% endif %}{{ c.created_date|timesince }} ago</small><p>{{ c.text|linebreaksbr }}</p></div></div>
   {% endfor %}
 </div>
 {% else %}
@@ -78,4 +93,12 @@
 {% endif %}
 
 <a class="m-btn m-btn-ghost" href="{{ desktop_url }}"><i class="fa fa-desktop"></i> Open on desktop to edit</a>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    function go() { var t = document.getElementById('ask'); if (location.hash === '#ask' && t) { t.scrollIntoView({block: 'center'}); t.focus({preventScroll: true}); } }
+    go(); window.addEventListener('hashchange', go);
+  })();
+</script>
 {% endblock %}
