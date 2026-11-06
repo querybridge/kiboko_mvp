@@ -22,8 +22,8 @@ from business_unit import email_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Home page -> Grow Sales dashboard
-    path('', RedirectView.as_view(url='/app/analytics/grow-sales/', permanent=False)),
+    # Home page -> the user's default home page (app.views.home)
+    path('', RedirectView.as_view(url='/app/home/', permanent=False)),
     # Browsers ask for /favicon.ico directly (e.g. on non-HTML responses).
     path('favicon.ico', RedirectView.as_view(url='/static/images/kiboko-favicon.ico', permanent=True)),
     # Sign in with Google (callback path must match GOOGLE_OAUTH_REDIRECT_URI)

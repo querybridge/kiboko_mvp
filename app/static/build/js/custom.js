@@ -72,34 +72,30 @@ function init_sidebar() {
         $RIGHT_COL.css('min-height', contentHeight);
     };
 
-    // Kiboko: sections open and close independently and are remembered across
-    // pages (sessionStorage), and a plain link (Help, Insights) just navigates.
-    // The template's accordion collapsed every other section on any click, so
-    // the menu shifted under the pointer and the next click hit the wrong item.
+    // Kiboko: one section open at a time (an accordion), remembered across pages
+    // (sessionStorage), and a plain link (Help, Insights) just navigates. Other
+    // sections close instantly while only the chosen one slides open, so nothing
+    // moves under the pointer mid-animation (the template's version slid both
+    // ways, and the next click could hit the wrong item).
     var OPEN_KEY = 'kb_sidebar_open';
     function sectionKey($li) { return $.trim($li.children('a').first().text()); }
-    function saveOpen() {
-        var open = $SIDEBAR_MENU.find('ul.side-menu > li').filter(function() {
-            return $(this).children('ul.child_menu').is(':visible');
-        }).map(function() { return sectionKey($(this)); }).get();
-        try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(open)); } catch (e) {}
+    function saveOpen(key) {
+        try { sessionStorage.setItem(OPEN_KEY, key || ''); } catch (e) {}
     }
 
     $SIDEBAR_MENU.find('a').on('click', function(ev) {
         var $li = $(this).parent();
         var $sub = $li.children('ul.child_menu');
         if (!$sub.length) return;                      // a page link: let it navigate
-        if ($BODY.is('.nav-sm')) {                     // collapsed sidebar keeps one flyout at a time
-            $SIDEBAR_MENU.find('li').not($li).removeClass('active active-sm');
-            $SIDEBAR_MENU.find('li ul').not($sub).slideUp();
-        }
         if ($sub.is(':visible')) {
             $li.removeClass('active active-sm');
-            $sub.slideUp(function() { setContentHeight(); saveOpen(); });
-        } else {
-            $li.addClass('active');
-            $sub.slideDown(function() { setContentHeight(); saveOpen(); });
+            $sub.slideUp(function() { setContentHeight(); saveOpen(''); });
+            return;
         }
+        $SIDEBAR_MENU.find('li').not($li).not($li.parents('li')).removeClass('active active-sm')
+            .children('ul.child_menu').hide();
+        $li.addClass('active');
+        $sub.slideDown(function() { setContentHeight(); saveOpen(sectionKey($li)); });
     });
 
     // toggle small or large menu
@@ -128,13 +124,14 @@ function init_sidebar() {
         setContentHeight();
     }).parent().addClass('active');
 
-    // Reopen the sections that were open on the last page (no animation).
-    if ($BODY.is('.nav-md')) {
-        var wasOpen = [];
-        try { wasOpen = JSON.parse(sessionStorage.getItem(OPEN_KEY) || '[]'); } catch (e) {}
+    // The current page's section is open; otherwise reopen the section that was
+    // open on the last page (no animation). Never more than one.
+    if ($BODY.is('.nav-md') && !$SIDEBAR_MENU.find('li.current-page').length) {
+        var wasOpen = '';
+        try { wasOpen = sessionStorage.getItem(OPEN_KEY) || ''; } catch (e) {}
         $SIDEBAR_MENU.find('ul.side-menu > li').each(function() {
             var $li = $(this);
-            if (wasOpen.indexOf(sectionKey($li)) !== -1) {
+            if (wasOpen && sectionKey($li) === wasOpen) {
                 $li.addClass('active').children('ul.child_menu').show();
             }
         });

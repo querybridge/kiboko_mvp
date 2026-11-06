@@ -122,6 +122,11 @@ class PageTests(MobileBase):
             prof.save()
             self.assertEqual(self.phone_get('/m/start/')['Location'], page, lander)
 
+    def test_logo_goes_to_default_home_page(self):
+        self.assertContains(self.phone_get('/m/projects/'), 'class="m-brand" href="/m/start/"')
+        self.assertContains(self.client.get('/app/billing/'), 'href="/app/home/" class="site_title"')
+        self.assertEqual(self.client.get('/')['Location'], '/app/home/')
+
     def test_story_groups_attract_engage_expand(self):
         groups = self.phone_get('/m/story/').context['groups']
         self.assertEqual([g['name'] for g in groups], ['Attract', 'Engage', 'Expand'])
