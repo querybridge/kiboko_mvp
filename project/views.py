@@ -775,7 +775,7 @@ def completed_projects(request):
     qs = _scope(Project.objects.filter(status__in=COMPLETED_STATUSES, archived=False)
                 .select_related('owner', 'objective', 'vertical', 'vertical__company', 'department'),
                 vertical_id, _get_company_id(request))
-    today = datetime.date.today()
+    today = timezone.localdate()
     d_from = _parse_ymd(request.GET.get('from')) or datetime.date(today.year - 1, 1, 1)
     d_to = _parse_ymd(request.GET.get('to')) or today
     qs = qs.filter(target_completion__range=(d_from, d_to)).order_by('-target_completion', '-date_modified')

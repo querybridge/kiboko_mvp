@@ -54,6 +54,88 @@ def line_items(org):
     return items
 
 
+def premium_addon():
+    """The Premium Connection add-on Plan (price shown on Billing), or None."""
+    from business_unit.models import Plan
+    return Plan.objects.filter(active=True, is_addon=True).order_by('sort_order').first()
+
+
+def add_premium(org):
+    """Turn on the Premium Connection add-on for `org`. Returns (ok, message).
+
+    Without a subscription yet (free trial), it's switched on now and billed with
+    the plan once payment is added (line_items includes it). With a subscription,
+    the add-on is added to it in Stripe first, prorated for the current period;
+    if Stripe refuses, nothing changes."""
+    if org.has_premium:
+        return True, 'Premium Connection is already on.'
+    if org.is_canceled:
+        return False, 'Reactivate the account before adding Premium Connection.'
+    addon = premium_addon()
+    if org.stripe_subscription_id:
+        sc = client()
+        if sc is None or addon is None or not addon.stripe_price_id:
+            log.error('Premium add-on for org %s: Stripe or the add-on price id is not set up', org.id)
+            return False, 'Premium Connection can’t be added online right now. Please try again later.'
+        try:
+            sc.v1.subscription_items.create(params={
+                'subscription': org.stripe_subscription_id, 'price': addon.stripe_price_id,
+                'quantity': 1, 'proration_behavior': 'create_prorations'})
+        except Exception:
+            log.exception('Stripe could not add the Premium add-on to subscription %s (org %s)',
+                          org.stripe_subscription_id, org.id)
+            return False, 'Our payment provider didn’t accept the change. Nothing was charged; please try again.'
+        msg = 'Premium Connection is on and added to your subscription (prorated for this billing period).'
+    else:
+        msg = ('Premium Connection is on. It’s included in your free trial and billed with your plan '
+               'once you add a payment method.')
+    org.premium_connection = True
+    org.save(update_fields=['premium_connection'])
+    return True, msg
+
+
+def premium_removable(org):
+    """True when Premium came from the add-on (not a Premium/Enterprise plan or a
+    comped account, which include it)."""
+    if not org.premium_connection or org.is_platform_demo or org.billing_exempt:
+        return False
+    return not (org.plan and org.plan.tier in ('premium', 'enterprise'))
+
+
+def remove_premium(org):
+    """Turn off the Premium Connection add-on. Returns (ok, message).
+
+    With a subscription, the add-on line is removed in Stripe first (prorated);
+    if Stripe refuses, nothing changes. Then every company in the org loses its
+    BigQuery connection: the stored service-account key and the daily summary
+    table are deleted, and dashboards fall back to the Standard (GA4 API) data."""
+    from business_unit.models import BigQueryConnection, GA4DailyRollup
+    if not premium_removable(org):
+        return False, 'Premium Connection is included in your plan, so there’s nothing to remove.'
+    if org.stripe_subscription_id:
+        sc = client()
+        addon = premium_addon()
+        if sc is None or addon is None or not addon.stripe_price_id:
+            log.error('Remove Premium for org %s: Stripe or the add-on price id is not set up', org.id)
+            return False, 'Premium Connection can’t be removed online right now. Please try again later.'
+        try:
+            items = sc.v1.subscription_items.list(params={'subscription': org.stripe_subscription_id})
+            for item in items.data:
+                if item.price.id == addon.stripe_price_id:
+                    sc.v1.subscription_items.delete(item.id, params={'proration_behavior': 'create_prorations'})
+        except Exception:
+            log.exception('Stripe could not remove the Premium add-on from subscription %s (org %s)',
+                          org.stripe_subscription_id, org.id)
+            return False, 'Our payment provider didn’t accept the change. Premium is still on; please try again.'
+    companies = org.companies.all()
+    GA4DailyRollup.objects.filter(company__in=companies).delete()
+    BigQueryConnection.objects.filter(company__in=companies).delete()
+    org.premium_connection = False
+    org.save(update_fields=['premium_connection'])
+    return True, ('Premium Connection is removed. Kiboko deleted the BigQuery service-account key and the daily '
+                  'summary table, and your dashboards now use the Standard Google Analytics connection.')
+
+
 def _address(org):
     return {'line1': org.billing_address1, 'line2': org.billing_address2 or None,
             'city': org.billing_city, 'state': org.billing_state,

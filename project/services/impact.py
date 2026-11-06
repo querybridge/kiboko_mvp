@@ -16,6 +16,8 @@ from __future__ import annotations
 import math
 from datetime import date, timedelta
 
+from django.utils import timezone
+
 # lever key -> (label, AEE element, GA4-metric description)
 LEVERS = {
     'visitors':           ('Visitors',             'attract_traffic'),
@@ -208,7 +210,7 @@ def realized_performance(before, after, lever, planned_pct=None):
 
 def realized_fraction(launch, ramp_days, today=None, year_end=None):
     """Average effectiveness across the fiscal year with a linear ramp."""
-    today = today or date.today()
+    today = today or timezone.localdate()
     year_end = year_end or date(today.year, 12, 31)
     if launch is None:
         launch = today
@@ -277,7 +279,7 @@ def plausibility(target, levels, center=None):
 def months_live_this_year(launch, today=None, year_end=None):
     """Months from go-live (or today, if already live) to fiscal year end -- how
     many months an ongoing cost runs in the same window the realized value covers."""
-    today = today or date.today()
+    today = today or timezone.localdate()
     year_end = year_end or date(today.year, 12, 31)
     start = max(launch or today, today)
     if start > year_end:

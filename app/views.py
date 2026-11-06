@@ -1,3 +1,4 @@
+from django.utils import timezone
 import calendar
 import csv
 import datetime as dt
@@ -77,7 +78,7 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
     If return_components=True, returns (base_forecast, project_uplift) tuple.
     Otherwise returns total forecast (base + project uplift).
     """
-    today = date.today()
+    today = timezone.localdate()
     first_of_month = date(year, month, 1)
     days_in_month = calendar.monthrange(year, month)[1]
     last_of_month = date(year, month, days_in_month)
@@ -322,7 +323,7 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
     ``actuals`` (optional) is a GA4 daily-actuals map {iso_date: {revenue,...}}
     from a Standard connection; when present, actual revenue comes from GA4
     instead of uploaded DailyActual rows."""
-    today = date.today()
+    today = timezone.localdate()
     current_month = today.month
     current_year = today.year
 
@@ -665,45 +666,45 @@ def index(request):
         Action.objects.filter(status='WIP', archived=False).order_by('-normalized_score'),
         vertical_id, company_id)
 
-    # Dynamic Objective tiles -- the pending pipeline (potential, not actual):
-    # WIP projects (in flight) and On Deck projects (up next), by objective.
-    # Completed/launched value is Actual revenue, so it's excluded here.
-    from strategy.models import Project
-    annual_rocks_data = []
-    for rock in Objective.objects.filter(year=date.today().year, company_id=company_id):
-        base_qs = _scope_to(Project.objects.filter(objective=rock, archived=False), vertical_id, company_id)
-        count = base_qs.filter(status='WIP').count()
-        value = base_qs.filter(status='WIP').aggregate(Sum('value'))
-        count_p = base_qs.filter(status='On Deck').count()
-        value_p = base_qs.filter(status='On Deck').aggregate(Sum('value'))
-        annual_rocks_data.append({
+    # Objective tiles -- the pending pipeline (potential, not actual): WIP projects
+    # (in flight) and On Deck projects (up next). Completed/launched value is
+    # Actual revenue, so it's excluded here. Always one tile per AEE element, in
+    # Attract, Engage, Expand order, even when the company has no objective for
+    # one of them this year (it then shows the default name with zero projects);
+    # several objectives under one element share its tile.
+    from types import SimpleNamespace
+    from strategy.models import DEFAULT_OBJECTIVES, Project
+    year_objectives = list(Objective.objects.filter(year=timezone.localdate().year, company_id=company_id).order_by('id'))
+
+    def _tile(objectives, name, aee):
+        base_qs = _scope_to(Project.objects.filter(objective__in=objectives, archived=False), vertical_id, company_id)
+        wip, on_deck = base_qs.filter(status='WIP'), base_qs.filter(status='On Deck')
+        rock = (objectives[0] if len(objectives) == 1
+                else SimpleNamespace(name=name, description=''))
+        return {
             'rock': rock,
-            'count': count,
-            'value': value,
-            'count_p': count_p,
-            'value_p': value_p,
+            'count': wip.count(),
+            'value': wip.aggregate(Sum('value')),
+            'count_p': on_deck.count(),
+            'value_p': on_deck.aggregate(Sum('value')),
             'color': _objective_bar_colors(rock.name)['fill'],
-            'aee_element': _AEE_ELEMENT.get(rock.aee_alignment, ''),
-        })
+            'aee_element': _AEE_ELEMENT.get(aee, ''),
+        }
 
-    # Enforce display order: Shopper Volume, Close Rate, Average Order Value
-    # (drive more orders first, then grow order size)
-    _rock_order_keywords = ['shopper', 'close', 'order value']
-
-    def _rock_sort_key(item):
-        name = (item['rock'].name or '').lower()
-        for idx, kw in enumerate(_rock_order_keywords):
-            if kw in name:
-                return idx
-        return len(_rock_order_keywords)
-
-    annual_rocks_data.sort(key=_rock_sort_key)
+    annual_rocks_data = []
+    for default_name, aee in DEFAULT_OBJECTIVES:
+        objectives = [o for o in year_objectives if o.aee_alignment == aee]
+        annual_rocks_data.append(_tile(objectives, default_name, aee))
+    # An objective with no AEE element still gets its own tile, after the three.
+    for o in year_objectives:
+        if o.aee_alignment not in _AEE_ELEMENT:
+            annual_rocks_data.append(_tile([o], o.name, o.aee_alignment))
 
     # Actual revenue source: GA4 when the scope is a Standard connection, else
     # uploaded DailyActual rows. Fetch prior-year-start -> today so YoY deltas and
     # the forecast fallback are covered.
     from app.integrations import ga4_dashboard
-    _t = date.today()
+    _t = timezone.localdate()
     ga4_actuals = ga4_dashboard.ga4_daily_actuals(request, date(_t.year - 1, 1, 1), _t)
 
     # Build revenue chart data
@@ -1052,7 +1053,7 @@ def _objective_bar_colors(objective_name):
 
 def _build_gantt_data(active_projects):
     """Serialize active actions + MTD/QTD/YTD period bounds for the gantt chart."""
-    today = date.today()
+    today = timezone.localdate()
     year = today.year
     month = today.month
 
@@ -1138,7 +1139,7 @@ def project_detail(request, project_id):
 
 @login_required
 def edit_goals(request):
-    year = date.today().year
+    year = timezone.localdate().year
     last_year = year - 1
     prev_year = year - 2
 
@@ -1282,7 +1283,7 @@ def _trailing_rates(request, vertical_id, company_id):
     connected, else DailyActual); None where there's no data. Used as the
     default targets and as hints next to the goal inputs."""
     from app.integrations import ga4_dashboard
-    end = date.today() - timedelta(days=1)
+    end = timezone.localdate() - timedelta(days=1)
     start = end - timedelta(days=364)
     actuals = ga4_dashboard.ga4_daily_actuals(request, start, end)
     if actuals is not None:
@@ -1310,7 +1311,7 @@ def objectives(request):
         'objectives': Objective.objects.filter(company=company).order_by('-year', 'name'),
         'aee_choices': _aee_choices(),
         'can_manage_objectives': can_manage_objectives(request.user, company),
-        'year': date.today().year,
+        'year': timezone.localdate().year,
     })
 
 
@@ -1332,9 +1333,9 @@ def add_objective(request):
         messages.error(request, 'An objective needs a name and an AEE alignment.')
         return redirect('app:objectives')
     try:
-        yr = int(request.POST.get('year') or date.today().year)
+        yr = int(request.POST.get('year') or timezone.localdate().year)
     except (TypeError, ValueError):
-        yr = date.today().year
+        yr = timezone.localdate().year
     Objective.objects.create(company=company, name=name[:150], year=yr, aee_alignment=aee,
                              description=(request.POST.get('description') or '').strip())
     messages.success(request, f'Added objective "{name}".')
@@ -1357,7 +1358,7 @@ def edit_objective(request, objective_id):
         messages.error(request, 'An objective needs a name and an AEE alignment.')
         return redirect('app:objectives')
     try:
-        obj.year = int(request.POST.get('year') or obj.year or date.today().year)
+        obj.year = int(request.POST.get('year') or obj.year or timezone.localdate().year)
     except (TypeError, ValueError):
         pass
     obj.name = name[:150]
@@ -1703,7 +1704,7 @@ def _analytics_filter(request):
     if primary == 'CUSTOM':
         cs, ce = _parse_iso(custom_start), _parse_iso(custom_end)
         if not (cs and ce and cs <= ce):  # default to the last 30 days
-            ce = date.today() - timedelta(days=1)
+            ce = timezone.localdate() - timedelta(days=1)
             cs = ce - timedelta(days=29)
         custom_start, custom_end = cs.isoformat(), ce.isoformat()
         request.session['analytics_custom_start'] = custom_start
@@ -1745,7 +1746,7 @@ def analytics_grow_sales(request):
     cards, charts = ad.build_grow_sales(primary, compare, rows=_ga4_rows(request, primary, compare))
     # Name the objective each AEE pillar drives, as a separate (contextual) field
     # so the template can style it lighter than the prominent AEE label.
-    yr = date.today().year
+    yr = timezone.localdate().year
     for card_key, aee in (('attract', 'attract_traffic'), ('engage', 'engage_customers'), ('expand', 'expand_purchase')):
         company_objectives = Objective.objects.filter(company_id=scoped_company_id(request), aee_alignment=aee)
         obj = company_objectives.filter(year=yr).first() or company_objectives.first()
@@ -1891,6 +1892,23 @@ def data_connection(request):
            'google_enabled': google_oauth.is_enabled(),
            'bigquery_available': bqmod.is_available()}
 
+    # --- Business day: a company's time zone (owners / company admins) --------
+    if request.method == 'POST' and request.POST.get('action') == 'set_time_zone':
+        import zoneinfo
+        from business_unit.access import manageable_companies
+        company = manageable_companies(request.user).filter(pk=request.POST.get('company')).first()
+        if company is None:
+            return HttpResponseForbidden('You can’t change that company’s time zone.')
+        zone = (request.POST.get('time_zone') or '').strip()
+        if zone and zone not in zoneinfo.available_timezones():
+            messages.error(request, 'Pick a time zone from the list.')
+            return redirect('app:data_connection')
+        company.time_zone = zone
+        company.save(update_fields=['time_zone'])
+        messages.success(request, f'{company.name} now uses {company.effective_time_zone.replace("_", " ")}'
+                                  + ('' if zone else ' (from its GA4 property)') + ' for its business day.')
+        return redirect('app:data_connection')
+
     # --- Premium: disconnect (delete the key and the daily summary table) -----
     if request.method == 'POST' and request.POST.get('action') == 'bigquery_disconnect':
         from business_unit.access import can_disconnect_bigquery
@@ -1911,7 +1929,15 @@ def data_connection(request):
         if not can_manage_bigquery(request.user):
             return HttpResponseForbidden(
                 'Only owners, executives, developers, and superusers can manage a BigQuery connection.')
-        name = request.POST.get('company_name', '').strip()
+        # Kiboko staff provision any company by name; a client connects one of its
+        # own organization's companies, once the organization has Premium.
+        own_company = None
+        if not request.user.is_superuser:
+            own_company = next((c for c in _bigquery_companies(request.user)
+                                if str(c.id) == request.POST.get('company')), None)
+            if own_company is None:
+                return HttpResponseForbidden('Premium isn’t on for that company. The account owner can add it in Billing.')
+        name = own_company.name if own_company else request.POST.get('company_name', '').strip()
         prop = request.POST.get('property_id', '').strip()
         try:
             sa = _json.loads(request.POST.get('service_account_json', '').strip() or '{}')
@@ -1932,12 +1958,16 @@ def data_connection(request):
             actual = request.POST.get(f'event__{ev}', '').strip()
             if actual and actual != ev:
                 event_map[ev] = actual
-        company, _ = Company.objects.get_or_create(slug=slugify(name), defaults={'name': name})
+        if own_company:
+            company = own_company
+        else:
+            company, _ = Company.objects.get_or_create(slug=slugify(name), defaults={'name': name})
         BusinessUnit.objects.get_or_create(company=company, ga4_property_id=prop, defaults={'name': name})
         BigQueryConnection.objects.update_or_create(company=company, defaults={
             'service_account_json': sa, 'gcp_project': sa.get('project_id', ''),
             'event_map': event_map, 'data_through': latest, 'created_by': request.user})
-        CompanyMembership.objects.get_or_create(company=company, user=request.user, defaults={'role': 'admin'})
+        if not own_company:
+            CompanyMembership.objects.get_or_create(company=company, user=request.user, defaults={'role': 'admin'})
         messages.success(request, f'Premium (BigQuery) connected for {name}. {msg}')
         return redirect('app:data_connection')
 
@@ -1949,7 +1979,19 @@ def data_connection(request):
                   if not request.user.is_superuser else Company.objects.filter(bigquery__isnull=False))]
     ctx['standard_events'] = BigQueryConnection.STANDARD_EVENTS
     from business_unit.access import can_manage_bigquery
-    ctx['can_provision_premium'] = can_manage_bigquery(request.user)
+    # Premium is self-serve: the account owner adds it in Billing, then owners,
+    # executives and developers connect their companies here.
+    org = _org_for(request.user)
+    ctx['is_staff_provisioning'] = request.user.is_superuser
+    ctx['bigquery_companies'] = [] if request.user.is_superuser else _bigquery_companies(request.user)
+    ctx['can_provision_premium'] = can_manage_bigquery(request.user) and (
+        request.user.is_superuser or bool(ctx['bigquery_companies']))
+    ctx['premium_org'] = org
+    ctx['can_buy_premium'] = bool(org and request.user.administered_orgs.filter(pk=org.pk).exists())
+    from business_unit.access import manageable_companies
+    ctx['tz_companies'] = list(manageable_companies(request.user).prefetch_related('verticals'))
+    ctx['tz_common'] = _COMMON_TIME_ZONES
+    ctx['tz_all'] = _all_time_zones()
 
     if not identity or not google_oauth.is_enabled():
         return render(request, 'app/data_connection.html', ctx)
@@ -2328,11 +2370,23 @@ def billing(request):
             # Nothing paid up: disabled now, so the 90-day clock starts today.
             # Otherwise it starts when the paid period ends (purge_disabled_accounts).
             org.purge_after = (None if org.has_payment
-                               else datetime.date.today() + datetime.timedelta(days=org.PURGE_DAYS))
+                               else timezone.localdate() + datetime.timedelta(days=org.PURGE_DAYS))
             org.purge_warned_at = None
             org.save(update_fields=['plan_status', 'canceled_at', 'purge_after', 'purge_warned_at'])
             # No flash message here — the persistent canceled banner below already
             # states the retention window and offers Reactivate.
+        elif action == 'add_premium':
+            ok, msg = billing_svc.add_premium(org)
+            (messages.success if ok else messages.error)(request, msg)
+            # Straight on to connecting BigQuery once it's on.
+            if ok and request.POST.get('next') == 'data_connection':
+                return redirect('app:data_connection')
+        elif action == 'remove_premium':
+            if request.POST.get('understood') != '1':
+                messages.error(request, 'Tick “I understand” to remove Premium Connection.')
+            else:
+                ok, msg = billing_svc.remove_premium(org)
+                (messages.success if ok else messages.error)(request, msg)
         elif action == 'reactivate':
             if not billing_svc.set_cancel_at_period_end(org, False):
                 messages.error(request, 'We couldn’t restart the subscription with our payment provider. '
@@ -2361,7 +2415,36 @@ def billing(request):
     return render(request, 'app/billing.html', {
         'title': 'Billing', 'organization': org,
         'payments_ready': bool(org and billing_svc.is_configured() and billing_svc.line_items(org)),
+        'premium_addon': billing_svc.premium_addon(),
+        'premium_removable': bool(org and billing_svc.premium_removable(org)),
+        'premium_connected': (list(org.companies.filter(bigquery__isnull=False).values_list('name', flat=True))
+                              if org else []),
+        'from_data_connection': request.GET.get('from') == 'data_connection',
     })
+
+
+# Offered first on Data Connection; every other IANA zone follows.
+_COMMON_TIME_ZONES = [
+    ('America/New_York', 'Eastern'), ('America/Chicago', 'Central'), ('America/Denver', 'Mountain'),
+    ('America/Phoenix', 'Arizona'), ('America/Los_Angeles', 'Pacific'), ('America/Anchorage', 'Alaska'),
+    ('Pacific/Honolulu', 'Hawaii'), ('UTC', 'UTC'),
+]
+
+
+def _all_time_zones():
+    import zoneinfo
+    common = {z for z, _ in _COMMON_TIME_ZONES}
+    return sorted(z for z in zoneinfo.available_timezones() if '/' in z and z not in common
+                  and not z.startswith(('Etc/', 'SystemV/', 'US/')))
+
+
+def _bigquery_companies(user):
+    """Companies this user may connect to BigQuery themselves: their own
+    organization's, with Premium on, where they're the owner or an
+    executive/developer member."""
+    from business_unit.access import can_disconnect_bigquery, real_companies
+    return [c for c in real_companies(user).select_related('organization', 'organization__plan')
+            if c.organization_id and c.organization.has_premium and can_disconnect_bigquery(user, c)]
 
 
 def _org_for(user):
@@ -2785,8 +2868,8 @@ def insights_add_project(request):
     from project.views import _quarter_end
     p = Project(
         name=name, owner=request.user, vertical=bu, department=dept,
-        objective=objective, year=date.today().year, approved=False,
-        target_completion=_quarter_end(date.today()),   # default go-live: end of quarter
+        objective=objective, year=timezone.localdate().year, approved=False,
+        target_completion=_quarter_end(timezone.localdate()),   # default go-live: end of quarter
         why='', definition_of_done='')
     p.save()   # derive_status -> 'Incomplete Entry' (intake); approved=False
     impact.recompute_scores(company=p._company())

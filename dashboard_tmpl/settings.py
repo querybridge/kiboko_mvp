@@ -103,6 +103,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'users.middleware.ForcePasswordChangeMiddleware',
     'business_unit.middleware.BillingLockMiddleware',
+    'business_unit.middleware.CompanyTimeZoneMiddleware',
 ]
 
 ROOT_URLCONF = 'dashboard_tmpl.urls'
@@ -171,7 +172,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Kiboko's default business day. Each company can choose its own on Data Connection
+# (CompanyTimeZoneMiddleware activates it per request; code uses
+# timezone.localdate()). On UTC the "day" flipped at 7-8 PM Eastern and the Pipeline
+# showed tomorrow as today. Stored datetimes stay UTC (USE_TZ).
+TIME_ZONE = os.environ.get('KIBOKO_TIME_ZONE', 'America/New_York')
 
 USE_I18N = True
 

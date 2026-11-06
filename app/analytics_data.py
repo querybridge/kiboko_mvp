@@ -17,6 +17,7 @@ equations tie out exactly):
 Everything a card needs (close rate, AOV, $/visit, etc.) is a ratio of these
 totals, so `visits x closeRate x AOV = sales` and friends hold to the penny.
 """
+from django.utils import timezone
 import datetime
 import random
 import zlib
@@ -285,7 +286,7 @@ def build_metrics(primary_code, compare_code, rows=None):
         rows_s = _daily_series(seed_s, n, params_s)
 
         # x-axis labels (MM-DD), ending yesterday
-        today = datetime.date.today()
+        today = timezone.localdate()
         start = today - datetime.timedelta(days=n)
         labels = [(start + datetime.timedelta(days=i + 1)).strftime('%m-%d') for i in range(n)]
 

@@ -9,6 +9,7 @@ Connection-aware behaviour:
     to dummy for connected data, so any empty/zero chart is a visible, diagnosable
     gap (each is logged).
 """
+from django.utils import timezone
 import datetime
 import logging
 import math
@@ -174,7 +175,7 @@ def _bq_rows(bq, property_ids, primary_code, compare_code, today, custom=None):
 
 def _bq_ranges(request, bq, primary_code, compare_code, today):
     """Date ranges for a Premium provider, anchored to the export's data_through."""
-    today = _bq_today(bq, today or datetime.date.today())
+    today = _bq_today(bq, today or timezone.localdate())
     custom = _custom_dates(request) if primary_code == 'CUSTOM' else None
     return _date_ranges(primary_code, compare_code, today, custom)
 
@@ -641,7 +642,7 @@ def _da_today(verticals, today):
 
 
 def ga4_rows(request, primary_code, compare_code, today=None):
-    today = today or datetime.date.today()
+    today = today or timezone.localdate()
     custom = _custom_dates(request) if primary_code == 'CUSTOM' else None
     bqp = _premium_connection(request)
     if bqp is not None:                      # Premium company -> BigQuery
@@ -696,7 +697,7 @@ def _split_metrics(prim, sec, by_day, dates_p, split):
 
 
 def ga4_splits(request, primary_code, compare_code, today=None):
-    today = today or datetime.date.today()
+    today = today or timezone.localdate()
     bqp = _premium_connection(request)
     if bqp is not None:                            # Premium company -> BigQuery
         return _bq_splits(request, bqp, primary_code, compare_code, today)
@@ -803,7 +804,7 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
     if sc is None:
         # DailyActual fallback (best-effort funnel) before dummy.
         verts = _scoped_verticals(request)
-        today = _da_today(verts, today or datetime.date.today())   # anchor to the latest actual day
+        today = _da_today(verts, today or timezone.localdate())   # anchor to the latest actual day
         p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
         by_p = _actual_by_day(verts, p_start, p_end)
         if by_p is None:
@@ -815,7 +816,7 @@ def ga4_engage_metrics(request, primary_code, compare_code, today=None):
                                _engage_compute(_actual_engage_raw(_period_totals(by_s))),
                                history)
     identity, property_ids, stream_id = sc
-    today = today or datetime.date.today()
+    today = today or timezone.localdate()
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
 
     def zeros():
@@ -893,7 +894,7 @@ def _bq_engage_metrics(request, bqp, primary_code, compare_code, today):
         s_c = _engage_compute(_bq_period_totals(bq, property_ids, s_start, s_end, _ENGAGE_TOTALS_KEYS))
         history = _engage_history(
             lambda a, b: _bq_period_totals(bq, property_ids, a, b, _ENGAGE_TOTALS_KEYS),
-            _bq_today(bq, today or datetime.date.today()))
+            _bq_today(bq, today or timezone.localdate()))
         return _engage_payload(p_c, s_c, history)
     except Exception as e:
         logger.warning('Premium (BigQuery) engage metrics unavailable (%s: %s) -- showing zeros',
@@ -979,7 +980,7 @@ def ga4_story_fundamentals(request, primary_code, compare_code, today=None):
     if bqp is not None:                            # Premium company -> BigQuery
         return _bq_story_fundamentals(request, bqp, primary_code, compare_code, today)
     sc = _connected_scope(request)
-    today = today or datetime.date.today()
+    today = today or timezone.localdate()
     if sc is None:
         # DailyActual fallback (seeded/uploaded actuals) before dummy, mirroring
         # ga4_rows so the Storyboard matches Grow Sales / Pipeline for the same scope.
@@ -1036,7 +1037,7 @@ def ga4_segments(request, primary_code, compare_code, today=None):
         # latest actual day — so the changeplots read the SAME actuals as the
         # Grow Sales / Engage cards instead of independent dummy data.
         verts = _scoped_verticals(request)
-        today = _da_today(verts, today or datetime.date.today())
+        today = _da_today(verts, today or timezone.localdate())
         p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
         if _actual_by_day(verts, p_start, p_end) is None:
             return None
@@ -1046,7 +1047,7 @@ def ga4_segments(request, primary_code, compare_code, today=None):
             out[split] = {disp[b]: {'p': prim[b], 's': sec[b]} for b in SPLIT_BUCKETS[split]}
         return out
     identity, property_ids, stream_id = sc
-    today = today or datetime.date.today()
+    today = today or timezone.localdate()
     p_start, p_end, s_start, s_end = _ranges(request, primary_code, compare_code, today)
 
     def zeros():
@@ -1185,7 +1186,7 @@ def baseline_daily_for_bu(request, business_unit, days, end=None):
         return None
     pid = getattr(business_unit, 'ga4_property_id', '')
     company = business_unit.company
-    end = end or (datetime.date.today() - datetime.timedelta(days=1))
+    end = end or (timezone.localdate() - datetime.timedelta(days=1))
     start = end - datetime.timedelta(days=days - 1)
 
     if status == 'dailyactual':
@@ -1236,7 +1237,7 @@ def realized_perf_for_project(request, project, measure_days=30):
     ramp_end = launch + datetime.timedelta(days=ramp)
     post = (ramp_end, ramp_end + datetime.timedelta(days=measure_days - 1))
     base = (launch - datetime.timedelta(days=measure_days), launch - datetime.timedelta(days=1))
-    today = datetime.date.today()
+    today = timezone.localdate()
     if post[1] >= today:
         return {'ok': False, 'reason': 'pending', 'ready_on': post[1]}   # window not elapsed yet
 

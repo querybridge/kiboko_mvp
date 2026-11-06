@@ -14,6 +14,7 @@
   .bl-pay { margin-top:14px; padding-top:14px; border-top:1px solid var(--card-edge, rgba(214,197,247,0.14)); }
   .bl-danger { border:1px solid rgba(231,76,60,0.5); border-radius:12px; padding:18px 20px; }
   .bl-danger h4 { color:#f0a59c; font-weight:700; margin-top:0; }
+  .bl-premium.bl-focus { border-color: var(--accent-primary, #9B7FE0) !important; box-shadow: 0 0 0 2px rgba(155,127,224,.35); }
 </style>
 {% endblock stylesheets %}
 {% block content %}
@@ -142,6 +143,89 @@
       </div>
     </div>
   </div>
+
+  <!-- Premium Connection add-on: self-serve upgrade -->
+  <div class="row" id="premium"><div class="col-md-12">
+    <div class="x_panel bl-premium{% if from_data_connection and not organization.has_premium %} bl-focus{% endif %}">
+      <div class="x_title"><h2>Premium Connection</h2><div class="clearfix"></div></div>
+      <div class="x_content">
+        <p class="text-muted">Connect Kiboko to your GA4 &rarr; BigQuery export for exact, unsampled data with no
+          reporting delay, plus item- and order-level metrics and true company-wide totals.</p>
+        {% if organization.has_premium %}
+          <p><span class="bl-status active">On</span>
+            {% if organization.premium_connection %}Added to your plan.
+            {% elif organization.billing_exempt or organization.is_platform_demo %}Included with your account.
+            {% else %}Included in the {{ organization.plan.name }} plan.{% endif %}</p>
+          <a href="{% url 'app:data_connection' %}" class="btn btn-primary"><i class="fa fa-database"></i> {% if premium_connected %}Manage the BigQuery connection{% else %}Set up the BigQuery connection{% endif %}</a>
+          {% if premium_removable %}
+          <button type="button" class="btn btn-default" data-toggle="modal" data-target="#removePremiumModal" style="margin-left:6px;">
+            <i class="fa fa-minus-circle"></i> Remove Premium Connection</button>
+          {% endif %}
+        {% elif organization.is_canceled %}
+          <p class="text-muted">Reactivate your account to add Premium Connection.</p>
+        {% else %}
+          {% if premium_addon %}<div class="bl-plan-price" style="font-size:22px;">+${{ premium_addon.price|floatformat:0 }}<small style="font-size:13px; color:var(--text-muted,#8b7fa6);">/{{ premium_addon.interval }}</small></div>{% endif %}
+          <p class="text-muted" style="margin:6px 0 12px;">
+            {% if organization.has_payment %}Added to your subscription right away; this billing period is prorated.
+            {% else %}Starts now and is included in your free trial; it’s billed with your plan once you add a payment method.{% endif %}</p>
+          <form method="post"{% if organization.has_payment and premium_addon %} onsubmit="return confirm('Add Premium Connection for ${{ premium_addon.price|floatformat:0 }}/{{ premium_addon.interval }}? It’s added to your subscription now, prorated for this billing period.');"{% endif %}>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_premium">
+            {% if from_data_connection %}<input type="hidden" name="next" value="data_connection">{% endif %}
+            <button type="submit" class="btn btn-success"><i class="fa fa-bolt"></i> Add Premium Connection</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div></div>
+
+  {% if premium_removable %}
+  <div class="modal fade" id="removePremiumModal" tabindex="-1" role="dialog" aria-labelledby="removePremiumTitle" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <form method="post" class="modal-content">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="remove_premium">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="removePremiumTitle"><i class="fa fa-exclamation-triangle" style="color:var(--status-danger, #B42318);"></i>
+            Remove Premium Connection?</h4>
+        </div>
+        <div class="modal-body">
+          <p><strong>Billing.</strong>
+            {% if organization.has_payment %}The add-on comes off your subscription now, with a prorated credit for the rest of this billing period.
+            {% else %}It stops now; nothing is billed for it.{% endif %}</p>
+          <p><strong>Your BigQuery connection ends</strong>{% if premium_connected %} for {{ premium_connected|join:", " }}{% endif %}.
+            Kiboko permanently deletes the service-account key it uses to read your BigQuery data. Your data in BigQuery
+            itself is not affected.</p>
+          <p><strong>Daily summary table.</strong> Kiboko's stored table of daily totals is deleted right away. If you
+            add Premium again and reconnect, Kiboko rebuilds it from your BigQuery export, up to about 400 days back,
+            as far as your export still holds.</p>
+          <p><strong>Data speed and freshness.</strong> Dashboards stop reading that stored table and instead ask
+            Google Analytics on each page load, so pages load more slowly. Google Analytics reports run about 24 to 48
+            hours behind, and long date ranges may be estimated (sampled) rather than exact.</p>
+          <p><strong>Who sees data.</strong> Each person must sign in with Google and only sees the Google Analytics
+            properties their own Google account can open. Today everyone in your company sees the BigQuery data.</p>
+          <p><strong>Analytics.</strong> On <em>Expand Purchases</em>, Unique SKUs per Order, Cherry Pick Rate and the
+            Product Category AOV changeplot switch to "Premium Tier Required", because Google Analytics' reporting
+            API doesn't provide order-level detail.</p>
+          <div class="checkbox" style="margin-bottom:0;">
+            <label><input type="checkbox" name="understood" value="1" id="removePremiumAck"> I understand what removing Premium changes.</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Keep Premium</button>
+          <button type="submit" class="btn btn-danger" id="removePremiumGo" disabled>Remove Premium Connection</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var ack = document.getElementById('removePremiumAck'), go = document.getElementById('removePremiumGo');
+      if (ack && go) ack.addEventListener('change', function () { go.disabled = !ack.checked; });
+    })();
+  </script>
+  {% endif %}
 
   {% if not organization.is_canceled %}
   <div class="row"><div class="col-md-12">

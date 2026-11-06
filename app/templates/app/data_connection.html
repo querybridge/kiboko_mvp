@@ -7,7 +7,6 @@
     .premium-badge { background:#7a5cff; color:#fff; font-size:11px; font-weight:800; letter-spacing:.5px;
       border-radius:999px; padding:3px 10px; vertical-align:middle; }
     .premium-panel { border:1px solid rgba(122,92,255,.45); }
-    .premium-dim { opacity:.5; filter:grayscale(.5); pointer-events:none; }
     .premium-benefits li { margin-bottom:4px; }
     .upgrade-cta { margin-top:14px; }
   </style>
@@ -24,6 +23,51 @@
       {% for message in messages %}
       <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
       {% endfor %}
+    {% endif %}
+
+    {# ============================ BUSINESS DAY ============================ #}
+    {% if tz_companies %}
+    <div class="row" id="time-zone">
+      <div class="col-md-12 col-sm-12 col-xs-12">
+        <div class="x_panel">
+          <div class="x_title">
+            <h2>Time zone <small>when each day starts</small></h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content">
+            <p class="text-muted">Sets when "today" begins for a company: the current day and period on every dashboard,
+              the Pipeline's actuals, and times shown in Kiboko. Leave it on <em>GA4 property</em> to match the
+              time zone your Google Analytics reports in.</p>
+            <table class="table">
+              <thead><tr><th>Company</th><th>Time zone</th></tr></thead>
+              <tbody>
+              {% for c in tz_companies %}
+                <tr>
+                  <td>{{ c.name }}</td>
+                  <td>
+                    <form method="post" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">{% csrf_token %}
+                      <input type="hidden" name="action" value="set_time_zone">
+                      <input type="hidden" name="company" value="{{ c.id }}">
+                      <select name="time_zone" class="form-control input-sm" style="max-width:360px;" aria-label="Time zone for {{ c.name }}">
+                        <option value="" {% if not c.time_zone %}selected{% endif %}>GA4 property ({{ c.ga4_time_zone }})</option>
+                        <optgroup label="United States">
+                          {% for z, label in tz_common %}<option value="{{ z }}" {% if c.time_zone == z %}selected{% endif %}>{{ label }} ({{ z }})</option>{% endfor %}
+                        </optgroup>
+                        <optgroup label="All time zones">
+                          {% for z in tz_all %}<option value="{{ z }}" {% if c.time_zone == z %}selected{% endif %}>{{ z }}</option>{% endfor %}
+                        </optgroup>
+                      </select>
+                      <button type="submit" class="btn btn-default btn-xs"><i class="fa fa-floppy-o"></i> Save</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
     {% endif %}
 
     {# ============================ PREMIUM (top) ============================ #}
@@ -70,14 +114,21 @@
                 (<code>pip install google-cloud-bigquery</code>).</div>
               {% endif %}
               <hr>
-              <p class="text-muted"><small>Admin provisioning &mdash; connect a company's GA4 &rarr; BigQuery export.
+              <p class="text-muted"><small>{% if is_staff_provisioning %}Admin provisioning &mdash; connect a company's GA4 &rarr; BigQuery export.{% else %}Connect your GA4 &rarr; BigQuery export with a service account that can read the dataset.{% endif %}
                 Cart / checkout / PDP / category views come from GA4 events (map custom names below if needed).</small></p>
               <form method="post" action="{% url 'app:data_connection' %}">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="bigquery_connect">
                 <div class="row">
+                  {% if is_staff_provisioning %}
                   <div class="col-md-6"><div class="form-group"><label>Company name</label>
                     <input type="text" name="company_name" class="form-control" placeholder="e.g. Autocado" required></div></div>
+                  {% else %}
+                  <div class="col-md-6"><div class="form-group"><label>Company</label>
+                    <select name="company" class="form-control" required>
+                      {% for c in bigquery_companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select></div></div>
+                  {% endif %}
                   <div class="col-md-6"><div class="form-group"><label>GA4 Property ID <small class="text-muted">(dataset = analytics_&lt;id&gt;)</small></label>
                     <input type="text" name="property_id" class="form-control" placeholder="e.g. 291799606" required></div></div>
                 </div>
@@ -95,12 +146,17 @@
                 <button type="submit" class="btn btn-primary"><i class="fa fa-database"></i> Test &amp; connect</button>
               </form>
             {% else %}
-              <div class="premium-dim">
-                <p class="text-muted"><em>Premium is a paid upgrade.</em></p>
-              </div>
               <div class="upgrade-cta">
+                {% if premium_org and premium_org.has_premium %}
+                <p class="text-muted">Premium is on for {{ premium_org.name }}. Connecting BigQuery needs the account owner,
+                  an Executive or a Developer.</p>
+                {% elif can_buy_premium %}
+                <a href="{% url 'app:billing' %}?from=data_connection#premium" class="btn btn-primary"><i class="fa fa-bolt"></i> Upgrade to Premium</a>
+                <span class="text-muted" style="margin-left:10px;">Add it in Billing, then connect BigQuery here.</span>
+                {% else %}
                 <span class="btn btn-primary disabled"><i class="fa fa-lock"></i> Upgrade to Premium</span>
-                <span class="text-muted" style="margin-left:10px;">Contact Kiboko to enable Premium for your company.</span>
+                <span class="text-muted" style="margin-left:10px;">Ask your account owner{% if premium_org and premium_org.org_admin %} ({{ premium_org.org_admin.get_full_name|default:premium_org.org_admin.email|default:premium_org.org_admin.username }}){% endif %} to add Premium in Billing.</span>
+                {% endif %}
               </div>
             {% endif %}
           </div>
@@ -204,8 +260,9 @@
           <li>the service-account key Kiboko uses to read your BigQuery data.</li>
         </ul>
         <p>It is gone forever and can't be recovered. Your data in BigQuery itself is not affected.</p>
-        <p><strong>If you connect again, or start a new Kiboko account, data collection starts over from that day.</strong>
-          The history Kiboko has gathered until now won't come back.</p>
+        <p><strong>If you connect again, or start a new Kiboko account, Kiboko rebuilds the history from your BigQuery
+          export</strong>, up to about 400 days back, as far as your export still holds. Anything your export no longer
+          keeps can't be recovered.</p>
         <div class="checkbox" style="margin-bottom:0;">
           <label><input type="checkbox" id="bqDisconnectAck"> I understand this can't be undone.</label>
         </div>

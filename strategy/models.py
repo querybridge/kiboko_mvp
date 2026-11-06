@@ -1,3 +1,4 @@
+from django.utils import timezone
 from decimal import Decimal, ROUND_HALF_UP
 from django.db import models
 from django.forms import ModelForm
@@ -76,13 +77,13 @@ DEFAULT_OBJECTIVES = [
 
 
 def seed_default_objectives(company, year=None):
-    """Give `company` the starter objectives if it has none yet."""
+    """Give `company` a starter objective for each AEE element it has none for in
+    `year` (default: this year), so every company has Attract, Engage and Expand."""
     import datetime
-    if Objective.objects.filter(company=company).exists():
-        return
-    year = year or datetime.date.today().year
+    year = year or timezone.localdate().year
+    have = set(Objective.objects.filter(company=company, year=year).values_list('aee_alignment', flat=True))
     Objective.objects.bulk_create(Objective(company=company, name=name, aee_alignment=aee, year=year)
-                                  for name, aee in DEFAULT_OBJECTIVES)
+                                  for name, aee in DEFAULT_OBJECTIVES if aee not in have)
 
 
 class Objective(models.Model):

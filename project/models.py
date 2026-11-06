@@ -1,3 +1,4 @@
+from django.utils import timezone
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from django.db import models
@@ -108,7 +109,7 @@ class Action(models.Model):
 		previous_status = getattr(self, '_db_status', None)
 		became_active = self.status == 'WIP' and previous_status != 'WIP'
 		if became_active and not self.active_date:
-			self.active_date = date.today()
+			self.active_date = timezone.localdate()
 
 		# Auto-archive when status is Launched
 		if self.status == 'Launched':

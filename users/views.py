@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -200,7 +201,7 @@ def get_started(request):
             chosen = Plan.objects.get(slug=form['plan'])
             # Premium/Enterprise include the connection; the add-on only applies to Standard.
             premium_conn = form['premium_connection'] if chosen.tier == 'standard' else (chosen.tier != 'standard')
-            today = datetime.date.today()
+            today = timezone.localdate()
             with transaction.atomic():
                 user = User.objects.create_user(
                     username=_signup_username(email), email=email,

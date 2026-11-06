@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.db import models
 from django.forms import ModelForm
 from django import forms
@@ -140,7 +141,7 @@ class Organization(models.Model):
 		if self.plan_status != 'trial' or end is None:
 			return None
 		import datetime
-		return max(0, (end - datetime.date.today()).days)
+		return max(0, (end - timezone.localdate()).days)
 
 	@property
 	def has_payment(self):
@@ -165,6 +166,14 @@ class Organization(models.Model):
 	@property
 	def is_canceled(self):
 		return self.plan_status == 'canceled'
+
+	@property
+	def has_premium(self):
+		"""May connect GA4 through BigQuery (the Premium Connection): bought as the
+		add-on, included in the Premium and Enterprise plans, or a comped/demo org."""
+		if self.is_platform_demo or self.billing_exempt or self.premium_connection:
+			return True
+		return bool(self.plan and self.plan.tier in ('premium', 'enterprise'))
 
 	def billing_address_lines(self):
 		"""Billing address as a list of non-blank lines (for display / reuse)."""
@@ -240,6 +249,10 @@ class Company(models.Model):
 	country = models.CharField(max_length=120, blank=True)
 	same_as_billing = models.BooleanField(default=False,
 	                                      help_text='Reuse the organization billing address for this company')
+	# The company's business day: when "today" starts for its dashboards and
+	# periods. Blank = its GA4 property's time zone, else Kiboko's default.
+	time_zone = models.CharField(max_length=64, blank=True,
+	                             help_text='IANA name, e.g. America/Chicago. Blank uses the GA4 property’s time zone.')
 	created = models.DateTimeField(auto_now_add=True)
 
 	class Meta:
@@ -249,6 +262,19 @@ class Company(models.Model):
 
 	def __str__(self):
 		return self.name
+
+	@property
+	def ga4_time_zone(self):
+		"""Its first GA4 property's reporting time zone, else Kiboko's default."""
+		from django.conf import settings
+		zones = [v.timezone for v in self.verticals.all() if v.timezone]
+		return zones[0] if zones else settings.TIME_ZONE
+
+	@property
+	def effective_time_zone(self):
+		"""The zone this company's dates follow: its own setting, else its GA4
+		property's, else Kiboko's default (settings.TIME_ZONE)."""
+		return self.time_zone or self.ga4_time_zone
 
 	def details_complete(self):
 		"""True once the org admin has filled the core company details."""
