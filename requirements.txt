@@ -21,3 +21,6 @@ google-cloud-bigquery>=3.11
 # Django admin -> Integration Settings; both stay off until a key is entered.
 stripe>=16.0,<17
 sendgrid>=6.11,<7
+
+# Error alerts. Only active when SENTRY_DSN is set in .env.
+sentry-sdk>=2.20,<3

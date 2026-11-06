@@ -33,11 +33,12 @@
 <h3>Information collected automatically</h3>
 <ul>
   <li><strong>Server logs:</strong> like most web services, our servers record IP address, browser type, the pages requested and the time of each request. We use these logs for security, troubleshooting and capacity planning.</li>
+  <li><strong>Error reports:</strong> when something breaks, Kiboko sends a technical report to our error-monitoring provider, Sentry, so we can fix it. A report contains the error, the part of our code where it happened, the page address, and your browser and operating system type. Kiboko is set up so that reports do not include your name, email address, IP address, cookies, passwords or anything you typed into a form.</li>
   <li><strong>Essential cookies only:</strong> Kiboko uses a session cookie to keep you signed in and a security cookie that protects forms. Your light or dark theme choice is saved in your own browser. We do not use advertising or analytics cookies.</li>
 </ul>
 
 <h2>2. No tracking software</h2>
-<p>Kiboko does not use Google Analytics, advertising pixels, session recording or any other third-party tracking or analytics software. We do not sell personal information, and we do not share it for cross-context behavioral advertising.</p>
+<p>Kiboko does not use Google Analytics, advertising pixels, session recording or any other third-party tracking or analytics software. Sentry, our error-monitoring provider, receives reports only when something breaks; it is not used to track how you use Kiboko. We do not sell personal information, and we do not share it for cross-context behavioral advertising.</p>
 
 <h2>3. Connected data sources</h2>
 <h3>Google sign-in and Google Analytics (Google API connection)</h3>
@@ -69,6 +70,7 @@
   <li><strong>PythonAnywhere:</strong> application hosting and database (United States).</li>
   <li><strong>Twilio SendGrid:</strong> delivery of service emails.</li>
   <li><strong>Stripe:</strong> payment processing and subscription billing.</li>
+  <li><strong>Sentry (Functional Software, Inc.):</strong> error monitoring. Receives the technical error reports described in section 1 (United States).</li>
   <li><strong>Google:</strong> Google sign-in, the Google Analytics APIs and BigQuery, when you choose to connect them. Kiboko pages also load fonts from Google Fonts.</li>
 </ul>
 <p>We may also disclose information if the law requires it, to protect the rights and safety of Kiboko or others, or as part of a merger or sale of the business, in which case this policy continues to apply.</p>
@@ -80,10 +82,10 @@
 <h2>7. How long we keep data</h2>
 <p>We keep Project Data while your account is active. If an account is disabled, because of non-payment or because the customer cancels, its Project Data remains available for 90 days so the account can be reactivated or the data exported. After 90 days, the Project Data is permanently deleted. Copies in our routine backups are removed as those backups expire.</p>
 <p>The 90-day period covers all Project Data, including the daily summary table for BigQuery customers. Kiboko does not hold a copy of your Analytics Data itself, so it remains in your Google account under your settings and Google's terms. Disconnecting Google or BigQuery in Kiboko deletes the stored token or key right away. If you revoke access only on Google's side, those credentials stop working, and we delete them on request or when the account's Project Data is deleted. Before deletion, the account owner gets an email when the 90 days start and a reminder 7 days before the end.</p>
-<p>If you request a trial code but do not create an account, we keep your email address to follow up about the trial until you opt out or ask us to delete it. Server logs are kept only as long as needed for security and troubleshooting.</p>
+<p>If you request a trial code but do not create an account, we keep your email address to follow up about the trial until you opt out or ask us to delete it. Server logs are kept only as long as needed for security and troubleshooting. Error reports are deleted automatically by Sentry within 90 days.</p>
 
 <h2>8. Security</h2>
-<p>Kiboko is served only over encrypted connections (HTTPS). Passwords are hashed, access to data is limited to the people in your organization who need it, and access to our systems is restricted. No system is perfectly secure. If we learn of a breach that affects your information, we will notify you as the law requires.</p>
+<p>Kiboko is served only over encrypted connections (HTTPS). Passwords are hashed, stored credentials such as Google access tokens, BigQuery keys and API keys are encrypted, access to data is limited to the people in your organization who need it, and access to our systems is restricted. No system is perfectly secure. If we learn of a breach that affects your information, we will notify you as the law requires.</p>
 
 <h2>9. Your choices and rights</h2>
 <ul>

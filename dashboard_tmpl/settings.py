@@ -228,3 +228,19 @@ if not KIBOKO_ENCRYPTION_KEY:
     from django.core.exceptions import ImproperlyConfigured
     raise ImproperlyConfigured('KIBOKO_ENCRYPTION_KEY is not set. Add it to .env in the project root '
                                '(see business_unit/crypto.py for how to make one).')
+
+# Error alerts (Sentry). Off unless SENTRY_DSN is set in .env, so local errors
+# don't alert. Errors only: no performance tracing, and no personal data -- no
+# user, IP, cookies, request bodies or stack-frame variables leave the server
+# (Privacy Policy sections 1 and 5 promise this).
+SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+if SENTRY_DSN:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.environ.get('SENTRY_ENVIRONMENT', 'production'),
+        send_default_pii=False,
+        include_local_variables=False,
+        max_request_body_size='never',
+        traces_sample_rate=0,
+    )
