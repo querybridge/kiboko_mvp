@@ -1,0 +1,32 @@
+{% load mobile_tags %}
+{# Forecast vs budget for one period: the landing figure, the gap, and the stacked bar. #}
+<div class="m-hero">
+  <div class="m-hero-head">
+    <span class="m-eyebrow">{{ fc.label }} landing</span>
+    <span class="m-dim">{{ fc.range }}</span>
+  </div>
+  <div class="m-hero-num">{{ fc.landing|money }}</div>
+  {% if fc.has_budget %}
+  <div class="m-hero-sub">
+    {% if fc.ahead %}
+    <span class="m-pill m-pill-good"><i class="fa fa-arrow-up"></i> {{ fc.gap_abs|money }} ahead of budget</span>
+    {% else %}
+    <span class="m-pill m-pill-bad"><i class="fa fa-arrow-down"></i> {{ fc.gap_abs|money }} short of budget</span>
+    {% endif %}
+    <span class="m-dim">{{ fc.pct_of_budget }}% of {{ fc.budget|money }}</span>
+  </div>
+  <div class="m-bar" role="img" aria-label="Landing {{ fc.landing|money }} against budget {{ fc.budget|money }}">
+    <span class="m-bar-fill"><span class="seg seg-actual" style="width:{{ fc.bar.actual|floatformat:2 }}%"></span><span class="seg seg-forecast" style="width:{{ fc.bar.forecast|floatformat:2 }}%"></span><span class="seg seg-projects" style="width:{{ fc.bar.projects|floatformat:2 }}%"></span>{% if show_closers %}<span class="seg seg-closers" style="width:{{ fc.bar.closers|floatformat:2 }}%"></span>{% endif %}</span>
+    <span class="m-bar-budget" style="left:{{ fc.bar.budget|floatformat:2 }}%"></span>
+  </div>
+  <div class="m-legend">
+    {% if fc.actual %}<span><i class="sw sw-actual"></i>Actual {{ fc.actual|money }}</span>{% endif %}
+    <span><i class="sw sw-forecast"></i>Trend {{ fc.forecast_base|money }}{% if fc.actual %} total{% endif %}</span>
+    <span><i class="sw sw-projects"></i>Projects {{ fc.project_value|money }}</span>
+    {% if show_closers and fc.closers_total and not fc.ahead %}<span><i class="sw sw-closers"></i>Could add {{ fc.closers_total|money }}</span>{% endif %}
+    <span><i class="sw sw-budget"></i>Budget</span>
+  </div>
+  {% else %}
+  <p class="m-note">No budget is set for this period, so there's no gap to show. Budgets are set on the desktop under Goals.</p>
+  {% endif %}
+</div>

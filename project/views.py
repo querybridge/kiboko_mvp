@@ -523,7 +523,7 @@ def approve_on_deck(request, project_id):
         messages.success(request, f'Approved “{project.name}” to On Deck.')
     else:
         messages.error(request, err or 'Could not approve this project.')
-    return redirect('project:executive_approval')
+    return HttpResponseRedirect(_safe_next(request, reverse('project:executive_approval')))
 
 
 @login_required
@@ -542,7 +542,7 @@ def approve_action(request, project_id):
         project.save()
         messages.success(request, f'Approved "{project.name}" — awaiting analyst value sign-off '
                                   f'and developer effort + capability.')
-    return redirect('project:approve_projects')
+    return HttpResponseRedirect(_safe_next(request, reverse('project:approve_projects')))
 
 
 @login_required

@@ -1,0 +1,3 @@
+<div class="m-seg m-seg-fill" role="tablist" aria-label="Period">
+  {% for k, label in periods %}<a role="tab" href="?p={{ k }}" class="{% if fc.key == k %}on{% endif %}" aria-selected="{% if fc.key == k %}true{% else %}false{% endif %}">{{ label }}</a>{% endfor %}
+</div>

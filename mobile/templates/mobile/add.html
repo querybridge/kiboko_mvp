@@ -1,0 +1,216 @@
+{% extends "mobile/base.html" %}
+{% block top_action %}{% endblock %}
+{% block content %}
+<h1 class="m-h1">Add a project</h1>
+<p class="m-note">Capture the idea and the lever it moves. Kiboko sizes the value from your data; the team scores it next.</p>
+
+<form method="post" class="m-form" id="addForm" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="m-error-box">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+  <div class="m-card">
+    <label class="m-field{% if form.name.errors %} bad{% endif %}"><span>Project name</span>
+      {{ form.name }}{% if form.name.errors %}<em>{{ form.name.errors.0 }}</em>{% endif %}
+    </label>
+    <label class="m-field{% if form.objective.errors %} bad{% endif %}"><span>Objective</span>
+      {{ form.objective }}{% if form.objective.errors %}<em>{{ form.objective.errors.0 }}</em>{% endif %}
+      <small>Sets the group: Attract, Engage or Expand.</small>
+    </label>
+    {% if single_vertical %}
+    <input type="hidden" name="vertical" id="id_vertical" value="{{ single_vertical.pk }}">
+    {% else %}
+    <label class="m-field{% if form.vertical.errors %} bad{% endif %}"><span>Business unit</span>
+      {{ form.vertical }}{% if form.vertical.errors %}<em>{{ form.vertical.errors.0 }}</em>{% endif %}
+    </label>
+    {% endif %}
+    <div class="m-field-row">
+      <label class="m-field{% if form.owner.errors %} bad{% endif %}"><span>Owner</span>{{ form.owner }}</label>
+      <label class="m-field{% if form.target_completion.errors %} bad{% endif %}"><span>Go-live</span>{{ form.target_completion }}</label>
+    </div>
+  </div>
+
+  <div class="m-card">
+    <h2 class="m-card-title">Impact</h2>
+    <label class="m-field{% if form.lever.errors %} bad{% endif %}"><span>Lever it moves</span>
+      <select name="lever" id="id_lever" data-value="{{ form.lever.value|default:'' }}"></select>
+      {% if form.lever.errors %}<em>{{ form.lever.errors.0 }}</em>{% endif %}
+    </label>
+    <p class="m-src" id="srcNote" hidden></p>
+    <div class="m-field-row" id="levelRow">
+      <label class="m-field"><span>Current level</span>
+        <span class="m-affix"><i class="pre" hidden>$</i><input type="text" inputmode="decimal" id="disp_from" autocomplete="off"><i class="suf" hidden>%</i></span>
+      </label>
+      <label class="m-field"><span>Target level</span>
+        <span class="m-affix"><i class="pre" hidden>$</i><input type="text" inputmode="decimal" id="disp_to" autocomplete="off"><i class="suf" hidden>%</i></span>
+      </label>
+    </div>
+    <label class="m-field" id="s0Field"><span>Annual sales baseline</span>
+      <span class="m-affix"><i class="pre">$</i><input type="text" inputmode="numeric" id="disp_s0" autocomplete="off"></span>
+    </label>
+    <div class="m-estimate" id="estimate">
+      <span>If the target is fully hit</span>
+      <b id="estValue">—</b>
+      <small id="estDetail">Pick a lever and set a target.</small>
+    </div>
+    {{ form.target_from }}{{ form.target_to }}{{ form.s0_annual }}{{ form.plausibility_factor }}
+  </div>
+
+  <div class="m-card">
+    <label class="m-field{% if form.why.errors %} bad{% endif %}"><span>User story</span>
+      {{ form.why }}{% if form.why.errors %}<em>{{ form.why.errors.0 }}</em>{% endif %}
+    </label>
+    <label class="m-field{% if form.definition_of_done.errors %} bad{% endif %}"><span>Definition of done</span>
+      {{ form.definition_of_done }}
+    </label>
+  </div>
+
+  <input type="hidden" name="ramp_days" value="{{ form.ramp_days.value|default:30 }}">
+  <input type="hidden" name="direct_expense" value="{{ form.direct_expense.value|default:0 }}">
+  <input type="hidden" name="expense_type" value="{{ form.expense_type.value|default:'one_time' }}">
+  {% if department_id %}<input type="hidden" name="department" value="{{ department_id }}">{% endif %}
+  <button type="submit" class="m-btn m-btn-primary">Add project</button>
+  <p class="m-note">Direct expense, ramp time and evidence can be added later on the desktop.</p>
+</form>
+
+{{ levers|json_script:"leverData" }}
+{{ objective_aee|json_script:"objectiveAee" }}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var LEVERS = JSON.parse(document.getElementById('leverData').textContent);
+  var OBJ_AEE = JSON.parse(document.getElementById('objectiveAee').textContent);
+  var BASELINE_URL = '{{ baseline_url }}', MIN_WEEKS = {{ min_weeks }};
+  function $(id) { return document.getElementById(id); }
+  var obj = $('id_objective'), bu = $('id_vertical'), lever = $('id_lever');
+  var H = { from: $('id_target_from'), to: $('id_target_to'), s0: $('id_s0_annual'), p: $('id_plausibility_factor') };
+  var D = { from: $('disp_from'), to: $('disp_to'), s0: $('disp_s0') };
+  var GA4 = null;
+
+  function unit(lv) {
+    if (lv === 'cart_creation' || lv === 'cart_completion') return 'percent';
+    if (lv === 'avg_unit_price') return 'money';
+    if (lv === 'visitors') return 'count';
+    return 'number';
+  }
+  function num(t) { var n = parseFloat(String(t == null ? '' : t).replace(/[^0-9.\-]/g, '')); return n; }
+  function toRaw(t, u) { var n = num(t); return isFinite(n) ? (u === 'percent' ? n / 100 : n) : NaN; }
+  function toDisp(raw, u) {
+    if (!isFinite(raw)) return '';
+    if (u === 'percent') return String(+(raw * 100).toFixed(2));
+    if (u === 'count') return Math.round(raw).toLocaleString('en-US');
+    return String(+raw.toFixed(u === 'money' ? 2 : 3));
+  }
+  function money(v) {
+    var a = Math.abs(v), s = v < 0 ? '-$' : '$';
+    if (a >= 1e6) return s + (a / 1e6).toFixed(a >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
+    if (a >= 1e3) return s + (a / 1e3).toFixed(a >= 1e5 ? 0 : 1).replace(/\.0$/, '') + 'K';
+    return s + Math.round(a);
+  }
+
+  // Lever options follow the objective's AEE element (iOS can't hide <option>s, so rebuild).
+  function fillLevers() {
+    var aee = OBJ_AEE[obj.value] || '', cur = lever.value || lever.dataset.value || '';
+    lever.innerHTML = '<option value="">Choose a lever</option>';
+    LEVERS.forEach(function (l) {
+      if (aee && l.aee !== aee) return;
+      var o = document.createElement('option'); o.value = l.key; o.textContent = l.label;
+      if (l.key === cur) o.selected = true;
+      lever.appendChild(o);
+    });
+    lever.dataset.value = '';
+  }
+
+  function syncAffixes() {
+    var u = unit(lever.value);
+    document.querySelectorAll('#levelRow .m-affix').forEach(function (a) {
+      a.querySelector('.pre').hidden = u !== 'money';
+      a.querySelector('.suf').hidden = u !== 'percent';
+    });
+  }
+
+  function showFromStored() {
+    var u = unit(lever.value);
+    D.from.value = H.from.value ? toDisp(parseFloat(H.from.value), u) : '';
+    D.to.value = H.to.value ? toDisp(parseFloat(H.to.value), u) : '';
+    D.s0.value = H.s0.value ? Math.round(parseFloat(H.s0.value)).toLocaleString('en-US') : '';
+  }
+
+  function autofill() {
+    if (!GA4) return;
+    if (GA4.s0_annual && D.s0.dataset.manual !== '1') H.s0.value = Math.round(GA4.s0_annual);
+    var lv = lever.value;
+    if (lv && GA4.levels && GA4.levels[lv] != null && D.from.dataset.manual !== '1') H.from.value = (+GA4.levels[lv]).toFixed(4);
+    showFromStored();
+  }
+
+  function stats(vals) {
+    vals = (vals || []).filter(function (x) { return isFinite(x); });
+    if (vals.length < MIN_WEEKS) return null;
+    var m = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+    var v = vals.length > 1 ? vals.reduce(function (a, b) { return a + (b - m) * (b - m); }, 0) / (vals.length - 1) : 0;
+    return { vals: vals, std: Math.sqrt(v) || 1e-9 };
+  }
+  // Mirrors impact.plausibility / diminishing_factor (K = 1).
+  function plaus(target, center) {
+    var st = GA4 && GA4.weekly ? stats(GA4.weekly[lever.value]) : null;
+    if (!st || !isFinite(center)) return null;
+    var z = (target - center) / st.std;
+    var reached = st.vals.filter(function (x) { return x >= target; }).length;
+    var band = z <= 1 ? 'Modest' : z <= 2 ? 'Moderate' : z <= 3 ? 'Strong' : z <= 4 ? 'Very strong' : 'Extreme';
+    var f = z > 1 ? (1 + Math.log1p(z - 1)) / z : 1;
+    return { band: band, factor: f, reached: reached, n: st.vals.length };
+  }
+
+  function recalc() {
+    var u = unit(lever.value);
+    var from = toRaw(D.from.value, u), to = toRaw(D.to.value, u), s0 = num(D.s0.value);
+    H.from.value = isFinite(from) ? from.toFixed(4) : '';
+    H.to.value = isFinite(to) ? to.toFixed(4) : '';
+    H.s0.value = isFinite(s0) ? Math.round(s0) : '';
+    var pl = (isFinite(to) && isFinite(from)) ? plaus(to, from) : null;
+    H.p.value = (pl ? pl.factor : 1).toFixed(4);
+    if (!lever.value || !(from > 0) || !isFinite(to) || !(s0 > 0)) {
+      $('estValue').textContent = '—';
+      $('estDetail').textContent = lever.value ? 'Enter the current level, a target and annual sales.' : 'Pick a lever and set a target.';
+      return;
+    }
+    var pct = (to - from) / from;
+    $('estValue').textContent = money(s0 * pct) + '/yr';
+    var detail = (pct >= 0 ? '+' : '') + (pct * 100).toFixed(1) + '% on ' + money(s0) + ' annual sales';
+    if (pl) detail += ' · ' + pl.band + ' target, reached ' + pl.reached + ' of the last ' + pl.n + ' weeks'
+                     + (pl.factor < 1 ? ' (counted at ' + Math.round(pl.factor * 100) + '%)' : '');
+    $('estDetail').textContent = detail;
+  }
+
+  function fetchBaseline() {
+    var note = $('srcNote');
+    GA4 = null;
+    if (!bu || !bu.value) { note.hidden = true; recalc(); return; }
+    note.hidden = false; note.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Checking your data…';
+    fetch(BASELINE_URL + '?vertical=' + encodeURIComponent(bu.value) + '&window=365',
+          { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.connected) {
+          GA4 = d;
+          note.innerHTML = '<i class="fa fa-bolt"></i> Current level and sales filled from ' + (d.source || 'GA4') + ' (last 52 weeks).';
+          autofill();
+        } else {
+          note.innerHTML = '<i class="fa fa-info-circle"></i> No connected data for this business unit — enter the current level and sales.';
+        }
+        recalc();
+      })
+      .catch(function () { note.innerHTML = '<i class="fa fa-info-circle"></i> Couldn’t reach your data — enter the values.'; recalc(); });
+  }
+
+  [D.from, D.s0].forEach(function (el) { el.addEventListener('input', function () { el.dataset.manual = '1'; }); });
+  [D.from, D.to, D.s0].forEach(function (el) { el.addEventListener('input', recalc); });
+  obj.addEventListener('change', function () { fillLevers(); syncAffixes(); autofill(); recalc(); });
+  lever.addEventListener('change', function () { D.from.dataset.manual = ''; D.to.value = ''; syncAffixes(); autofill(); recalc(); });
+  if (bu && bu.tagName === 'SELECT') bu.addEventListener('change', fetchBaseline);
+
+  fillLevers(); syncAffixes(); showFromStored(); fetchBaseline();
+})();
+</script>
+{% endblock %}

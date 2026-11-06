@@ -1,0 +1,64 @@
+{% extends "mobile/base.html" %}
+{% block content %}
+<h1 class="m-h1">Performance story</h1>
+
+<form method="get" class="m-filter" id="storyFilter">
+  <label class="m-select"><span>Period</span>
+    <select name="period" onchange="this.form.submit()">
+      {% for code, label, _ in primary_options %}<option value="{{ code }}" {% if code == selected_primary %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="m-select"><span>Compared to</span>
+    <select name="compare" onchange="this.form.submit()">
+      {% for code, label in compare_options %}<option value="{{ code }}" {% if code == selected_compare %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+</form>
+
+{% if signin_prompt %}
+<div class="m-card m-signin">
+  <i class="fa fa-line-chart"></i>
+  <p><b>Live data available</b>Sign in with Google to see {{ tenancy_current_company.name }}'s live data.</p>
+  <a class="m-btn m-btn-primary" href="{% url 'google_login' %}"><i class="fa fa-google"></i> Sign in with Google</a>
+</div>
+{% else %}
+<div class="m-card m-story-hero m-g-grow">
+  <span class="m-eyebrow">Total sales · {{ primary_label }}</span>
+  <div class="m-hero-num">{{ tail.value }}</div>
+  <div class="m-hero-sub"><span class="m-pct {{ tail.pct_color }}">{{ tail.pct }}</span><span class="m-dim">vs {{ compare_label|lower }}</span></div>
+  <p class="m-story-lede">{{ tail.message }}</p>
+</div>
+
+<div class="m-story-toggle" role="group" aria-label="Detail level">
+  <button type="button" class="on" data-mode="brief">Brief</button><button type="button" data-mode="detail">Detail</button>
+</div>
+
+<div class="m-story" id="mStory" data-mode="brief">
+  {% for s in sections %}
+  <section class="m-card m-story-sec m-g-{{ s.group }}">
+    <h2>{{ s.name|title }}</h2>
+    {% for r in s.rows %}
+    <div class="m-story-row{% if r.detail_only %} detail{% endif %}{% if r.bold %} bold{% endif %}">
+      <div class="m-story-line"><span class="m-story-label">{{ r.label }}</span><span class="m-story-val">{{ r.value }}</span><span class="m-pct {{ r.pct_color }}">{{ r.pct }}</span></div>
+      <p>{{ r.message }}</p>
+    </div>
+    {% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var story = document.getElementById('mStory');
+    if (!story) return;
+    document.querySelectorAll('.m-story-toggle button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.m-story-toggle button').forEach(function (x) { x.classList.toggle('on', x === b); });
+        story.dataset.mode = b.dataset.mode;
+      });
+    });
+  })();
+</script>
+{% endblock %}

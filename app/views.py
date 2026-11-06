@@ -2707,6 +2707,30 @@ def score_projects(request):
             messages.success(request, f'Your score was saved ({prog["voted"]} of {prog["total"]} voted).')
         return redirect(request.get_full_path())
 
+    projects = score_queue(request)
+    total_value = sum((p.value or 0) for p in projects)
+    pending = sum(1 for p in projects if not p.has_voted)
+
+    return render(request, 'app/score_projects.html', {
+        'title': 'Score Projects',
+        'projects': projects,
+        'criteria_labels': [CRITERIA_META[f][0] for f in VOTED_CRITERIA],
+        'total_value': total_value,
+        'pending_count': pending,
+    })
+
+
+def score_queue(request):
+    """Ready-to-score projects in scope that the current user votes on, each
+    annotated with vote progress, the user's own vote, estimator context and
+    slider rows. Not-yet-voted first, then by projected value, so the
+    highest-stakes decisions surface. Shared by the desktop and mobile pages."""
+    from project.services.kanban import LANE_STATUS
+    from project.services import voting
+    from project.scoring import VOTED_CRITERIA
+    from project.models import ScoringWeights, ScoreVote
+    from strategy.models import Project
+
     vertical_id = scoped_vertical_id(request)
     company_id = scoped_company_id(request)
     qs = _scope_to(Project.objects.filter(
@@ -2714,8 +2738,6 @@ def score_projects(request):
     ).select_related('owner', 'objective', 'vertical', 'vertical__company', 'department'),
         vertical_id, company_id)
 
-    # Only projects the current user is a voter on, ordered: not-yet-voted first,
-    # then by projected value so the highest-stakes decisions surface.
     my_votes = {v.project_id: v for v in ScoreVote.objects.filter(user=request.user)}
     projects = []
     for p in qs:
@@ -2738,16 +2760,7 @@ def score_projects(request):
         projects.append(p)
 
     projects.sort(key=lambda p: (p.has_voted, -(p.value or 0), p.aee_alignment or 'zzz'))
-    total_value = sum((p.value or 0) for p in projects)
-    pending = sum(1 for p in projects if not p.has_voted)
-
-    return render(request, 'app/score_projects.html', {
-        'title': 'Score Projects',
-        'projects': projects,
-        'criteria_labels': [CRITERIA_META[f][0] for f in VOTED_CRITERIA],
-        'total_value': total_value,
-        'pending_count': pending,
-    })
+    return projects
 
 
 @login_required

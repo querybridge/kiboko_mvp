@@ -1,0 +1,36 @@
+{% extends "mobile/base.html" %}
+{% load mobile_tags %}
+{% block content %}
+<h1 class="m-h1">Projects</h1>
+<div class="m-seg m-seg-fill" role="tablist" aria-label="Status">
+  {% for k, label, n in filters %}<a role="tab" href="?f={{ k }}" class="{% if filter == k %}on{% endif %}" aria-selected="{% if filter == k %}true{% else %}false{% endif %}">{{ label }} <span class="m-seg-n">{{ n }}</span></a>{% endfor %}
+</div>
+
+{% if rows|length > 6 %}
+<label class="m-search"><i class="fa fa-search"></i><input type="search" id="mFind" placeholder="Find a project" autocomplete="off" enterkeyhint="search"></label>
+{% endif %}
+
+{% if rows %}
+<p class="m-sum">{{ rows|length }} project{{ rows|length|pluralize }} · {{ total_value|money }}/yr{% if late_count %} · <em class="m-late">{{ late_count }} late</em>{% endif %}</p>
+<div class="m-list" id="mProjList">
+  {% with back_here=request.get_full_path %}{% for p in rows %}{% include "mobile/_project_row.html" %}{% endfor %}{% endwith %}
+</div>
+<div class="m-empty" id="mNoMatch" hidden>No project matches.</div>
+{% else %}
+<div class="m-empty">No projects here.</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var box = document.getElementById('mFind');
+    if (!box) return;
+    var rows = document.querySelectorAll('#mProjList .m-proj'), none = document.getElementById('mNoMatch');
+    box.addEventListener('input', function () {
+      var q = box.value.trim().toLowerCase(), shown = 0;
+      rows.forEach(function (r) { var hit = !q || r.dataset.name.indexOf(q) > -1; r.hidden = !hit; if (hit) shown++; });
+      none.hidden = shown > 0;
+    });
+  })();
+</script>
+{% endblock %}

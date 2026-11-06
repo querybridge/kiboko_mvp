@@ -1,0 +1,57 @@
+{% extends "mobile/base.html" %}
+{% load mobile_tags user_extras %}
+{% block content %}
+<h1 class="m-h1">Approve</h1>
+
+{% if is_exec %}
+<h2 class="m-h2">Greenlight <span class="m-h2-side">{{ greenlight|length }} · {{ greenlight_value|money }}/yr</span></h2>
+{% if greenlight %}
+<p class="m-note">Fully scored, ranked by projected value. Approving moves a project to On Deck, ready to start.</p>
+{% for p in greenlight %}
+<article class="m-card m-decide">
+  <a class="m-decide-head" href="{% url 'mobile:project' p.id %}?back={{ here|urlencode }}">
+    <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span>
+    <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.vertical.name|default:"" }}{% if p.objective %} · {{ p.objective.name }}{% endif %}</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  <div class="m-stats">
+    <div><span>Value</span><b>{{ p.value|money }}<small>/yr</small></b></div>
+    <div><span>Score</span><b>{{ p.normalized_score|score100 }}<small>/100</small></b></div>
+    <div><span>Go-live</span><b>{{ p.target_completion|date:"M j"|default:"—" }}</b></div>
+  </div>
+  <form method="post" action="{% url 'project:approve_on_deck' p.id %}" class="m-confirm-form">
+    {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+    <button type="submit" class="m-btn m-btn-good" data-confirm="Tap again to approve"><i class="fa fa-check"></i> Approve to On Deck</button>
+  </form>
+</article>
+{% endfor %}
+{% else %}
+<div class="m-empty"><i class="fa fa-check-circle m-empty-ic"></i>Nothing waiting for a greenlight.</div>
+{% endif %}
+{% endif %}
+
+<h2 class="m-h2" id="intake">New entries <span class="m-h2-side">{{ intake|length }}</span></h2>
+{% if intake %}
+<p class="m-note">Complete entries waiting for a business-unit lead. Approving sends them on for sizing and scoring.</p>
+{% for p in intake %}
+<article class="m-card m-decide">
+  <a class="m-decide-head" href="{% url 'mobile:project' p.id %}?back={{ here|urlencode }}">
+    <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span>
+    <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.owner|short_name }}{% if p.objective %} · {{ p.objective.name }}{% endif %}</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% if p.why %}<p class="m-quote">{{ p.why|truncatechars:160 }}</p>{% endif %}
+  <div class="m-stats">
+    <div><span>Est. value</span><b>{{ p.value|money }}<small>/yr</small></b></div>
+    <div><span>Go-live</span><b>{{ p.target_completion|date:"M j"|default:"—" }}</b></div>
+  </div>
+  <form method="post" action="{% url 'project:approve_action' p.id %}" class="m-confirm-form">
+    {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+    <button type="submit" class="m-btn m-btn-primary" data-confirm="Tap again to approve"><i class="fa fa-check"></i> Approve into pipeline</button>
+  </form>
+</article>
+{% endfor %}
+{% else %}
+<div class="m-empty">{% if is_exec %}No new entries need your approval.{% else %}No new entries need your approval. Greenlighting scored projects is for executives.{% endif %}</div>
+{% endif %}
+{% endblock %}

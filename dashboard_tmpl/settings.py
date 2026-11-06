@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     'project',
     'users',
     'business_unit',
+    'mobile',
     'multiselectfield',
     'crispy_forms',
     'crispy_bootstrap3',
@@ -104,6 +105,7 @@ MIDDLEWARE = [
     'users.middleware.ForcePasswordChangeMiddleware',
     'business_unit.middleware.BillingLockMiddleware',
     'business_unit.middleware.CompanyTimeZoneMiddleware',
+    'mobile.middleware.DeviceRouterMiddleware',
 ]
 
 ROOT_URLCONF = 'dashboard_tmpl.urls'
@@ -123,6 +125,7 @@ TEMPLATES = [
                 'app.context_processors.google_flags',
                 'app.context_processors.getting_started_banner',
                 'app.context_processors.plan_features',
+                'mobile.context_processors.device',
             ],
         },
     },

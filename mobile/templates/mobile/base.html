@@ -1,0 +1,115 @@
+{% load mobile_tags %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    (function () {
+      try { if (localStorage.getItem('theme') === 'light') document.documentElement.classList.add('theme-light'); } catch (e) {}
+    })();
+  </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0E081A" id="themeColor">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kiboko">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="icon" href="/static/images/kiboko-favicon.ico" sizes="any">
+  <link rel="icon" href="/static/images/kiboko-mark.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/images/kiboko-apple-touch-icon.png">
+  <link rel="manifest" href="/static/mobile/manifest.webmanifest">
+  <title>{{ title }} · Kiboko</title>
+  <link href="/static/fonts/fonts.css?v=1" rel="stylesheet">
+  <link href="/static/vendors/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+  <link href="/static/mobile/mobile.css?v=1" rel="stylesheet">
+</head>
+<body class="m-body">
+  <div class="m-progress" id="mProgress" aria-hidden="true"></div>
+
+  <header class="m-top">
+    <div class="m-top-row">
+      {% if back %}
+      <a class="m-icon-btn m-back" href="{{ back }}" aria-label="Back"><i class="fa fa-chevron-left"></i></a>
+      {% else %}
+      <a class="m-brand" href="{% url 'mobile:home' %}" aria-label="Kiboko home">
+        <img src="/static/images/kiboko-mark.svg" alt="" width="28" height="28">
+      </a>
+      {% endif %}
+      <button type="button" class="m-scope" data-sheet="scopeSheet" aria-label="Change company or business unit">
+        <span class="m-scope-co">{{ tenancy_current_company.name|default:"Kiboko" }}</span>
+        <span class="m-scope-bu">{{ tenancy_current_vertical.name|default:"All business units" }} <i class="fa fa-angle-down"></i></span>
+      </button>
+      {% block top_action %}
+      <a class="m-icon-btn" href="{% url 'mobile:add' %}" aria-label="Add project"><i class="fa fa-plus"></i></a>
+      {% endblock %}
+      <button type="button" class="m-avatar" data-sheet="menuSheet" aria-label="Menu">{{ request.user|initials }}</button>
+    </div>
+  </header>
+
+  {% if messages %}
+  <div class="m-toasts" id="mToasts" role="status">
+    {% for message in messages %}
+    <div class="m-toast m-toast-{{ message.tags|default:'info' }}">
+      <i class="fa {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'success' %}fa-check-circle{% else %}fa-info-circle{% endif %}"></i>
+      <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <main class="m-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <nav class="m-tabs" aria-label="Sections">
+    <a href="{% url 'mobile:home' %}" class="{% if tab == 'home' %}on{% endif %}"><i class="fa fa-home"></i><span>Home</span></a>
+    <a href="{% url 'mobile:approve' %}" class="{% if tab == 'approve' %}on{% endif %}"><i class="fa fa-check-circle-o"></i><span>Approve</span>{% if badge_approve %}<b class="m-badge">{{ badge_approve }}</b>{% endif %}</a>
+    <a href="{% url 'mobile:score' %}" class="{% if tab == 'score' %}on{% endif %}"><i class="fa fa-sliders"></i><span>Score</span>{% if badge_score %}<b class="m-badge">{{ badge_score }}</b>{% endif %}</a>
+    <a href="{% url 'mobile:projects' %}" class="{% if tab == 'projects' %}on{% endif %}"><i class="fa fa-tasks"></i><span>Projects</span></a>
+    <a href="{% url 'mobile:story' %}" class="{% if tab == 'story' %}on{% endif %}"><i class="fa fa-line-chart"></i><span>Story</span></a>
+  </nav>
+
+  <div class="m-scrim" id="mScrim" hidden></div>
+
+  {% if tenancy_current_company %}
+  <section class="m-sheet" id="scopeSheet" role="dialog" aria-modal="true" aria-labelledby="scopeTitle" hidden>
+    <div class="m-sheet-grip"></div>
+    <h2 id="scopeTitle">Viewing</h2>
+    <form method="get" action="{{ request.path }}" class="m-form">
+      {% if tenancy_companies|length > 1 %}
+      <label class="m-field"><span>{{ tenancy_client_word }}</span>
+        <select name="company" id="mScopeCompany">
+          {% for c in tenancy_companies %}<option value="{{ c.id }}" {% if c.id == tenancy_current_company.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {% else %}
+      <input type="hidden" name="company" value="{{ tenancy_current_company.id }}">
+      {% endif %}
+      <label class="m-field"><span>Business unit</span>
+        <select name="vertical" id="mScopeVertical">
+          <option value="all">All business units</option>
+          {% for v in tenancy_verticals %}<option value="{{ v.id }}" {% if tenancy_vertical_sel == v.id|stringformat:'s' %}selected{% endif %}>{{ v.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="m-btn m-btn-primary">Show</button>
+    </form>
+    {{ tenancy_tree|json_script:"mTenancyTree" }}
+  </section>
+  {% endif %}
+
+  <section class="m-sheet" id="menuSheet" role="dialog" aria-modal="true" aria-labelledby="menuTitle" hidden>
+    <div class="m-sheet-grip"></div>
+    <h2 id="menuTitle">{{ request.user.get_full_name|default:request.user.username }}</h2>
+    <div class="m-list m-list-plain">
+      <a class="m-row" href="{% url 'mobile:add' %}"><i class="fa fa-plus-circle m-row-ic"></i><span class="m-row-main">Add a project</span><i class="fa fa-angle-right m-chev"></i></a>
+      <a class="m-row" href="{% url 'mobile:forecast' %}"><i class="fa fa-bullseye m-row-ic"></i><span class="m-row-main">Forecast &amp; budget gap</span><i class="fa fa-angle-right m-chev"></i></a>
+      <button type="button" class="m-row" id="mThemeToggle"><i class="fa fa-adjust m-row-ic"></i><span class="m-row-main">Light / dark</span><span class="m-row-side" id="mThemeName"></span></button>
+      <a class="m-row" href="{{ request.path }}?ui=desktop" data-no-progress><i class="fa fa-desktop m-row-ic"></i><span class="m-row-main">Use the desktop site</span><i class="fa fa-angle-right m-chev"></i></a>
+      <a class="m-row" href="{% url 'users:logout' %}"><i class="fa fa-sign-out m-row-ic"></i><span class="m-row-main">Sign out</span></a>
+    </div>
+  </section>
+
+  <script src="/static/mobile/mobile.js?v=1"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

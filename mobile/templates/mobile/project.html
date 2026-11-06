@@ -1,0 +1,81 @@
+{% extends "mobile/base.html" %}
+{% load mobile_tags user_extras %}
+{% block content %}
+<p class="m-kicker"><span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span> {{ p.aee_name|default:"Project" }}{% if p.vertical %} · {{ p.vertical.name }}{% endif %}</p>
+<h1 class="m-h1">{{ p.name|default:"(untitled)" }}</h1>
+<div class="m-chips">
+  <span class="m-chip m-chip-{{ p.status|default:'draft'|slugify }}">{{ p.status_label }}</span>
+  {% if p.late %}<span class="m-chip m-chip-bad"><i class="fa fa-clock-o"></i> Past go-live</span>{% endif %}
+  {% if p.archived %}<span class="m-chip">Archived</span>{% endif %}
+</div>
+
+<div class="m-stats m-stats-card m-stats-2">
+  <div><span>Projected value</span><b>{{ p.value|money }}<small>/yr</small></b></div>
+  <div><span>Expected this year</span><b>{% if expected is not None %}{{ expected|money }}{% else %}—{% endif %}</b></div>
+  <div><span>Score</span><b>{% if p.normalized_score %}{{ p.normalized_score|score100 }}<small>/100</small>{% else %}—{% endif %}</b></div>
+  <div><span>Go-live</span><b>{{ p.target_completion|date:"M j, Y"|default:"—" }}</b></div>
+</div>
+
+{% if can_greenlight %}
+<form method="post" action="{% url 'project:approve_on_deck' p.id %}" class="m-confirm-form">
+  {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+  <button type="submit" class="m-btn m-btn-good" data-confirm="Tap again to approve"><i class="fa fa-check"></i> Approve to On Deck</button>
+</form>
+{% elif can_intake %}
+<form method="post" action="{% url 'project:approve_action' p.id %}" class="m-confirm-form">
+  {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+  <button type="submit" class="m-btn m-btn-primary" data-confirm="Tap again to approve"><i class="fa fa-check"></i> Approve into pipeline</button>
+</form>
+{% elif can_score %}
+<a class="m-btn m-btn-primary" href="{% url 'mobile:score_project' p.id %}"><i class="fa fa-sliders"></i> Score this project</a>
+{% endif %}
+
+{% if progress.total %}
+<h2 class="m-h2">Progress <span class="m-h2-side">{{ progress.done }} of {{ progress.total }} actions done</span></h2>
+<div class="m-card">
+  <div class="m-big-progress"><span style="width:{{ progress.pct }}%"></span></div>
+  <p class="m-big-progress-txt"><b>{{ progress.pct }}%</b> complete</p>
+  <div class="m-actions">
+    {% for a in actions %}
+    <div class="m-action">
+      <div class="m-action-head"><b>{{ a.name|default:"Action" }}</b><span>{{ a.progress|default:0 }}%</span></div>
+      <div class="m-mini-bar"><span style="width:{{ a.progress|default:0 }}%"></span></div>
+      <small>{{ a.owner|short_name }}{% if a.team %} · {{ a.team.name }}{% endif %}{% if a.launch %} · due {{ a.launch|date:"M j" }}{% endif %}{% if a.status == 'Blocked' %} · <em class="m-late">blocked</em>{% endif %}</small>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<h2 class="m-h2">About</h2>
+<div class="m-card m-about">
+  <dl>
+    <dt>Owner</dt><dd>{{ p.owner|short_name|default:"—" }}</dd>
+    <dt>Objective</dt><dd>{{ p.objective.name|default:"—" }}</dd>
+    {% if p.lever %}<dt>Lever</dt><dd>{{ p.get_lever_display }}</dd>{% endif %}
+  </dl>
+  {% if p.why %}<h3>User story</h3><p>{{ p.why }}</p>{% endif %}
+  {% if p.definition_of_done %}<h3>Definition of done</h3><p>{{ p.definition_of_done }}</p>{% endif %}
+</div>
+
+<h2 class="m-h2">Activity</h2>
+{% if can_comment %}
+<form method="post" action="{% url 'project:add_comment_to_project' p.id %}" class="m-comment-form">
+  {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+  <textarea name="text" rows="2" placeholder="Add a comment" required maxlength="2000"></textarea>
+  <button type="submit" class="m-btn m-btn-primary m-btn-sm">Post</button>
+</form>
+{% endif %}
+{% if comments %}
+<div class="m-feed">
+  {% for c in comments %}
+  <div class="m-feed-item"><span class="m-avatar m-avatar-sm">{{ c.author|initials }}</span>
+    <div><b>{{ c.author|short_name }}</b> <small>{{ c.created_date|timesince }} ago</small><p>{{ c.text|linebreaksbr }}</p></div></div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="m-empty">No comments yet.</div>
+{% endif %}
+
+<a class="m-btn m-btn-ghost" href="{{ desktop_url }}"><i class="fa fa-desktop"></i> Open on desktop to edit</a>
+{% endblock %}

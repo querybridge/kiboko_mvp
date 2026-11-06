@@ -1,0 +1,73 @@
+{% extends "mobile/base.html" %}
+{% load mobile_tags %}
+{% block content %}
+<h1 class="m-h1">Forecast</h1>
+{% include "mobile/_periods.html" %}
+
+<div class="m-card">
+  {% include "mobile/_landing.html" with show_closers=True %}
+  {% if fc.multi_month %}
+  <div class="m-chart" id="fcChart" aria-label="Monthly budget, actual, trend and project value"></div>
+  {% endif %}
+</div>
+
+{% if fc.has_budget and not fc.ahead %}
+<h2 class="m-h2">Close the gap <span class="m-h2-side">{{ fc.gap_abs|money }} to find</span></h2>
+{% if fc.candidates %}
+<p class="m-note">Not yet in the forecast, ranked by what each adds by {{ fc.end|date:"M j" }} if started now.</p>
+<div class="m-list">
+  {% for p in fc.candidates %}
+  <div class="m-row m-row-stack{% if p.extra %} m-extra{% endif %}"{% if p.extra %} hidden{% endif %}>
+    <a class="m-row-top" href="{% url 'mobile:project' p.id %}?back={{ here|urlencode }}">
+      <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span>
+      <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.status_label }} · {{ p.value|money }}/yr · from {{ p.live_from|date:"M j" }}</small></span>
+      <span class="m-row-side"><b class="m-good">+{{ p.contribution|money }}</b><small>this period</small></span>
+    </a>
+    <div class="m-cover">
+      <span class="m-cover-bar"><span style="width:{{ p.covers_pct }}%"></span></span>
+      <span class="m-cover-txt">{% if p.covers_pct >= 100 %}gap closed{% else %}{{ p.covers_pct }}% of gap{% endif %}</span>
+      {% if can_greenlight and p.status != 'On Deck' %}
+      <form method="post" action="{% url 'project:approve_on_deck' p.id %}" class="m-confirm-form">
+        {% csrf_token %}<input type="hidden" name="next" value="{{ here }}">
+        <button type="submit" class="m-btn m-btn-good m-btn-xs" data-confirm="Confirm"><i class="fa fa-check"></i> Approve</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if fc.extra_count %}<button type="button" class="m-btn m-btn-ghost" id="showAll">Show {{ fc.extra_count }} more</button>{% endif %}
+<p class="m-note">{% if fc.closes_gap %}Taking these on closes the gap.{% else %}Even with all of these, {{ fc.after_closers_gap|money }} is still open — new projects are needed.{% endif %}</p>
+{% else %}
+<div class="m-empty">No scored or on-deck projects are waiting. Add a project to start closing the gap.<br><a class="m-btn m-btn-primary m-btn-sm" href="{% url 'mobile:add' %}">Add a project</a></div>
+{% endif %}
+{% endif %}
+
+<h2 class="m-h2">Counted in the forecast <span class="m-h2-side">{{ fc.project_value|money }}</span></h2>
+{% if fc.counted %}
+<div class="m-list">
+  {% for p, v in fc.counted %}
+  <a class="m-row" href="{% url 'mobile:project' p.id %}?back={{ here|urlencode }}">
+    <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span>
+    <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.status_label }}{% if p.target_completion %} · live {{ p.target_completion|date:"M j" }}{% endif %}</small></span>
+    <span class="m-row-side"><b>{{ v|money }}</b><small>this period</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="m-empty">No in-flight projects add value in this period.</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var b = document.getElementById('showAll');
+    if (b) b.addEventListener('click', function () { document.querySelectorAll('.m-extra').forEach(function (r) { r.hidden = false; }); b.remove(); });
+  })();
+</script>
+{% if fc.multi_month %}
+{{ fc.chart|json_script:"fcData" }}
+<script>kbChart('fcChart', JSON.parse(document.getElementById('fcData').textContent));</script>
+{% endif %}
+{% endblock %}

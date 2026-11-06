@@ -1,0 +1,52 @@
+{% extends "mobile/base.html" %}
+{% load mobile_tags %}
+{% block content %}
+<p class="m-kicker"><span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span> {{ p.aee_name|default:"Project" }}{% if p.vertical %} · {{ p.vertical.name }}{% endif %}</p>
+<h1 class="m-h1">{{ p.name }}</h1>
+
+<div class="m-stats m-stats-card">
+  <div><span>If fully hit</span><b>{{ p.est_gross|money }}<small>/yr</small></b></div>
+  {% if p.est_expected is not None %}<div><span>Expected this year</span><b>{{ p.est_expected|money }}</b></div>{% endif %}
+  <div><span>Votes in</span><b>{{ p.progress.voted }}<small>/{{ p.progress.total }}</small></b></div>
+</div>
+
+{% if p.why %}<p class="m-quote">{{ p.why }}</p>{% endif %}
+{% if p.definition_of_done %}<details class="m-details"><summary>Definition of done</summary><p>{{ p.definition_of_done }}</p></details>{% endif %}
+
+<form method="post" action="{% url 'app:score_projects' %}" class="m-card m-score" id="scoreForm">
+  {% csrf_token %}
+  <input type="hidden" name="project_id" value="{{ p.id }}">
+  {% for c in p.score_rows %}
+  <div class="m-crit{% if c.invert %} m-crit-invert{% endif %}">
+    <div class="m-crit-head"><label for="c_{{ c.field }}">{{ c.label }}</label><output id="o_{{ c.field }}">{{ c.value }}</output></div>
+    <input type="range" id="c_{{ c.field }}" min="0" max="10" step="1" name="{{ c.field }}" value="{{ c.value }}"
+           data-weight="{{ c.weight }}"{% if c.invert %} data-invert="1"{% endif %} aria-describedby="h_{{ c.field }}">
+    <small id="h_{{ c.field }}">{{ c.hint }}</small>
+  </div>
+  {% endfor %}
+  <div class="m-score-total"><span>Your weighted score</span><b id="wScore">0</b><small>/100</small></div>
+  <button type="submit" class="m-btn m-btn-primary">{% if p.has_voted %}Update my score{% else %}Submit my score{% endif %}</button>
+</form>
+{% if next_project %}<a class="m-btn m-btn-ghost" href="{% url 'mobile:score_project' next_project.id %}">Skip to next: {{ next_project.name|truncatechars:28 }}</a>{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  // Mirrors project.scoring.weighted_score: inverted criteria (risk) count 10 - value,
+  // and an all-zero card stays at 0.
+  (function () {
+    var form = document.getElementById('scoreForm');
+    function update() {
+      var total = 0, any = false;
+      form.querySelectorAll('input[type=range]').forEach(function (r) {
+        var raw = parseInt(r.value, 10);
+        if (raw > 0) any = true;
+        document.getElementById('o_' + r.name).textContent = raw;
+        total += (r.dataset.invert ? 10 - raw : raw) * parseFloat(r.dataset.weight);
+      });
+      document.getElementById('wScore').textContent = any ? Math.round(total / 10) : 0;
+    }
+    form.addEventListener('input', update);
+    update();
+  })();
+</script>
+{% endblock %}

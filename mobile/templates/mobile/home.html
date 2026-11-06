@@ -1,0 +1,67 @@
+{% extends "mobile/base.html" %}
+{% load mobile_tags %}
+{% block content %}
+<p class="m-kicker m-kicker-date">{% now "l, F j" %}</p>
+
+{% include "mobile/_periods.html" %}
+<a class="m-card m-card-link" href="{% url 'mobile:forecast' %}?p={{ fc.key }}">
+  {% include "mobile/_landing.html" %}
+  <div class="m-card-foot">
+    {% if fc.ahead %}See what's driving it{% elif fc.candidates %}{{ fc.candidates|length }} project{{ fc.candidates|length|pluralize }} could close the gap{% else %}See the forecast{% endif %}
+    <i class="fa fa-angle-right"></i>
+  </div>
+</a>
+
+{% if greenlight_count or intake_count or score_count %}
+<h2 class="m-h2">Needs you</h2>
+<div class="m-list">
+  {% if greenlight_count %}
+  <a class="m-row" href="{% url 'mobile:approve' %}">
+    <span class="m-row-ic m-ic-round m-ic-good"><i class="fa fa-check"></i></span>
+    <span class="m-row-main"><b>{{ greenlight_count }} to greenlight</b><small>{{ greenlight_value|money }}/yr projected value</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endif %}
+  {% if intake_count %}
+  <a class="m-row" href="{% url 'mobile:approve' %}#intake">
+    <span class="m-row-ic m-ic-round"><i class="fa fa-inbox"></i></span>
+    <span class="m-row-main"><b>{{ intake_count }} new entr{{ intake_count|pluralize:"y,ies" }} to review</b><small>Approve into the pipeline</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endif %}
+  {% if score_count %}
+  <a class="m-row" href="{% url 'mobile:score' %}">
+    <span class="m-row-ic m-ic-round m-ic-warn"><i class="fa fa-sliders"></i></span>
+    <span class="m-row-main"><b>{{ score_count }} to score</b><small>{{ score_value|money }}/yr waiting on your vote</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<h2 class="m-h2">In flight <span class="m-h2-side">{{ in_flight_count }} · {{ in_flight_value|money }}/yr</span></h2>
+{% if in_flight %}
+<div class="m-list">
+  {% for p in in_flight %}{% include "mobile/_project_row.html" %}{% endfor %}
+  {% if in_flight_count > in_flight|length %}
+  <a class="m-row m-row-more" href="{% url 'mobile:projects' %}">All {{ in_flight_count }} in flight<i class="fa fa-angle-right m-chev"></i></a>
+  {% endif %}
+</div>
+{% if late_count %}<p class="m-note m-note-bad"><i class="fa fa-clock-o"></i> {{ late_count }} in-flight project{{ late_count|pluralize }} past {{ late_count|pluralize:"its,their" }} go-live date.</p>{% endif %}
+{% else %}
+<div class="m-empty">Nothing is in flight right now.</div>
+{% endif %}
+
+{% if soon %}
+<h2 class="m-h2">Going live in the next 30 days</h2>
+<div class="m-list">
+  {% for p in soon %}
+  <a class="m-row" href="{% url 'mobile:project' p.id %}?back={% url 'mobile:home' %}">
+    <span class="m-date"><b>{{ p.target_completion|date:"j" }}</b>{{ p.target_completion|date:"M" }}</span>
+    <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.value|money }}/yr · {{ p.progress }}% done</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -33,6 +33,8 @@ urlpatterns = [
     path('project/', include('project.urls', namespace='project')),
     path('users/', include('users.urls', namespace='users')),
     path('app/', include('app.urls')),
+    # Phone experience (phones are routed here by mobile.middleware)
+    path('m/', include('mobile.urls', namespace='mobile')),
     # Public legal pages (open to signed-out and billing-locked users)
     path('legal/privacy/', TemplateView.as_view(template_name='legal/privacy.html'), name='legal_privacy'),
     path('legal/terms/', TemplateView.as_view(template_name='legal/terms.html'), name='legal_terms'),

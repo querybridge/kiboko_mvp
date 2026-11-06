@@ -102,6 +102,17 @@
         </div>
       </div>
 
+      {% if kb_phone %}
+      <!-- On a phone, a desktop-only page (or the desktop site by choice) offers the way back -->
+      <a href="?ui=mobile" class="kb-mobile-pill" data-no-loader><i class="fa fa-mobile"></i> Mobile view</a>
+      <style>
+        .kb-mobile-pill { position: fixed; z-index: 9999; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom));
+          display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 22px;
+          background: #5C3C9F; color: #fff !important; font: 600 15px 'Inter', sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+        .kb-mobile-pill .fa { font-size: 20px; }
+      </style>
+      {% endif %}
+
       {% block javascripts %}
         <!-- jQuery -->
         <script src="/static/vendors/jquery/dist/jquery.min.js"></script>

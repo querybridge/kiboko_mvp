@@ -1,0 +1,13 @@
+{
+  "name": "Kiboko",
+  "short_name": "Kiboko",
+  "start_url": "/m/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0E081A",
+  "theme_color": "#0E081A",
+  "icons": [
+    { "src": "/static/images/kiboko-apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/static/images/kiboko-mark.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

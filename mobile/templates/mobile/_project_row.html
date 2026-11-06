@@ -1,0 +1,14 @@
+{% load mobile_tags %}
+<a class="m-row m-proj" href="{% url 'mobile:project' p.id %}{% if back_here %}?back={{ back_here|urlencode }}{% endif %}" data-name="{{ p.name|lower }}">
+  <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}" title="{{ p.aee_name }}"></span>
+  <span class="m-row-main">
+    <b>{{ p.name|default:"(untitled)" }}</b>
+    <small>
+      {% if p.status == 'WIP' %}{{ p.progress }}% done{% else %}{{ p.status_label }}{% endif %}
+      {% if p.target_completion %} · {% if p.late %}<em class="m-late">live {{ p.target_completion|date:"M j" }}</em>{% else %}live {{ p.target_completion|date:"M j" }}{% endif %}{% endif %}
+    </small>
+    {% if p.status == 'WIP' %}<span class="m-mini-bar"><span style="width:{{ p.progress }}%"></span></span>{% endif %}
+  </span>
+  <span class="m-row-side"><b>{{ p.value|money }}</b><small>/yr</small></span>
+  <i class="fa fa-angle-right m-chev"></i>
+</a>

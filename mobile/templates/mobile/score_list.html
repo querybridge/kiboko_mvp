@@ -1,0 +1,37 @@
+{% extends "mobile/base.html" %}
+{% load mobile_tags %}
+{% block content %}
+<h1 class="m-h1">Score</h1>
+<p class="m-note">Votes are anonymous. A project moves on once everyone in its business unit and the executives have scored it.</p>
+
+<h2 class="m-h2">Your turn <span class="m-h2-side">{{ pending|length }}</span></h2>
+{% if pending %}
+<div class="m-list">
+  {% for p in pending %}
+  <a class="m-row" href="{% url 'mobile:score_project' p.id %}">
+    <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span>
+    <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.progress.voted }} of {{ p.progress.total }} voted</small>
+      <span class="m-mini-bar"><span style="width:{{ p.progress.pct }}%"></span></span></span>
+    <span class="m-row-side"><b>{{ p.est_gross|money }}</b><small>/yr</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="m-empty"><i class="fa fa-check-circle m-empty-ic"></i>You're all caught up.</div>
+{% endif %}
+
+{% if voted %}
+<h2 class="m-h2">Scored, waiting on others <span class="m-h2-side">{{ voted|length }}</span></h2>
+<div class="m-list">
+  {% for p in voted %}
+  <a class="m-row" href="{% url 'mobile:score_project' p.id %}">
+    <span class="m-aee m-aee-{{ p.aee_key|default:'none' }}"></span>
+    <span class="m-row-main"><b>{{ p.name }}</b><small>{{ p.progress.voted }} of {{ p.progress.total }} voted · tap to change your score</small>
+      <span class="m-mini-bar"><span style="width:{{ p.progress.pct }}%"></span></span></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
