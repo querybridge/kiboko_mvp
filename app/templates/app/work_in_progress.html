@@ -19,6 +19,7 @@
     #gantt-panel .gantt-axis { position: relative; flex: 1; height: 22px; border-bottom: 1px solid var(--border-subtle, #e5e5e5); font-size: 11px; color: var(--text-muted, #888); }
     #gantt-panel .gantt-axis-tick { position: absolute; top: 0; bottom: -6px; border-left: 1px dashed rgba(255,255,255,0.08); }
     #gantt-panel .gantt-axis-label { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
+    #gantt-panel .gantt-axis-label.at-end { transform: translateX(-100%); }
     #gantt-panel .gantt-row { display: flex; align-items: center; height: 42px; border-bottom: 1px solid rgba(255,255,255,0.05); }
     #gantt-panel .gantt-row:last-child { border-bottom: none; }
     #gantt-panel .gantt-team-header { display: flex; align-items: center; height: 26px; background: var(--bg-surface-muted, #ede4f7); border-top: 1px solid var(--border-subtle, #d6c3ec); border-bottom: 1px solid var(--border-subtle, #d6c3ec); padding-left: 8px; font-weight: 700; font-size: 12px; color: var(--purple-300, #4a1f8a); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -43,6 +44,26 @@
     #gantt-panel .gantt-bar.no-end { background: repeating-linear-gradient(45deg, #c5f0e0, #c5f0e0 6px, #d8f3e8 6px, #d8f3e8 12px); }
     #gantt-panel .gantt-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #1a7a5c; border-radius: 3px; max-width: 100%; }
     #gantt-panel .gantt-bar-pct { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--text-primary, #333); white-space: nowrap; }
+    #gantt-panel .gantt-bar.pct-inside .gantt-bar-pct { left: auto; right: 6px; margin-left: 0; color: #1C1530; }
+    /* Runs past the period: square, arrowed end(s) so it doesn't read as finishing there. */
+    #gantt-panel .gantt-bar.runs-on { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    #gantt-panel .gantt-bar.runs-before { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+    #gantt-panel .gantt-bar .run-arrow { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11px; line-height: 1; color: #1C1530; pointer-events: none; }
+    #gantt-panel .gantt-bar.runs-on .run-arrow.end { right: 4px; }
+    #gantt-panel .gantt-bar.runs-before .run-arrow.start { left: 4px; z-index: 1; color: #fff; }
+    #gantt-panel .gantt-bar.runs-on.pct-inside .gantt-bar-pct { right: 18px; }
+    #gantt-panel .gantt-bar { cursor: default; }
+    /* Legend */
+    #gantt-panel .gantt-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin: 2px 0 14px;
+      font-size: 11.5px; color: var(--text-muted, #888); }
+    #gantt-panel .gantt-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+    #gantt-panel .gantt-legend .sw { display: inline-block; width: 26px; height: 10px; border-radius: 2px; background: #9DB8E0; position: relative; }
+    #gantt-panel .gantt-legend .sw.fill::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 55%; background: #2F6DB5; border-radius: 2px; }
+    #gantt-panel .gantt-legend .sw.striped { background: repeating-linear-gradient(45deg, #9DB8E0, #9DB8E0 4px, #C9D9EF 4px, #C9D9EF 8px); }
+    #gantt-panel .gantt-legend .sw.ondeck { opacity: .9; outline: 1px dashed var(--purple-300, #A98EE8); outline-offset: 1px; }
+    #gantt-panel .gantt-legend .sw.runs { border-radius: 2px 0 0 2px; }
+    #gantt-panel .gantt-legend .sw.runs::after { content: "\25B8"; position: absolute; right: 2px; top: 50%; transform: translateY(-50%); font-size: 9px; color: #1C1530; }
+    #gantt-panel .gantt-legend .today { display: inline-block; width: 2px; height: 12px; background: #d9534f; }
     #gantt-panel .gantt-today { position: absolute; top: 0; bottom: 0; width: 2px; background: #d9534f; pointer-events: none; }
     #gantt-panel .gantt-empty { padding: 20px; text-align: center; color: var(--text-muted, #999); }
     #gantt-panel .gantt-row.gantt-focus { background: rgba(169,142,232,0.12); border-radius: 4px; }
@@ -77,6 +98,14 @@
             <div class="clearfix"></div>
           </div>
           <div class="x_content">
+            <div class="gantt-legend" aria-label="Legend">
+              <span class="lg"><span class="sw fill"></span>Progress (bar colour = objective)</span>
+              <span class="lg"><span class="sw striped"></span>No end date yet</span>
+              <span class="lg"><span class="sw ondeck"></span>On Deck, not started</span>
+              <span class="lg"><span class="sw runs"></span>Continues past this period</span>
+              <span class="lg"><i class="fa fa-link" style="color:#E0A65A;"></i>Starts after its dependencies</span>
+              <span class="lg"><span class="today"></span>Today</span>
+            </div>
             <div class="gantt-axis-row">
               <div class="gantt-axis-spacer"></div>
               <div class="gantt-axis" id="gantt-axis"></div>
@@ -109,6 +138,9 @@
     function fmtCurrency(v) { return '$' + Number(v).toLocaleString(undefined, {maximumFractionDigits: 0}); }
     var MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     function fmtDate(d) { return MONTH_ABBR[d.getMonth()] + ' ' + d.getDate(); }
+    function fmtDay(d) { return d ? MONTH_ABBR[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() : '—'; }
+    // Names are user-entered: escape before building tooltip HTML.
+    function esc(v) { return String(v).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
     function buildAxis(start, end, period) {
       $axis.empty();
@@ -117,7 +149,9 @@
       if (period === 'mtd' || period === 'nmo') {
         var d = new Date(start);
         while (d <= end) { ticks.push(new Date(d)); d.setDate(d.getDate() + 7); }
-        if (ticks[ticks.length-1].getTime() !== end.getTime()) ticks.push(new Date(end));
+        // End on the last day; drop a weekly tick that would sit on top of it.
+        if (end - ticks[ticks.length-1] < 4 * 864e5) ticks.pop();
+        ticks.push(new Date(end));
       } else if (period === 'qtd' || period === 'nq') {
         var d = new Date(start);
         while (d <= end) { ticks.push(new Date(d)); d.setMonth(d.getMonth() + 1); }
@@ -129,7 +163,8 @@
         if (pct < 0 || pct > 100) return;
         var label = (period === 'ytd' || period === 'ny') ? t.toLocaleString('en-US', { month: 'short' }) : fmtDate(t);
         $axis.append('<div class="gantt-axis-tick" style="left:' + pct + '%"></div>');
-        $axis.append('<div class="gantt-axis-label" style="left:' + pct + '%">' + label + '</div>');
+        // The last date sits at the right edge: right-align it so it doesn't hang past the panel.
+        $axis.append('<div class="gantt-axis-label' + (pct >= 99 ? ' at-end' : '') + '" style="left:' + pct + '%">' + label + '</div>');
       });
     }
 
@@ -222,6 +257,11 @@
           var pct = Math.max(0, Math.min(100, Number(proj.progress) || 0));
           $('<div class="gantt-bar-fill"></div>').css({width: pct + '%', background: fill}).appendTo($bar);
           $('<span class="gantt-bar-pct"></span>').text(pct + '%').appendTo($bar);
+          // A bar that runs to the right edge has no room for its label outside.
+          if (leftPct + widthPct > 92) $bar.addClass('pct-inside');
+          // Cut off by the period: mark the open end(s) so it doesn't look finished.
+          if (entry.effectiveEnd > pEnd) $bar.addClass('runs-on').append('<span class="run-arrow end" title="Continues past this period">&#9656;</span>');
+          if (entry.start < pStart) $bar.addClass('runs-before').append('<span class="run-arrow start" title="Started before this period">&#9666;</span>');
           $track.append($bar);
 
           if (todayDate >= pStart && todayDate <= pEnd) {
@@ -229,22 +269,28 @@
             $track.append('<div class="gantt-today" style="left:' + todayPct + '%"></div>');
           }
 
-          $label.on('mouseenter', function(e) {
+          function showTip() {
             var pct2 = Math.max(0, Math.min(100, Number(proj.progress) || 0));
-            var html = '<div class="tt-name">' + proj.name + '</div>'
+            var dates = fmtDay(entry.start) + ' – ' + (entry.end ? fmtDay(entry.effectiveEnd) : 'no end date');
+            var html = '<div class="tt-name">' + esc(proj.name) + (proj.pipeline ? ' · On Deck' : '') + '</div>'
+              + '<div class="tt-row"><span class="tt-key">Dates</span><span>' + dates + '</span></div>'
               + '<div class="tt-row"><span class="tt-key">Action progress</span><span>' + pct2 + '%</span></div>'
-              + '<div class="tt-row"><span class="tt-key">Team</span><span>' + (proj.team || '—') + '</span></div>'
-              + (proj.depends_on && proj.depends_on.length ? '<div class="tt-row"><span class="tt-key">Depends on</span><span>' + proj.depends_on.join(', ') + '</span></div>' : '')
+              + '<div class="tt-row"><span class="tt-key">Team</span><span>' + esc(proj.team || '—') + '</span></div>'
+              + (proj.depends_on && proj.depends_on.length ? '<div class="tt-row"><span class="tt-key">Depends on</span><span>' + esc(proj.depends_on.join(', ')) + '</span></div>' : '')
               + '<div style="border-top:1px solid rgba(255,255,255,0.2); margin:5px 0 4px; padding-top:4px; color:#ccc;">Project</div>'
-              + '<div class="tt-row"><span class="tt-key">Name</span><span>' + (proj.project_name || proj.quarterly_rock || '—') + '</span></div>'
+              + '<div class="tt-row"><span class="tt-key">Name</span><span>' + esc(proj.project_name || proj.quarterly_rock || '—') + '</span></div>'
               + '<div class="tt-row"><span class="tt-key">Value</span><span>' + fmtCurrency(proj.project_value != null ? proj.project_value : proj.value) + '</span></div>'
               + '<div class="tt-row"><span class="tt-key">Score</span><span>' + (proj.project_score != null ? Math.round(proj.project_score * 10) : '—') + ' / 100</span></div>'
-              + '<div class="tt-row"><span class="tt-key">Status</span><span>' + (proj.project_status || '—') + '</span></div>'
-              + '<div class="tt-row"><span class="tt-key">Objective</span><span>' + (proj.annual_rock || '—') + '</span></div>';
+              + '<div class="tt-row"><span class="tt-key">Status</span><span>' + esc(proj.project_status || '—') + '</span></div>'
+              + '<div class="tt-row"><span class="tt-key">Objective</span><span>' + esc(proj.annual_rock || '—') + '</span></div>';
             $tooltip.html(html).css({display: 'block'});
+          }
+          // Same details whether you hover the label or the bar itself.
+          [$label, $bar].forEach(function ($el) {
+            $el.on('mouseenter', showTip);
+            $el.on('mousemove', function(e) { $tooltip.css({left: (e.clientX + 14) + 'px', top: (e.clientY + 14) + 'px'}); });
+            $el.on('mouseleave', function() { $tooltip.css({display: 'none'}); });
           });
-          $label.on('mousemove', function(e) { $tooltip.css({left: (e.clientX + 14) + 'px', top: (e.clientY + 14) + 'px'}); });
-          $label.on('mouseleave', function() { $tooltip.css({display: 'none'}); });
 
           $row.append($label).append($track);
           $rows.append($row);

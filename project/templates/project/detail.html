@@ -272,6 +272,8 @@
 
         {% if r.verdict == 'meaningful' %}
         <div class="alert alert-success rp-lead"><i class="fa fa-check-circle"></i> {{ r.plain_summary }}</div>
+        {% elif r.verdict == 'short' %}
+        <div class="alert alert-warning rp-lead"><i class="fa fa-exclamation-triangle"></i> {{ r.plain_summary }}</div>
         {% elif r.verdict == 'not_mainly' %}
         <div class="alert alert-warning rp-lead"><i class="fa fa-exclamation-triangle"></i> {{ r.plain_summary }}</div>
         {% elif r.verdict == 'offset' %}

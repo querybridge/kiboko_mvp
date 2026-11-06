@@ -208,7 +208,7 @@ def project(request):
             impact.recompute_scores(company=p._company())
             from django.utils.html import format_html
             # "Save progress" saves the draft and returns to it so the user can
-            # finish the Impact Estimator; "Submit for approval" resets for a new one.
+            # finish the Impact Estimator; "Submit for approval" opens the new project.
             if request.POST.get('action') == 'save_progress':
                 messages.success(request, format_html(
                     'Progress saved for “{}”. Now complete the Impact Estimator, then submit for approval.',
@@ -216,11 +216,9 @@ def project(request):
                 return redirect('project:project_edit', project_id=p.id)
             messages.success(request, format_html(
                 'Project “{}” submitted. Next: a business-unit lead approves it, a '
-                'developer sizes effort &amp; capability, then the team scores it. '
-                '<a href="{}">View project</a>',
-                p.name, reverse('project:project_detail', kwargs={'project_id': p.id})))
-            # Back to a fresh Add form so the fields reset for the next project.
-            return redirect('project:project')
+                'developer sizes effort &amp; capability, then the team scores it.', p.name))
+            # Land on the new project, so a second click can't submit it twice.
+            return redirect('project:project_detail', project_id=p.id)
         else:
             # Surface why it didn't submit (a blank required field, an AEE mismatch)
             # as an error toast, so the failure is never silent.

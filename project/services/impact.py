@@ -167,11 +167,17 @@ def lmdi_decompose(before, after):
     return {'delta': delta, 'contrib': contrib, 'residual': delta - sum(contrib.values())}
 
 
+# A project that drove the gain but moved its lever by less than this share of
+# the planned move is judged "fell short", not "it worked".
+ATTAINMENT_FLOOR = 0.5
+
+
 def realized_performance(before, after, lever, planned_pct=None):
     """Post-launch back-half: did performance move, and was it this project's lever?
     `before`/`after` are fundamentals for the pre-launch baseline vs the post-ramp
     measurement window. Returns the sales delta, the lever's LMDI contribution +
-    share, its actual % move, estimate-vs-actual, and a verdict."""
+    share, its actual % move, estimate-vs-actual (attainment = actual / planned
+    lever move), and a verdict."""
     dec = lmdi_decompose(before, after)
     lb = levers_from_metrics(_metrics_from_fund(before))
     la = levers_from_metrics(_metrics_from_fund(after))
@@ -181,8 +187,11 @@ def realized_performance(before, after, lever, planned_pct=None):
     share = lever_contrib / dec['delta'] if abs(dec['delta']) > 1e-9 else 0.0
     actual_lever_pct = (la[lever] / lb[lever] - 1) if lb.get(lever) else 0.0
     predicted = base_sales * planned_pct if planned_pct is not None else None
+    # How much of the promised lever move actually happened (1.0 = exactly as planned).
+    attainment = (actual_lever_pct / planned_pct) if planned_pct else None
     if dec['delta'] > 0 and share > 0.40 and actual_lever_pct > 0:
-        verdict = 'meaningful'
+        # It drove the gain; but a fraction of what was promised isn't a success.
+        verdict = 'short' if attainment is not None and attainment < ATTAINMENT_FLOOR else 'meaningful'
     elif dec['delta'] > 0 and share < 0.15:
         verdict = 'not_mainly'
     elif dec['delta'] <= 0 and actual_lever_pct > 0:
@@ -192,7 +201,7 @@ def realized_performance(before, after, lever, planned_pct=None):
     return {
         'delta': dec['delta'], 'perf_pct': perf_pct, 'lever_contrib': lever_contrib,
         'share': share, 'actual_lever_pct': actual_lever_pct, 'planned_pct': planned_pct,
-        'predicted': predicted, 'residual': dec['residual'], 'verdict': verdict,
+        'predicted': predicted, 'residual': dec['residual'], 'verdict': verdict, 'attainment': attainment,
         'contrib': dec['contrib'], 'base_sales': base_sales,
     }
 

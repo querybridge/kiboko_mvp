@@ -1,7 +1,23 @@
 {# Shared analytics JS. Include in the javascripts block after defining ANALYTICS_CHARTS (line/area) and optionally ANALYTICS_SCATTER (changeplots). #}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script src="/static/vendors/chartjs-2.9.4/Chart.min.js"></script>
 <script>
 (function() {
+  // ---- Keep the scroll position when the period changes -------------------
+  // Changing the period reloads the page; come back to the same spot (e.g. the
+  // Changeplot) instead of the top. Restored once, after charts have drawn.
+  var SCROLL_KEY = 'kb_scroll:' + window.location.pathname;
+  // The template's html/body styles make <body> the scrolling box, not the window; cover both.
+  function scrollPos() { return Math.max(window.scrollY || 0, document.body.scrollTop || 0); }
+  function rememberScroll() { try { sessionStorage.setItem(SCROLL_KEY, String(scrollPos())); } catch (e) {} }
+  window.addEventListener('load', function() {
+    var y = null;
+    try { y = sessionStorage.getItem(SCROLL_KEY); sessionStorage.removeItem(SCROLL_KEY); } catch (e) {}
+    if (y === null) return;
+    setTimeout(function() { y = parseInt(y, 10) || 0; document.body.scrollTop = y; window.scrollTo(0, y); }, 50);
+  });
+  var filterForm = document.getElementById('analytics-filter');
+  if (filterForm) filterForm.addEventListener('submit', rememberScroll);
+
   // ---- Filter auto-submit -------------------------------------------------
   var period = document.getElementById('af-period');
   var compare = document.getElementById('af-compare');
@@ -22,6 +38,7 @@
       startEl.value = start.format('YYYY-MM-DD');
       endEl.value = end.format('YYYY-MM-DD');
       if (labelEl) labelEl.textContent = start.format('MMM D, YYYY') + ' – ' + end.format('MMM D, YYYY');
+      rememberScroll();
       document.getElementById('analytics-filter').submit();   // apply the range
     });
   }
@@ -31,10 +48,12 @@
       if (afCustom) afCustom.style.display = '';   // reveal the calendar chip...
       if ($dr && $dr.data('daterangepicker')) $dr.data('daterangepicker').show();  // ...and open it
     } else {
+      rememberScroll();
       window.location.search = '?period=' + encodeURIComponent(period.value);
     }
   });
   if (compare) compare.addEventListener('change', function() {
+    rememberScroll();
     if (period && period.value === 'CUSTOM') {
       document.getElementById('analytics-filter').submit();   // keep the custom dates
     } else {

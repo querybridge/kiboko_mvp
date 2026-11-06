@@ -26,9 +26,7 @@
       <title>Kiboko PPM | {% block title %}{% endblock %}</title>
 
       <!-- Google Fonts: Inter + Space Grotesk -->
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+      <link href="/static/fonts/fonts.css?v=1" rel="stylesheet">
 
       {% block stylesheets %}
         <!-- Bootstrap -->
@@ -48,9 +46,9 @@
         <!-- Load Bootstrap4 Requirements -->
         {% endblock stylesheets %}
       <!-- Custom Theme Style -->
-      <link href="/static/build/css/custom.css" rel="stylesheet">
+      <link href="/static/build/css/custom.css?v=3" rel="stylesheet">
       <!-- Afro-Futuristic Design System (loaded last to override the base theme) -->
-      <link href="/static/css/design-system.css?v=22" rel="stylesheet">
+      <link href="/static/css/design-system.css?v=26" rel="stylesheet">
     {% endblock head %}
   </head>
 
@@ -140,7 +138,7 @@
         <script src="/static/vendors/starrr/dist/starrr.js"></script>
       {% endblock %}
       <!-- Custom Theme Scripts -->
-      <script src="/static/build/js/custom.js"></script>
+      <script src="/static/build/js/custom.js?v=2"></script>
       <!-- Global long-load overlay controller (vanilla; runs on every page) -->
       <script>
         (function () {
@@ -172,14 +170,20 @@
             if (href.charAt(0) === '#' || href.lastIndexOf('javascript:', 0) === 0) return;
             if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;  // new-tab / middle-click
             if (a.origin && a.origin !== window.location.origin) return;  // external
-            show();
+            showUnlessCancelled(e);
           }, true);
           // Form submits (filters, saves)
           document.addEventListener('submit', function (e) {
             var f = e.target;
             if (!f || f.hasAttribute('data-no-loader')) return;
-            show();
+            showUnlessCancelled(e);
           }, true);
+          // Listening in the capture phase runs before the page's own handlers, so
+          // wait for them: a cancelled click or submit (a failed form check, a
+          // "No" to a confirm prompt) never leaves the page, so no overlay.
+          function showUnlessCancelled(e) {
+            setTimeout(function () { if (!e.defaultPrevented) show(); }, 0);
+          }
           // Hide when the page is shown (incl. back/forward bfcache restore)
           window.addEventListener('pageshow', hide);
           window.addEventListener('pagehide', hide);

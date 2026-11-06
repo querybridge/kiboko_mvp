@@ -1319,9 +1319,13 @@ def realized_perf_for_project(request, project, measure_days=30):
         summary += f", vs a projected gain of ${window_proj:,}"
     summary += '. ' + {
         'meaningful': "This project drove the gain — it worked.",
+        'short': "This project drove the gain, but fell well short of its plan.",
         'not_mainly': "The gain came mostly from other levers, not this project.",
         'offset': "The targeted lever improved, but other levers offset it, so overall sales didn't grow.",
     }.get(rp['verdict'], "The result is mixed — see the breakdown below.")
+    if rp.get('attainment') is not None and planned:
+        summary += (f" Its lever moved {rp['actual_lever_pct'] * 100:+.1f}% against a planned "
+                    f"{planned * 100:+.1f}% ({max(rp['attainment'], 0) * 100:.0f}% of plan).")
     rp['plain_summary'] = summary
 
     # Projection vs actual over the measurement window: gross (undiscounted),

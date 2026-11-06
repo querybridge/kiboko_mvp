@@ -175,10 +175,10 @@ class ProjectForm(ModelForm):
             'expense_type': 'Expense is',
         }
         help_texts = {
-            'objective': 'The annual objective this supports (its AEE element is inherited).',
+            'objective': 'The annual objective this supports. It sets the project’s group: Attract, Engage or Expand.',
             'vertical': 'The business unit / GA4 property this rolls up to.',
             'target_completion': 'When it goes live — drives the forecast + realized timing.',
-            'lever': 'Which of the six sales levers this project improves.',
+            'lever': 'The sales lever this project moves. Only levers that fit the chosen objective are listed.',
             'target_from': 'Auto-filled from GA4 when available; enter manually otherwise.',
             's0_annual': 'The business unit’s annual sales run-rate (auto from GA4 when available).',
             'why': 'Format: As a [user persona], I want [goal/action], so that [benefit/value].',

@@ -654,7 +654,7 @@
 {% block javascripts %}
   {{ block.super}}
   <!-- Chart.js (CDN - version 2.9.4) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+  <script src="/static/vendors/chartjs-2.9.4/Chart.min.js"></script>
   <script type="text/javascript">
   (function() {
     var dataMTD = {{ chart_data_mtd|safe }};
@@ -674,6 +674,17 @@
     };
 
     var ctx = document.getElementById('revenueChart').getContext('2d');
+    // Actual and forecast share one stacked bar per period. A period that's
+    // under way has actuals so far plus a forecast for the whole period, so the
+    // forecast part of the bar is only what's left after the actuals; otherwise
+    // the bar would count those days twice.
+    function forecastRest(d) {
+      return (d.forecast_base || []).map(function (f, i) {
+        var a = Number((d.actual || [])[i]) || 0;
+        return (f && a > 0) ? Math.max(f - a, 0) : f;
+      });
+    }
+
     var revenueChart = new Chart(ctx, {
       type: 'bar',
       data: {
@@ -698,12 +709,13 @@
             hoverBackgroundColor: '#145c45',
             borderColor: '#1a7a5c',
             borderWidth: 1,
+            stack: 'forecast',
             order: 2
           },
           {
             label: 'Trending Forecast',
             type: 'bar',
-            data: dataMTD.forecast_base,
+            data: forecastRest(dataMTD),
             backgroundColor: '#7ed3b2',
             hoverBackgroundColor: '#5ec49a',
             borderColor: '#7ed3b2',
@@ -774,6 +786,7 @@
 
               var forecastVal = 0;
               var projectVal = 0;
+              var actualVal = 0;
 
               tooltipModel.dataPoints.forEach(function(dp, i) {
                 var dataset = revenueChart.data.datasets[dp.datasetIndex];
@@ -783,15 +796,18 @@
                 if (val !== null && val !== undefined && val !== 0 && !isNaN(val)) {
                   var color = dataset.borderColor || dataset.backgroundColor;
                   var formattedVal = '$' + Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                  html += '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';margin-right:6px;"></span>' + label + ': ' + formattedVal + '<br>';
+                  var shown = label;
+                  if (label === 'Trending Forecast' && actualVal > 0) shown = 'Forecast, rest of period';
+                  html += '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';margin-right:6px;"></span>' + shown + ': ' + formattedVal + '<br>';
 
+                  if (label === 'Actual') actualVal = val;
                   if (label === 'Trending Forecast') forecastVal = val;
                   if (label === 'Project Value Add') projectVal = val;
                 }
               });
 
               if (forecastVal > 0 || projectVal > 0) {
-                var total = forecastVal + projectVal;
+                var total = actualVal + forecastVal + projectVal;
                 html += '<hr style="margin:4px 0;border-color:rgba(255,255,255,0.3);">';
                 html += '<strong>Projected Total: $' + Number(total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong>';
               }
@@ -848,7 +864,7 @@
       revenueChart.data.labels = d.labels;
       revenueChart.data.datasets[0].data = d.budget;
       revenueChart.data.datasets[1].data = d.actual;
-      revenueChart.data.datasets[2].data = d.forecast_base;
+      revenueChart.data.datasets[2].data = forecastRest(d);
       revenueChart.data.datasets[3].data = d.project_value_add;
       revenueChart.update();
       updateSummary(d);
@@ -990,6 +1006,4 @@
   <script src="/static/vendors/morris.js/morris.min.js"></script>
     <!-- jQuery Sparklines -->
   <script src="/static/vendors/jquery-sparkline/dist/jquery.sparkline.min.js"></script>
-  <script src="../build/js/custom.min.js" type="4c182b32632dbf75a9b27ff5-text/javascript"></script>
-  <script src="https://ajax.cloudflare.com/cdn-cgi/scripts/a2bd7673/cloudflare-static/rocket-loader.min.js" data-cf-settings="4c182b32632dbf75a9b27ff5-|49" defer=""></script>
 {% endblock javascripts %}

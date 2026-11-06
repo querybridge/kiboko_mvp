@@ -72,31 +72,33 @@ function init_sidebar() {
         $RIGHT_COL.css('min-height', contentHeight);
     };
 
+    // Kiboko: sections open and close independently and are remembered across
+    // pages (sessionStorage), and a plain link (Help, Insights) just navigates.
+    // The template's accordion collapsed every other section on any click, so
+    // the menu shifted under the pointer and the next click hit the wrong item.
+    var OPEN_KEY = 'kb_sidebar_open';
+    function sectionKey($li) { return $.trim($li.children('a').first().text()); }
+    function saveOpen() {
+        var open = $SIDEBAR_MENU.find('ul.side-menu > li').filter(function() {
+            return $(this).children('ul.child_menu').is(':visible');
+        }).map(function() { return sectionKey($(this)); }).get();
+        try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(open)); } catch (e) {}
+    }
+
     $SIDEBAR_MENU.find('a').on('click', function(ev) {
-        console.log('clicked - sidebar_menu');
         var $li = $(this).parent();
-
-        if ($li.is('.active')) {
+        var $sub = $li.children('ul.child_menu');
+        if (!$sub.length) return;                      // a page link: let it navigate
+        if ($BODY.is('.nav-sm')) {                     // collapsed sidebar keeps one flyout at a time
+            $SIDEBAR_MENU.find('li').not($li).removeClass('active active-sm');
+            $SIDEBAR_MENU.find('li ul').not($sub).slideUp();
+        }
+        if ($sub.is(':visible')) {
             $li.removeClass('active active-sm');
-            $('ul:first', $li).slideUp(function() {
-                setContentHeight();
-            });
+            $sub.slideUp(function() { setContentHeight(); saveOpen(); });
         } else {
-            // prevent closing menu if we are on child menu
-            if (!$li.parent().is('.child_menu')) {
-                $SIDEBAR_MENU.find('li').removeClass('active active-sm');
-                $SIDEBAR_MENU.find('li ul').slideUp();
-            } else {
-                if ($BODY.is(".nav-sm")) {
-                    $SIDEBAR_MENU.find("li").removeClass("active active-sm");
-                    $SIDEBAR_MENU.find("li ul").slideUp();
-                }
-            }
             $li.addClass('active');
-
-            $('ul:first', $li).slideDown(function() {
-                setContentHeight();
-            });
+            $sub.slideDown(function() { setContentHeight(); saveOpen(); });
         }
     });
 
@@ -125,6 +127,18 @@ function init_sidebar() {
     }).parent('li').addClass('current-page').parents('ul').slideDown(function() {
         setContentHeight();
     }).parent().addClass('active');
+
+    // Reopen the sections that were open on the last page (no animation).
+    if ($BODY.is('.nav-md')) {
+        var wasOpen = [];
+        try { wasOpen = JSON.parse(sessionStorage.getItem(OPEN_KEY) || '[]'); } catch (e) {}
+        $SIDEBAR_MENU.find('ul.side-menu > li').each(function() {
+            var $li = $(this);
+            if (wasOpen.indexOf(sectionKey($li)) !== -1) {
+                $li.addClass('active').children('ul.child_menu').show();
+            }
+        });
+    }
 
     // recompute content when resizing
     $(window).smartresize(function() {
@@ -967,6 +981,10 @@ function init_autosize() {
 function init_parsley() {
 
     if (typeof(parsley) === 'undefined') {
+        return;
+    }
+    // Template demo code: only the original demo forms use it. Without them it threw on every page.
+    if (!document.getElementById('demo-form') && !document.getElementById('demo-form2')) {
         return;
     }
     console.log('init_parsley');

@@ -1,8 +1,9 @@
 <div class="nav_menu">
   <nav>
+    {% if user.is_authenticated %}<button type="button" id="mobile_nav_toggle" class="mobile-nav-toggle" aria-label="Open menu" aria-expanded="false"><i class="fa fa-bars"></i></button>{% endif %}
     <ul class="nav navbar-nav navbar-right">
 	    {% if user.is_authenticated %}
-      <li class="">
+      <li class="nav-user">
         <a href="javascript:;" class="user-profile dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
 			{{ user.username }}
           <span class=" fa fa-angle-down"></span>
@@ -19,18 +20,18 @@
       </li>
 
       {% if user.is_authenticated %}
-      <li>
+      <li class="nav-feedback">
         <a href="#" data-toggle="modal" data-target="#feedbackModal" title="Send feedback" style="padding:15px 13px 0;">
           <i class="fa fa-comment-o" style="font-size:18px;"></i>
         </a>
       </li>
       {% endif %}
       {% if tenancy_current_company %}
-      {# reversed source order (float) -> reads Company -> Business Unit -> Website -> Apply; cascade is client-side, only Apply queries #}
-      <li style="padding: 13px 10px 0 0;">
+      {# reversed source order (float) -> reads Company -> Business Unit -> Website -> Apply; on phones CSS order restores it. Cascade is client-side, only Apply queries #}
+      <li class="scope-apply" style="padding: 13px 10px 0 0;">
         <button id="scopeApply" class="btn btn-primary btn-sm" style="margin:0;" disabled>Apply</button>
       </li>
-      <li style="padding: 13px 4px 0 0;" title="Website (data stream)">
+      <li class="scope-website" style="padding: 13px 4px 0 0;" title="Website (data stream)">
         <select id="scopeWebsite" class="form-control input-sm" style="display:inline-block; width:auto; min-width:140px;" {% if tenancy_vertical_sel == 'all' %}disabled{% endif %}>
           <option value="all" {% if tenancy_website_sel == 'all' %}selected{% endif %}>All Websites</option>
           {% for w in tenancy_websites %}
@@ -38,7 +39,7 @@
           {% endfor %}
         </select>
       </li>
-      <li style="padding: 13px 4px 0 0;" title="Business Unit (GA4 property)">
+      <li class="scope-vertical" style="padding: 13px 4px 0 0;" title="Business Unit (GA4 property)">
         <select id="scopeVertical" class="form-control input-sm" style="display:inline-block; width:auto; min-width:140px;">
           <option value="all" {% if tenancy_vertical_sel == 'all' %}selected{% endif %}>All Business Units</option>
           {% for v in tenancy_verticals %}
@@ -46,7 +47,7 @@
           {% endfor %}
         </select>
       </li>
-      <li style="padding: 13px 4px 0 0;" title="{{ tenancy_client_word|default:'Company' }}">
+      <li class="scope-company" style="padding: 13px 4px 0 0;" title="{{ tenancy_client_word|default:'Company' }}">
         <select id="scopeCompany" class="form-control input-sm" style="display:inline-block; width:auto; min-width:120px;">
           {% for c in tenancy_companies %}
           <option value="{{ c.id }}" {% if c.id == tenancy_current_company.id %}selected{% endif %}>{{ c.name }}</option>
@@ -58,6 +59,23 @@
   </nav>
 </div>
 {% if tenancy_current_company %}{{ tenancy_tree|json_script:"tenancy-tree" }}{% endif %}
+<script>
+// Phones and tablets: the sidebar is hidden, so this button slides it in as a drawer.
+(function () {
+  var btn = document.getElementById('mobile_nav_toggle');
+  if (!btn) return;
+  function setOpen(open) {
+    document.body.classList.toggle('mobile-nav-open', open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(!document.body.classList.contains('mobile-nav-open')); });
+  // A tap anywhere outside the open drawer closes it.
+  document.addEventListener('click', function (e) {
+    if (document.body.classList.contains('mobile-nav-open') && !e.target.closest('.left_col')) setOpen(false);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+})();
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   var selCompany = document.getElementById('scopeCompany');

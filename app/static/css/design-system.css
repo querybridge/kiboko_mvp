@@ -291,38 +291,51 @@ body:not(.nav-sm) .nav.side-menu > li > a > .fa-chevron-up {
   letter-spacing: -0.4px;
 }
 
-/* ----- Tables ----- */
+/* ----- Tables -----
+   Every table uses the Backlog look (project/view.html): open rows with a
+   divider underneath, small uppercase muted headers on a strong rule, no cell
+   grid, no zebra stripes, a soft hover, bold first-column links. Template
+   classes like .table-bordered / .table-striped are neutralised here so older
+   pages match without editing each one. */
 table.table,
 .table-responsive table {
   background: transparent !important;
   color: var(--text-primary);
-  border-color: var(--border-subtle);
+  border: 0 !important;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 .table thead > tr > th,
 table thead th {
-  background: var(--bg-surface-muted) !important;
+  background: transparent !important;
   color: var(--text-muted) !important;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-bottom: 1px solid var(--border-subtle) !important;
-  border-top: 0 !important;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  vertical-align: bottom !important;
 }
 .table tbody > tr > td,
 table tbody td {
-  border-top: 1px solid var(--border-subtle) !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--card-edge) !important;
   color: var(--text-secondary);
-  vertical-align: middle;
-  padding: 10px 12px;
+  vertical-align: middle !important;
+  padding: 11px 12px !important;
 }
-.table-striped > tbody > tr:nth-of-type(odd) {
-  background: rgba(155, 127, 224, 0.04) !important;
+.table tfoot > tr > td,
+.table tfoot > tr > th {
+  border: 0 !important;
+  border-top: 1px solid var(--border-strong) !important;
 }
-.table-hover > tbody > tr:hover {
-  background: var(--purple-900) !important;
-  color: var(--text-primary);
-}
+.table-striped > tbody > tr:nth-of-type(odd) { background: transparent !important; }
+.table > tbody > tr:hover > td,
+.table-hover > tbody > tr:hover { background: var(--bg-surface-muted) !important; color: var(--text-primary); }
+.table tbody td:first-child > a:first-child { font-weight: 700; color: var(--text-primary); }
+.table tbody td:first-child > a:first-child:hover { color: var(--accent-secondary); }
 
 /* ----- Buttons (10% accent — lavender highlight) ----- */
 .btn { border-radius: var(--radius-app) !important; font-weight: 600; transition: all 150ms ease; }
@@ -422,6 +435,10 @@ label { color: var(--text-secondary); font-weight: 500; }
   margin-bottom: 18px;
 }
 .page-title .title_left h3 { color: var(--text-primary) !important; }
+/* A title with nothing on its right gets the full width (the template's 45%
+   wrapped headings like "Insights Wins & Losses"), and the bar grows to fit. */
+.page-title { height: auto !important; min-height: 65px; }
+.page-title .title_left:not(:has(+ .title_right)) { width: 100%; }
 
 /* ----- Kanban overrides ----- */
 .kanban-lane {
@@ -598,9 +615,7 @@ html.theme-light .top_nav .dropdown-menu > li > a:hover {
 }
 
 /* Tables */
-html.theme-light .table-striped > tbody > tr:nth-of-type(odd) {
-  background: rgba(92, 60, 159, 0.04) !important;
-}
+html.theme-light .table > tbody > tr:hover > td,
 html.theme-light .table-hover > tbody > tr:hover {
   background: var(--purple-100) !important;
   color: var(--text-primary);
@@ -716,3 +731,39 @@ body.nav-sm .sidebar-legal { display: none; }
 .modal .close:hover, .modal .close:focus { color: var(--text-primary); opacity: 1; }
 html.theme-light .modal-backdrop { background-color: #1C1530; }
 html.theme-light .modal-backdrop.in { opacity: .45; }
+
+/* ----- Phones and tablets (sidebar hidden below 992px) -----
+   A menu button in the top bar opens the sidebar as a drawer, and on phones the
+   scope selectors stack in reading order: Company, Business Unit, Website, Apply. */
+.mobile-nav-toggle { display: none; }
+@media (max-width: 991px) {
+  .mobile-nav-toggle {
+    display: inline-flex; align-items: center; justify-content: center; float: left;
+    width: 40px; height: 36px; margin: 11px 12px; padding: 0;
+    background: transparent; color: var(--text-primary);
+    border: 1px solid var(--border-strong); border-radius: 8px; font-size: 16px; cursor: pointer;
+  }
+  .mobile-nav-toggle:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+  body.mobile-nav-open .left_col {
+    display: block !important; position: fixed !important; top: 0; bottom: 0; left: 0;
+    width: 260px !important; max-width: 85vw; z-index: 1050; overflow-y: auto;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .55);  /* dims the page behind the drawer */
+  }
+  #menu_toggle { display: none !important; }  /* collapse/expand means nothing in the drawer */
+}
+@media (max-width: 767px) {
+  .top_nav .nav_menu nav { display: flex; flex-wrap: wrap; align-items: center; padding: 0 12px 10px; }
+  .top_nav .nav_menu nav > .navbar-right { display: contents; }
+  .top_nav .mobile-nav-toggle { order: 0; margin: 10px 0; }
+  .top_nav .nav-feedback { order: 1; margin-left: auto; }
+  .top_nav .nav-user { order: 2; }
+  .top_nav .scope-company { order: 10; }
+  .top_nav .scope-vertical { order: 11; }
+  .top_nav .scope-website { order: 12; }
+  .top_nav .scope-apply { order: 13; }
+  .top_nav .scope-company, .top_nav .scope-vertical, .top_nav .scope-website, .top_nav .scope-apply {
+    flex: 0 0 100%; float: none !important; padding: 6px 0 0 !important;
+  }
+  .top_nav .scope-company select, .top_nav .scope-vertical select, .top_nav .scope-website select,
+  .top_nav .scope-apply .btn { width: 100% !important; }
+}

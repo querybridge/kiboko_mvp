@@ -15,7 +15,7 @@
     }
     .kanban-lane {
       flex: 1 1 0;
-      min-width: 200px;
+      min-width: 170px;
       max-width: 280px;
       background: #f7f7f7;
       border-radius: 4px;
@@ -136,7 +136,7 @@
     }
     .kpi-tile {
       flex: 1 1 0;
-      min-width: 200px;
+      min-width: 170px;
       max-width: 280px;
       background: #fff;
       border: 1px solid #e0e0e0;
@@ -309,7 +309,7 @@
 {% block javascripts %}
   {{ block.super }}
   <!-- SortableJS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="/static/vendors/sortablejs-1.15.0/Sortable.min.js"></script>
   <script>
   (function() {
     var csrfToken = '{{ csrf_token }}';

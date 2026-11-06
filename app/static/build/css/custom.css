@@ -4,25 +4,31 @@ html , body{
 
 }
 
-/* Prevent content overflow in main content area */
+/* Prevent content overflow in main content area.
+   A box can't scroll on one axis only: overflow-x:auto/hidden silently makes
+   overflow-y scroll too, which put stray scrollbars on panels, rows and the
+   whole content column. So: the column and rows clip sideways overflow without
+   becoming scroll boxes, and panels scroll sideways only (wide tables on
+   phones) with vertical overflow off. */
 html, body {
     overflow-x: hidden !important;
 }
 
 .container.body {
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
     max-width: 100vw !important;
 }
 
 .main_container {
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
     max-width: 100% !important;
 }
 
 .right_col,
 .right_col[role="main"] {
-    overflow-x: auto !important;
+    overflow-x: clip !important;
     overflow-y: visible !important;
+    display: flow-root;
     max-width: calc(100vw - 250px) !important;
     box-sizing: border-box !important;
 }
@@ -41,11 +47,13 @@ html, body {
 
 .right_col .x_panel {
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     max-width: 100% !important;
 }
 
 .right_col .x_content {
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     max-width: 100% !important;
 }
 
@@ -57,15 +65,16 @@ html, body {
     overflow-x: auto !important;
 }
 
-/* Fix for forms that overflow */
+/* Keep forms inside the content column. No overflow here: overflow-x:auto also
+   turns on vertical scrolling, which gave small forms (Add Project buttons,
+   filter bars) their own stray scrollbars. Wide tables scroll via .table-responsive. */
 .right_col form {
     max-width: 100% !important;
-    overflow-x: auto !important;
 }
 
 .right_col .row {
     max-width: 100% !important;
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
 }
 
 .right_col .col-md-6,

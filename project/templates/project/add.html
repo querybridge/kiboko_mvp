@@ -46,6 +46,8 @@
   .est-metric .sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
   .est-metric.accent .val { color: var(--purple-300); }
   .est-metric.expected .val { color: var(--accent-secondary, #55C892); }
+  .est-metric.headline { flex-grow: 1.4; border-color: var(--accent-primary); }
+  .est-metric.headline .val { font-size: 26px; }
 
   /* Plausibility gradient legend (visual identity from the Figma/Streamlit gauge) */
   .plaus-bar {
@@ -148,6 +150,11 @@
   .de-row select { width: 100%; margin-top: 8px; }
   .de-note { margin: 5px 0 0; }
   .intake-actions { margin-top: 8px; }
+  .req-mark { color: var(--status-danger); font-weight: 700; margin-left: 3px; }
+  .req-legend { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; }
+  .req-legend .req-mark { margin: 0 3px 0 0; }
+  .form-group.req-missing .form-control { border-color: var(--status-danger) !important; }
+  .req-msg { display: block; font-size: 12px; color: var(--status-danger); margin-top: 4px; }
   .col-half { padding-right: 6px; }
   .col-half + .col-half { padding-right: 15px; padding-left: 6px; }
   /* Tidy, consistent labels + control heights across the estimator so paired
@@ -203,7 +210,7 @@
       <div class="clearfix"></div>
     </div>
 
-    <form method="post" name="Project">
+    <form method="post" name="Project" id="project_form" novalidate>
       {% csrf_token %}
       {% if is_edit %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
       <div class="row">
@@ -213,6 +220,7 @@
           <div class="x_panel intake-panel">
             <div class="x_title"><h2><i class="fa fa-file-text-o"></i> Project details</h2><div class="clearfix"></div></div>
             <div class="x_content">
+              <p class="req-legend"><span class="req-mark">*</span> Required to submit and to start the impact estimate</p>
               {{ form.name|as_crispy_field }}
               {{ form.why|as_crispy_field }}
               {{ form.definition_of_done|as_crispy_field }}
@@ -300,6 +308,7 @@
                   <input type="text" class="form-control" id="disp_s0" autocomplete="off" inputmode="decimal">
                 </div>
                 {{ form.s0_annual }}
+                <div class="est-hint">Average daily sales over the baseline window &times; 365.</div>
               </div>
               {{ form.plausibility_factor }}
 
@@ -336,15 +345,15 @@
                   <div class="val" id="m_pct">—</div>
                   <div class="sub">target vs baseline</div>
                 </div>
-                <div class="est-metric accent">
+                <div class="est-metric expected headline">
+                  <div class="lbl">Expected impact / yr</div>
+                  <div class="val" id="m_expected">—</div>
+                  <div class="sub">gross <span id="m_pfac">—</span> for how realistic the target is</div>
+                </div>
+                <div class="est-metric">
                   <div class="lbl">Gross impact / yr</div>
                   <div class="val" id="m_gross">—</div>
-                  <div class="sub">S₀ × %&Delta; lever</div>
-                </div>
-                <div class="est-metric expected">
-                  <div class="lbl">Expected (risk-adjusted)</div>
-                  <div class="val" id="m_expected">—</div>
-                  <div class="sub">gross <span id="m_pfac">—</span> plausibility</div>
+                  <div class="sub">if the target is fully hit: annual sales &times; lever change</div>
                 </div>
                 <div class="est-metric">
                   <div class="lbl">Realized this yr</div>
@@ -417,10 +426,10 @@
               </div>
 
               <p class="est-footnote">
-                The <strong>Kiboko Effect</strong> rewards the heaviest impact, delivered fastest and most
-                certainly for the least effort. <strong>Level of effort</strong> and <strong>capability to
-                complete</strong> are set by the developer during sizing; the final priority score is the
-                average of the team vote and this algorithmic estimate — computed once the project is scored.
+                Kiboko ranks highest the projects with the biggest expected impact, delivered soonest and most
+                reliably, for the least effort. <strong>Level of effort</strong> and <strong>capability to
+                complete</strong> are set by a developer during sizing. The final priority score averages the
+                team vote with this estimate, once the project is scored.
               </p>
               </div><!-- /est-body -->
             </div>
@@ -779,7 +788,8 @@
         if (d && d.connected) {
           GA4 = d;
           if (srcBadge) { srcBadge.className = 'baseline-src';
-            srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from ' + (d.source || 'GA4') + ' (' + d.window_days + '-day window)'; }
+            srcBadge.innerHTML = '<i class="fa fa-bolt"></i>from ' + (d.source || 'GA4') + ' (last ' + CUR_WINDOW + ' days'
+              + (d.window_days < CUR_WINDOW ? ', ' + d.window_days + ' with data' : '') + ')'; }
           autofill();
         } else {
           GA4 = null;
@@ -910,6 +920,59 @@
     var el = $(id);
     if (el) { el.addEventListener('input', updateGate); el.addEventListener('change', updateGate); }
   });
+
+  // ---- Required project details: mark them, check each as it's filled in, and
+  // on "Submit for approval" list everything missing at once instead of the
+  // browser's one-field-at-a-time bubbles. The server still validates.
+  var form = $('project_form');
+  function groupOf(el) { return el.closest('.form-group') || el.parentNode; }
+  function labelText(el) {
+    var lab = document.querySelector('label[for="' + el.id + '"]');
+    return lab ? lab.textContent.replace('*', '').trim() : el.name;
+  }
+  function setMissing(el, missing) {
+    var g = groupOf(el), msg = g.querySelector('.req-msg');
+    g.classList.toggle('req-missing', missing);
+    if (missing && !msg) { msg = document.createElement('span'); msg.className = 'req-msg'; msg.textContent = 'Required'; el.insertAdjacentElement('afterend', msg); }
+    if (!missing && msg) msg.remove();
+  }
+  function isBlank(el) { return String(el.value || '').trim() === ''; }
+  DETAIL_IDS.forEach(function (id) {
+    var el = $(id); if (!el) return;
+    var lab = document.querySelector('label[for="' + id + '"]');
+    if (lab && !lab.querySelector('.req-mark')) {
+      var star = lab.querySelector('.asteriskField');          // crispy's own marker, if any
+      if (star) star.remove();
+      lab.insertAdjacentHTML('beforeend', '<span class="req-mark" aria-hidden="true">*</span>');
+    }
+    el.setAttribute('aria-required', 'true');
+    el.addEventListener('blur', function () { setMissing(el, isBlank(el)); });
+    el.addEventListener('input', function () { if (!isBlank(el)) setMissing(el, false); });
+    el.addEventListener('change', function () { setMissing(el, isBlank(el)); });
+  });
+  if (form) form.addEventListener('submit', function (e) {
+    var saving = e.submitter && e.submitter.value === 'save_progress';
+    // Save progress only needs a name; submitting needs every detail.
+    var ids = saving ? ['id_name'] : DETAIL_IDS;
+    var missing = ids.map($).filter(function (el) { return el && isBlank(el); });
+    if (!missing.length) return;
+    e.preventDefault();
+    missing.forEach(function (el) { setMissing(el, true); });
+    missing[0].focus();
+    missing[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    showToast('Fill in ' + missing.map(labelText).join(', ') + (saving ? ' to save.' : ' to submit.'));
+  });
+  function showToast(text) {
+    var wrap = $('kb_toasts');
+    if (!wrap) { wrap = document.createElement('div'); wrap.className = 'kb-toast-wrap'; wrap.id = 'kb_toasts'; document.body.appendChild(wrap); }
+    wrap.innerHTML = '';
+    var t = document.createElement('div'); t.className = 'kb-toast error'; t.setAttribute('role', 'alert');
+    t.innerHTML = '<i class="fa fa-exclamation-circle"></i><div class="kb-toast-body"></div>'
+      + '<button type="button" class="kb-toast-x" aria-label="Dismiss">&times;</button>';
+    t.querySelector('.kb-toast-body').textContent = text;
+    t.querySelector('.kb-toast-x').addEventListener('click', function () { t.remove(); });
+    wrap.appendChild(t);
+  }
 
   filterLevers();
   updateGate();

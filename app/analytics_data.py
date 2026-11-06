@@ -1011,15 +1011,13 @@ def build_engage_customer(primary_code, compare_code, rows=None, eng=None,
            s1=s2(s_checkv, sd('bs2')), fmt_kind='integer')
 
     # SECTION 4 -----------------------------------------------------------
-    ret_cr = 0.0 if live else 7.2
-    new_cr = 0.0 if live else 4.1
+    # No Returning/New Visitor close-rate line: Kiboko doesn't have orders split
+    # by new vs returning visitor, and a hard-coded or 0.00% figure misleads.
     d.card('pct_returning', 'engage', 'ENGAGE', '% RETURNING VISITORS',
            kpi_val=returning_pct, kpi_kind='percentage', delta=dd(sd('retd')),
            equation=[E(p['returning_users'], 'integer', 'Returning Visitors  /'),
                      E(p['visitors'], 'integer', 'Visitors  =')],
            result=E(returning_pct, 'percentage', 'Returning Visitors'),
-           bottom=(f"Returning Visitor Close Rate: {fmt(ret_cr, 'percentage')[0]}  |  "
-                   f"New Visitor Close Rate: {fmt(new_cr, 'percentage')[0]}"),
            s1=s_ret, s2=s2(s_ret, sd('ret2')), two_sets=True, fmt_kind='percentage', chart_height=150)
     d.card('orders_per_pdp', 'engage', '', 'ORDERS PER PDP VIEW',
            kpi_val=buy_to_detail, kpi_kind='percentage', delta=buy_to_detail_delta,
