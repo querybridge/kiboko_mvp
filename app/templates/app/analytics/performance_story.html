@@ -43,6 +43,18 @@
     #analytics-page .ps-pct.ps-flat { color: var(--ac-muted,#A493C4); }
     #analytics-page .ps-msg { width: 40%; padding-left: 14px; color: var(--ac-secondary,#C8BCDF); font-size: 12.5px; line-height: 1.45; }
 
+    /* Stages within a group (Awareness, Interest, ...) and the group's lag metrics */
+    #analytics-page .ps-sub-name { font-size: 10.5px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; padding: 8px 14px 2px; }
+    #analytics-page .group-attract .ps-sub-name { color: color-mix(in srgb, var(--ac-attract,#3FC9E0) 72%, #000); }
+    #analytics-page .group-engage  .ps-sub-name { color: color-mix(in srgb, var(--ac-engage,#ECB752) 72%, #000); }
+    #analytics-page .group-expand  .ps-sub-name { color: color-mix(in srgb, var(--ac-expand,#55C892) 72%, #000); }
+    #analytics-page .ps-lag { margin-top: 6px; border-top: 1px solid var(--ac-edge,rgba(214,197,247,.12)); background: rgba(0,0,0,.14); }
+    html.theme-light #analytics-page .ps-lag { background: rgba(28,21,48,.035); }
+    #analytics-page .ps-sub-detail { display: none; }
+    /* Brief hides some rows, so a stage's first visible row may not be its first: no dividers there */
+    #analytics-page .ps-wrap:not(.ps-show-detail) .ps-sub .ps-row { border-top: none; }
+    #analytics-page .ps-wrap.ps-show-detail .ps-sub-detail { display: block; }
+
     /* Detail rows hidden in BRIEF mode */
     #analytics-page .ps-row.ps-detail { display: none; }
     #analytics-page .ps-wrap.ps-show-detail .ps-row.ps-detail { display: flex; }
@@ -77,11 +89,27 @@
     </div>
 
     <div class="ps-wrap" id="ps-wrap">
-      {% for sec in sections %}
-      <div class="ps-section group-{{ sec.group }}">
-        <div class="ps-section-name">{{ sec.name }}</div>
-        <div class="ps-rows">
-          {% for r in sec.rows %}
+      {% for g in groups %}
+      <div class="ps-section group-{{ g.key }}">
+        <div class="ps-section-name">{{ g.name }}</div>
+        {% for sub in g.subs %}
+        <div class="ps-sub{% if not sub.brief %} ps-sub-detail{% endif %}">
+          <div class="ps-sub-name">{{ sub.name }}</div>
+          <div class="ps-rows">
+            {% for r in sub.rows %}
+            <div class="ps-row{% if r.detail_only %} ps-detail{% endif %}{% if r.bold %} ps-bold{% endif %}">
+              <span class="ps-metric">{{ r.label }}</span>
+              <span class="ps-value">{{ r.value }}</span>
+              <span class="ps-pct {{ r.pct_color }}">{{ r.pct }}</span>
+              <span class="ps-msg">{{ r.message }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+        {% if g.lag %}
+        <div class="ps-rows ps-lag">
+          {% for r in g.lag %}
           <div class="ps-row{% if r.detail_only %} ps-detail{% endif %}{% if r.bold %} ps-bold{% endif %}">
             <span class="ps-metric">{{ r.label }}</span>
             <span class="ps-value">{{ r.value }}</span>
@@ -90,6 +118,7 @@
           </div>
           {% endfor %}
         </div>
+        {% endif %}
       </div>
       {% endfor %}
 

@@ -45,7 +45,7 @@ class MobileBase(TestCase):
 
 class RoutingTests(MobileBase):
     def test_phone_goes_to_mobile_equivalent(self):
-        for desktop, mobile in [('/app/', '/m/'), ('/app/home/', '/m/'), ('/', '/m/'),
+        for desktop, mobile in [('/app/', '/m/'), ('/app/home/', '/m/start/'), ('/', '/m/start/'),
                                 ('/project/executive-approval/', '/m/approve/'),
                                 ('/app/score-projects/', '/m/score/'),
                                 ('/project/add.html', '/m/add/'),
@@ -103,6 +103,26 @@ class PageTests(MobileBase):
             resp = self.phone_get(url)
             self.assertEqual(resp.status_code, 200, url)
             self.assertContains(resp, 'm-tabs')
+
+    def test_start_honors_default_home_page(self):
+        from users.models import UserProfile
+        prof, _ = UserProfile.objects.get_or_create(user=self.user)
+        for lander, page in [('pipeline', '/m/'), ('kanban', '/m/projects/'),
+                             ('grow_sales', '/m/story/'), ('storyboard', '/m/story/')]:
+            prof.default_lander = lander
+            prof.save()
+            self.assertEqual(self.phone_get('/m/start/')['Location'], page, lander)
+
+    def test_story_groups_attract_engage_expand(self):
+        groups = self.phone_get('/m/story/').context['groups']
+        self.assertEqual([g['name'] for g in groups], ['Attract', 'Engage', 'Expand'])
+        self.assertEqual([[s['name'] for s in g['subs']] for g in groups],
+                         [['Awareness', 'Enlighten'], ['Interest', 'Convince'], ['Inspire', 'Enhance']])
+        attract = groups[0]
+        self.assertEqual([r['key'] for s in attract['subs'] for r in s['rows']],
+                         ['visitors', 'new_visitor_visit', 'returning_visitor_visit', 'visits_per_visitor'])
+        self.assertEqual([[r['key'] for r in g['lag'] if r['bold']] for g in groups],
+                         [['visits'], ['close_rate'], ['avg_order_value']])
 
     def test_greenlight_from_mobile_returns_to_mobile(self):
         p = self.scored_project()

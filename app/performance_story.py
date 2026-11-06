@@ -363,6 +363,7 @@ def build_performance_story(primary_code, compare_code, fundamentals=None):
         message = _capitalize(f'{connector} {phrase}' if connector else phrase)
 
         row = {
+            'key': k,
             'label': meta['label'],
             'value': _fmt(prim[k][0], meta['fmt']),
             'pct': _fmt_pct(delta[k]),
@@ -390,3 +391,42 @@ def build_performance_story(primary_code, compare_code, fundamentals=None):
     }
 
     return {'sections': sections, 'tail': tail}
+
+
+# Grouped layout (desktop and mobile): three AEE groups, each with its lead-metric
+# stages and then its lag metric(s) (Visits, Close Rate, Avg Order Value).
+STORY_GROUPS = [
+    ('attract', 'Attract', [('Awareness', ['visitors', 'new_visitor_visit']),
+                            ('Enlighten', ['returning_visitor_visit', 'visits_per_visitor'])]),
+    ('engage', 'Engage', [('Interest', 'INTEREST'), ('Convince', 'CONVINCE')]),
+    ('expand', 'Expand', [('Inspire', 'INSPIRE'), ('Enhance', 'ENHANCE')]),
+]
+# Story sections that hold each group's lag metrics.
+STORY_LAG_SECTIONS = {'ATTRACT': 'attract', 'ENGAGE': 'engage', 'EXPAND': 'expand'}
+
+
+def aee_groups(sections):
+    """Regroup the story's funnel sections as Attract / Engage / Expand, each with
+    its sub-stages (lead metrics) and its lag metrics last. Attract's single
+    section is split into Awareness and Enlighten by metric."""
+    rows_by_key = {r['key']: r for s in sections for r in s['rows']}
+    rows_by_section = {s['name']: s['rows'] for s in sections}
+    placed = set()
+    groups = []
+    for gkey, gname, stages in STORY_GROUPS:
+        subs = []
+        for sname, members in stages:
+            if isinstance(members, str):            # a whole funnel section
+                rows = rows_by_section.get(members, [])
+            else:                                   # named metrics
+                rows = [rows_by_key[k] for k in members if k in rows_by_key]
+            placed.update(r['key'] for r in rows)
+            if rows:
+                subs.append({'name': sname, 'rows': rows, 'brief': any(not r['detail_only'] for r in rows)})
+        groups.append({'key': gkey, 'name': gname, 'subs': subs, 'lag': []})
+    by_key = {g['key']: g for g in groups}
+    for s in sections:                              # remaining rows = the lag metrics
+        g = by_key.get(STORY_LAG_SECTIONS.get(s['name']))
+        if g is not None:
+            g['lag'].extend(r for r in s['rows'] if r['key'] not in placed)
+    return groups

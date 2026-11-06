@@ -231,6 +231,24 @@ def _period_key(request, default='month'):
 # ---------------------------------------------------------------------------
 # Pages
 # ---------------------------------------------------------------------------
+# The user's default home page (Profile, or their role's default) -> the mobile
+# page that serves the same purpose.
+LANDER_PAGES = {
+    'pipeline': 'mobile:home',
+    'kanban': 'mobile:projects',
+    'grow_sales': 'mobile:story',
+    'storyboard': 'mobile:story',
+}
+
+
+@login_required
+def start(request):
+    """Post-login dispatcher, the mobile twin of app.views.home."""
+    prof = getattr(request.user, 'profile', None)
+    key = prof.resolved_lander_key() if prof else 'pipeline'
+    return redirect(LANDER_PAGES.get(key, 'mobile:home'))
+
+
 @login_required
 def home(request):
     today = timezone.localdate()
@@ -395,6 +413,7 @@ def story(request):
     fundamentals = ga4_dashboard.ga4_story_fundamentals(request, primary, compare)
     ctx.update(ps.build_performance_story(primary, compare, fundamentals=fundamentals))
     ctx['primary_options'] = [o for o in ctx['primary_options'] if o[0] != 'CUSTOM']
+    ctx['groups'] = ps.aee_groups(ctx['sections'])
     return render(request, 'mobile/story.html', dict(_nav(request, 'story'), **ctx, title='Performance'))
 
 

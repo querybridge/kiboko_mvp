@@ -1801,6 +1801,7 @@ def analytics_performance_story(request):
     primary, compare, ctx = _analytics_filter(request)
     fundamentals = ga4_dashboard.ga4_story_fundamentals(request, primary, compare)
     ctx.update(ps.build_performance_story(primary, compare, fundamentals=fundamentals))
+    ctx['groups'] = ps.aee_groups(ctx['sections'])
     return render(request, 'app/analytics/performance_story.html', ctx)
 
 

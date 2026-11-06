@@ -34,15 +34,30 @@
 </div>
 
 <div class="m-story" id="mStory" data-mode="brief">
-  {% for s in sections %}
-  <section class="m-card m-story-sec m-g-{{ s.group }}">
-    <h2>{{ s.name|title }}</h2>
-    {% for r in s.rows %}
-    <div class="m-story-row{% if r.detail_only %} detail{% endif %}{% if r.bold %} bold{% endif %}">
-      <div class="m-story-line"><span class="m-story-label">{{ r.label }}</span><span class="m-story-val">{{ r.value }}</span><span class="m-pct {{ r.pct_color }}">{{ r.pct }}</span></div>
-      <p>{{ r.message }}</p>
+  {% for g in groups %}
+  <section class="m-card m-story-sec m-g-{{ g.key }}">
+    <h2>{{ g.name }}</h2>
+    {% for sub in g.subs %}
+    <div class="m-story-sub{% if not sub.brief %} detail{% endif %}">
+      <h3>{{ sub.name }}</h3>
+      {% for r in sub.rows %}
+      <div class="m-story-row{% if r.detail_only %} detail{% endif %}{% if r.bold %} bold{% endif %}">
+        <div class="m-story-line"><span class="m-story-label">{{ r.label }}</span><span class="m-story-val">{{ r.value }}</span><span class="m-pct {{ r.pct_color }}">{{ r.pct }}</span></div>
+        <p>{{ r.message }}</p>
+      </div>
+      {% endfor %}
     </div>
     {% endfor %}
+    {% if g.lag %}
+    <div class="m-story-lag">
+      {% for r in g.lag %}
+      <div class="m-story-row{% if r.detail_only %} detail{% endif %}{% if r.bold %} bold{% endif %}">
+        <div class="m-story-line"><span class="m-story-label">{{ r.label }}</span><span class="m-story-val">{{ r.value }}</span><span class="m-pct {{ r.pct_color }}">{{ r.pct }}</span></div>
+        <p>{{ r.message }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </section>
   {% endfor %}
 </div>

@@ -35,9 +35,9 @@ def wants_mobile(request):
 # Desktop path -> mobile url name. Pages without a mobile version (settings,
 # billing, data connection, ...) stay on desktop.
 _TO_MOBILE = {
-    '/': 'mobile:home',
+    '/': 'mobile:start',
     '/app/': 'mobile:home',
-    '/app/home/': 'mobile:home',
+    '/app/home/': 'mobile:start',      # post-login: the user's default home page
     '/app/analytics/': 'mobile:story',
     '/app/analytics/grow-sales/': 'mobile:story',
     '/app/analytics/performance-story/': 'mobile:story',
@@ -57,6 +57,7 @@ _PROJECT_RE = re.compile(r'^/project/(\d+)/(?:(?:overview|actions|performance|ac
 
 # Mobile url name -> desktop path (for a non-phone that lands on /m/).
 _TO_DESKTOP = {
+    'start': '/app/home/',
     'home': '/app/',
     'forecast': '/app/',
     'approve': '/project/executive-approval/',

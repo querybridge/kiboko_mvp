@@ -6,6 +6,7 @@ app_name = 'mobile'
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('start/', views.start, name='start'),
     path('forecast/', views.forecast, name='forecast'),
     path('approve/', views.approve, name='approve'),
     path('score/', views.score, name='score'),
