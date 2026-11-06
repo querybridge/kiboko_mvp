@@ -16,7 +16,9 @@ def money(value):
         if v >= size:
             n = v / size
             digits = 2 if n < 10 else (1 if n < 100 else 0)
-            text = f'{n:.{digits}f}'.rstrip('0').rstrip('.')
+            text = f'{n:.{digits}f}'
+            if '.' in text:                  # 1.50 -> 1.5, 2.00 -> 2; never 540 -> 54
+                text = text.rstrip('0').rstrip('.')
             return f'{sign}${text}{suffix}'
     return f'{sign}${v:,.0f}'
 

@@ -43,6 +43,15 @@ class MobileBase(TestCase):
         return Project.objects.get(pk=p.pk)
 
 
+class MoneyFilterTests(TestCase):
+    def test_compact_money(self):
+        from mobile.templatetags.mobile_tags import money
+        for value, text in [(540064, '$540K'), (100000, '$100K'), (240010, '$240K'), (1500000, '$1.5M'),
+                            (2000000, '$2M'), (15485614, '$15.5M'), (73614, '$73.6K'), (940, '$940'),
+                            (-2950000, '-$2.95M'), (None, '$0')]:
+            self.assertEqual(money(value), text, value)
+
+
 class RoutingTests(MobileBase):
     def test_phone_goes_to_mobile_equivalent(self):
         for desktop, mobile in [('/app/', '/m/'), ('/app/home/', '/m/start/'), ('/', '/m/start/'),

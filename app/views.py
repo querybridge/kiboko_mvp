@@ -95,7 +95,8 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
     else:
         actuals_qs = _scope_to(DailyActual.objects.filter(
             date__year=year, date__month=month, date__lte=today), vertical_id, company_id)
-        daily = [(a.date, a.revenue) for a in actuals_qs]
+        # One total per day: the company roll-up has a row per business unit.
+        daily = sorted(actuals_qs.values_list('date').annotate(r=Sum('revenue')).order_by())
 
     actuals_total = sum((r for _, r in daily), Decimal('0'))
 
@@ -104,9 +105,12 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
     # back-to-school promo landing early in the month — can't drag the projected
     # remainder up and inflate the whole-month forecast. Median needs >=3 samples
     # to shrug off one outlier; with fewer we fall back to the mean.
+    # Retail events (Black Friday, Cyber Monday, ...) are divided out first, so a
+    # spike day counts as the normal day it would otherwise have been.
+    from app.seasonality import day_factor
     dow_values = defaultdict(list)
     for d_, r in daily:
-        dow_values[d_.weekday()].append(r)  # 0=Mon ... 6=Sun
+        dow_values[d_.weekday()].append(r / Decimal(str(day_factor(d_))))  # 0=Mon ... 6=Sun
 
     def _dow_typical(vals):
         n = len(vals)
@@ -125,18 +129,15 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
         # Past month — no remaining days
         projected_remainder = Decimal('0')
     else:
-        # Start from tomorrow (or first of month if future)
+        # Start from tomorrow (or first of month if future). Each remaining day is
+        # its weekday's typical sales times its retail-event factor (2x on Black
+        # Friday and Cyber Monday; see app.seasonality).
         start_remaining = max(today + timedelta(days=1), first_of_month)
-        remaining_dow_counts = defaultdict(int)
+        projected_remainder = Decimal('0')
         d = start_remaining
         while d <= last_of_month:
-            remaining_dow_counts[d.weekday()] += 1
+            projected_remainder += dow_avg[d.weekday()] * Decimal(str(day_factor(d)))
             d += timedelta(days=1)
-
-        projected_remainder = sum(
-            dow_avg[dow] * remaining_dow_counts[dow]
-            for dow in range(7)
-        )
 
     base_forecast = actuals_total + projected_remainder
 
@@ -432,8 +433,9 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
     daily_budget_rate = monthly_budget / days_in_current_month if days_in_current_month else 0
 
     # Gather daily actuals for the month (only through today)
+    from app.seasonality import day_factor
     daily_actuals_map = {}
-    dow_totals = defaultdict(float)
+    dow_totals = defaultdict(float)     # event-adjusted (see calculate_forecast)
     dow_counts = defaultdict(int)
     if actuals is not None:
         # GA4 (Standard): one record per elapsed day of the current month.
@@ -442,16 +444,20 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
             rev = float((actuals.get(d.isoformat()) or {}).get('revenue', 0) or 0)
             if rev:
                 daily_actuals_map[d.day] = daily_actuals_map.get(d.day, 0) + rev
-            dow_totals[d.weekday()] += rev
+            dow_totals[d.weekday()] += rev / day_factor(d)
             dow_counts[d.weekday()] += 1
             d += timedelta(days=1)
     else:
-        daily_actuals_qs = _filter_actuals(DailyActual.objects.filter(
-            date__year=year, date__month=current_month, date__lte=today))
+        daily_actuals_qs = list(_filter_actuals(DailyActual.objects.filter(
+            date__year=year, date__month=current_month, date__lte=today)))
         for a in daily_actuals_qs:
             daily_actuals_map[a.date.day] = daily_actuals_map.get(a.date.day, 0) + float(a.revenue)
-            dow_totals[a.date.weekday()] += float(a.revenue)
-            dow_counts[a.date.weekday()] += 1
+            dow_totals[a.date.weekday()] += float(a.revenue) / day_factor(a.date)
+        # Count each day once, not once per business-unit row: on the company
+        # roll-up a day has a row per unit, which would divide the average by the
+        # number of units.
+        for d in {a.date for a in daily_actuals_qs}:
+            dow_counts[d.weekday()] += 1
 
     dow_avg = {}
     for dow in range(7):
@@ -503,7 +509,7 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
         if d <= today:
             cumulative_forecast_base += day_actual
         else:
-            cumulative_forecast_base += dow_avg.get(d.weekday(), 0)
+            cumulative_forecast_base += dow_avg.get(d.weekday(), 0) * day_factor(d)
         cumulative_project_uplift += day_project_uplift
 
         if d <= today:
