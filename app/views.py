@@ -2191,7 +2191,10 @@ def manage_users(request):
         member.profile.roles = roles_list
         member.profile.save(update_fields=['roles'])
         elevated = any(r in ADMIN_ROLES for r in roles_list)
-        CompanyMembership.objects.filter(user=member, company__in=companies).update(
+        # Ids, not the queryset: `companies` joins memberships, and MySQL refuses an
+        # UPDATE whose subquery reads the table being updated (error 1093).
+        CompanyMembership.objects.filter(
+            user=member, company_id__in=list(companies.values_list('id', flat=True))).update(
             role='admin' if elevated else 'member')
 
     def _is_last_admin(company, member):
