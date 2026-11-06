@@ -25,7 +25,7 @@ PERIODS = [
     ('year', 'This year'),
     ('next_quarter', 'Next quarter'),
 ]
-PERIOD_TABS = [('month', 'Month'), ('quarter', 'Quarter'), ('year', 'Year'), ('next_quarter', 'Next qtr')]
+PERIOD_TABS = [('month', 'Month'), ('quarter', 'Quarter'), ('year', 'Year'), ('next_quarter', 'Next Qtr')]
 # Gap closers shown before "Show all": enough to close the gap, at least this many.
 CLOSERS_SHOWN = 5
 

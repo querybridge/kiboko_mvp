@@ -72,6 +72,13 @@ class RoutingTests(MobileBase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'kb-mobile-pill')          # the way back to the mobile app
 
+    def test_no_pill_when_signed_out_and_password_reveal_on_phones(self):
+        self.client.logout()
+        resp = self.client.get('/users/login/', HTTP_USER_AGENT=IPHONE)
+        self.assertNotContains(resp, 'class="kb-mobile-pill"')
+        self.assertContains(resp, 'kb-pw-toggle')
+        self.assertNotContains(self.client.get('/users/login/', HTTP_USER_AGENT=MAC), 'kb-pw-toggle')
+
     def test_choice_is_remembered(self):
         resp = self.phone_get('/m/?ui=desktop')
         self.assertEqual(resp['Location'], '/app/')

@@ -103,14 +103,48 @@
       </div>
 
       {% if kb_phone %}
-      <!-- On a phone, a desktop-only page (or the desktop site by choice) offers the way back -->
+      {% if user.is_authenticated %}
+      <!-- On a phone, a desktop-only page (or the desktop site by choice) offers the way back.
+           Signed-out pages (sign in, create account, terms) have no mobile version, so no pill. -->
       <a href="?ui=mobile" class="kb-mobile-pill" data-no-loader><i class="fa fa-mobile"></i> Mobile view</a>
       <style>
         .kb-mobile-pill { position: fixed; z-index: 9999; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom));
           display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 22px;
           background: #5C3C9F; color: #fff !important; font: 600 15px 'Inter', sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
         .kb-mobile-pill .fa { font-size: 20px; }
+        /* room to scroll the page's last controls clear of the pill */
+        body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
       </style>
+      {% endif %}
+      <!-- Phones: a Show / Hide toggle on every password field, to check for typos -->
+      <style>
+        .kb-pw { position: relative; display: block; }
+        .kb-pw input { padding-right: 64px !important; }
+        .kb-pw-toggle { position: absolute; top: 0; right: 0; bottom: 0; min-width: 60px; padding: 0 12px;
+          border: 0; background: none; color: var(--purple-300, #BAA3F0); font: 600 14px 'Inter', sans-serif; cursor: pointer; }
+        html.theme-light .kb-pw-toggle { color: #5B3A9E; }
+      </style>
+      <script>
+        document.querySelectorAll('input[type=password]').forEach(function (input) {
+          var wrap = document.createElement('span');
+          wrap.className = 'kb-pw';
+          input.parentNode.insertBefore(wrap, input);
+          wrap.appendChild(input);
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'kb-pw-toggle';
+          btn.textContent = 'Show';
+          btn.setAttribute('aria-label', 'Show password');
+          btn.addEventListener('click', function () {
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.textContent = show ? 'Hide' : 'Show';
+            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            input.focus();
+          });
+          wrap.appendChild(btn);
+        });
+      </script>
       {% endif %}
 
       {% block javascripts %}
