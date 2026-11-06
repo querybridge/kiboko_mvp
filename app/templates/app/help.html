@@ -80,7 +80,11 @@
             <ul>
               <li><strong>Getting Started</strong> &mdash; the setup checklist for a new account.</li>
               <li><strong>Analytics</strong> &mdash; Performance Storyboard, Grow Sales, Attract Traffic,
-                Engage Customers, Expand Purchases. Decompose sales into levers and compare periods.</li>
+                Engage Customers, Expand Purchases. Decompose sales into levers and compare periods. The
+                Storyboard reads as a narrative grouped by <strong>Attract</strong> (Awareness, Enlighten),
+                <strong>Engage</strong> (Interest, Convince) and <strong>Expand</strong> (Inspire, Enhance); each
+                group ends with its bold lag metric (Visits, Close Rate, Avg Order Value), then Total Sales.
+                <strong>Brief</strong> shows each stage's key metric; <strong>Detail</strong> shows all.</li>
               <li><strong>Insights</strong> &mdash; Wins &amp; Losses that bridge Analytics to a proposed project.</li>
               <li><strong>Project Prioritization</strong> &mdash; the <strong>Project Pipeline Value</strong>
                 (forecast + pipeline value), <strong>Approve Projects</strong>, <strong>Score Projects</strong>, and
@@ -99,7 +103,8 @@
               you belong to, and objectives, projects, budgets and users belong to one company.</p>
             <p><strong>Landing page:</strong> after sign-in you land on the page that fits your role
               (developers on the Kanban, analysts on Grow Sales, executives/BU-leaders on the Performance
-              Storyboard). Change it any time in <strong>User Settings</strong>.</p>
+              Storyboard). Change it any time in <strong>User Settings</strong>. On a phone you land on the
+              matching mobile page (see <strong>Kiboko on Your Phone</strong> below).</p>
             <p><strong>Theme:</strong> Use the sun/moon icon at the bottom of the left sidebar to switch between
               dark and light modes. Your preference is remembered across sessions.</p>
           </div>
@@ -350,9 +355,11 @@
               <li><strong>Actual</strong> (dark green) &mdash; real revenue from your data tier (GA4 / BigQuery /
                 seeded daily actuals). Hidden on future days.</li>
               <li><strong>Trending Forecast</strong> (medium green) &mdash; the end-of-period landing spot from
-                the current trend, excluding not-yet-live project impact.</li>
+                the current trend, excluding not-yet-live project impact. It expects the holiday peak:
+                <strong>Black Friday</strong> and <strong>Cyber Monday</strong> at about twice a normal day, the
+                weekend between them somewhat above normal, and Thanksgiving Day a little below.</li>
               <li><strong>Project Value Add</strong> (light green) &mdash; the prorated value of projects that
-                launch within the period (each project's value spread from its go-live forward).</li>
+                launch within the period (each project's value from its go-live forward, ramped up over its ramp days and discounted by expected attainment).</li>
             </ul>
             <p>The line overlay is the Budget. The summary shows Actual, Trending Forecast,
               <strong>Prorated Projected Value</strong>, Budget, and Delta to Budget.</p>
@@ -377,6 +384,37 @@
               <li><strong>Business Unit</strong> &mdash; the BU it rolls up to.</li>
             </ul>
             <p>Expand any row to see its Actions with team, progress, and launch date. A TOTAL row sums the columns.</p>
+          </div>
+        </div>
+
+        <!-- Kiboko on your phone -->
+        <div class="x_panel" id="mobile">
+          <div class="x_title">
+            <h2>Kiboko on Your Phone</h2>
+            <div class="clearfix"></div>
+          </div>
+          <div class="x_content help-section">
+            <p>On a phone, Kiboko opens a separate mobile app built for reviewing and deciding on the go;
+              tablets and computers get the full desktop app. You land on the mobile page that matches your
+              default landing page. Five tabs along the bottom, plus <strong>+</strong> at the top to add a project:</p>
+            <ul>
+              <li><strong>Home</strong> &mdash; how the month, quarter, year or next quarter is landing against
+                budget, what needs you (projects to greenlight, new entries to approve, projects to score),
+                projects in WIP, and what goes live in the next 30 days. Tap the forecast card for
+                <strong>Forecast</strong>: the projects not yet in the forecast, ranked by what each would add
+                this period, with how much of the budget gap they close; executives can approve them there.</li>
+              <li><strong>Approve</strong> &mdash; greenlight scored projects to On Deck (executives) and approve
+                new entries into the pipeline (business-unit leads).</li>
+              <li><strong>Score</strong> &mdash; your anonymous vote on each project, one card at a time.</li>
+              <li><strong>Projects</strong> &mdash; WIP, On Deck, In review and Done, with progress, go-live dates
+                and comments.</li>
+              <li><strong>Story</strong> &mdash; the Performance Storyboard, grouped by Attract, Engage and Expand.</li>
+            </ul>
+            <p>Approve and Score buttons ask for a second tap to confirm. The top bar switches company and
+              business unit; your initials open a menu with light/dark mode, <strong>Use the desktop
+              site</strong>, and sign out. Pages without a mobile version (settings, billing) open on desktop,
+              with a <strong>Mobile view</strong> button to come back. On iPhone, Safari's
+              <strong>Share &rarr; Add to Home Screen</strong> gives Kiboko its own app icon.</p>
           </div>
         </div>
 
@@ -565,8 +603,10 @@
 
             <h4>Computed &amp; Derived Values</h4>
             <dl class="field-list">
-              <dt>Trending Forecast</dt><dd>Day-of-week (median) projection of remaining-period revenue plus actuals to date. For future months with no actuals, falls back to prior-year same period scaled by <em>(this year's budget &divide; last year's actual)</em>.</dd>
-              <dt>Project Value Add</dt><dd>For each launching project, daily uplift = annual value &divide; 365, applied from its go-live forward and summed. Forward periods include On Deck projects.</dd>
+              <dt>Trending Forecast</dt><dd>Actuals to date plus a day-of-week (median) projection of the remaining days. Each remaining day is its weekday's typical sales times its retail-event factor (below). Event days already past are divided by their factor first, so a spike neither inflates nor hides the trend. Early in a month, a weekday that hasn't occurred yet is projected at this month's level, scaled by how that weekday usually compares over the prior four weeks. For future months with no actuals, falls back to prior-year same period scaled by <em>(this year's budget &divide; last year's actual)</em>.</dd>
+              <dt>Retail events</dt><dd>Expected sales relative to a normal day of the same weekday: Thanksgiving 0.85&times;, <strong>Black Friday 2&times;</strong>, the Saturday and Sunday after 1.3&times; each, <strong>Cyber Monday 2&times;</strong>.</dd>
+              <dt>Expected attainment</dt><dd>Capability to complete (Fully 100%, Mostly 85%, Stretch 65%, New capability 40%, Not capable 20%) &times; target plausibility. Used to discount a project's value in the forecast and in the estimator's expected value.</dd>
+              <dt>Project Value Add</dt><dd>For each launching project, daily uplift = annual value &divide; 365, starting at its go-live and rising evenly to full over its ramp days, then discounted by expected attainment (capability to complete &times; target plausibility, as in the estimator's expected value). Summed across projects. Forward periods include On Deck projects.</dd>
               <dt>Prorated Projected Value</dt><dd>Trending Forecast + Project Value Add.</dd>
               <dt>Delta to Budget</dt><dd>Budget &minus; Prorated Projected Value. Shown green when the projection <strong>beats</strong> budget; a shortfall shows in red parentheses.</dd>
               <dt>Avg Progress (Projects)</dt><dd>Mean of <code>progress</code> across the project's Actions.</dd>

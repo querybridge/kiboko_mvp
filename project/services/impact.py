@@ -226,6 +226,45 @@ def realized_fraction(launch, ramp_days, today=None, year_end=None):
     return total / DAYS_IN_YEAR
 
 
+def ramp_factor(launch, ramp_days, day):
+    """Share of full effect on `day`: 0 on go-live, rising evenly to 1 after
+    `ramp_days` (the same ramp realized_fraction averages). A project without a
+    go-live date counts as fully ramped."""
+    if launch is None:
+        return 1.0
+    if day < launch:
+        return 0.0
+    return min(1.0, (day - launch).days / max(1, int(ramp_days or 1)))
+
+
+def expected_attainment(project):
+    """Share of a project's value the forecast expects it to deliver once fully
+    ramped: capability to complete x target plausibility, the same discounts as
+    the estimator's expected value."""
+    cap = CAPABILITY.get(project.capability or 'mostly', CAPABILITY['mostly'])[1]
+    return cap * float(project.plausibility_factor or 1.0)
+
+
+def forecast_daily_value(project, day):
+    """A project's expected sales lift on `day`, for the forecast: its annual
+    value / 365, ramped from go-live and discounted by expected attainment, so a
+    launch never counts in full on day one or at face value."""
+    if not project.value:
+        return 0.0
+    return (float(project.value) / DAYS_IN_YEAR
+            * ramp_factor(project.target_completion, project.ramp_days, day)
+            * expected_attainment(project))
+
+
+def forecast_value_between(project, start, end):
+    """Sum of forecast_daily_value over [start, end]."""
+    total, d = 0.0, start
+    while d <= end:
+        total += forecast_daily_value(project, d)
+        d += timedelta(days=1)
+    return total
+
+
 # Diminishing returns on a stretch target. Within one normal weekly swing (z <= 1)
 # the gain counts in full; beyond it each further step of stretch earns less,
 # following a logarithm: credited stretch = 1 + K * ln(1 + (z - 1) / K). Its rate

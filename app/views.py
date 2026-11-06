@@ -63,6 +63,48 @@ def _actuals_map_agg(actuals, start, end):
     return {'revenue': rev, 'visits': int(visits), 'orders': int(orders)}
 
 
+def _prior_weekday_shape(first_of_month, vertical_id, actuals, company_id, days=28):
+    """{weekday: typical daily total} over the `days` before the month, with
+    retail events divided out. It gives a weekday not yet seen this month its
+    usual size relative to the others (Saturdays often run below weekdays)."""
+    from app.seasonality import day_factor
+    start, end = first_of_month - timedelta(days=days), first_of_month - timedelta(days=1)
+    if actuals is not None:
+        totals = {}
+        d = start
+        while d <= end:
+            rec = actuals.get(d.isoformat())
+            if rec and rec.get('revenue'):
+                totals[d] = float(rec['revenue'])
+            d += timedelta(days=1)
+    else:
+        totals = {d: float(r) for d, r in _scope_to(DailyActual.objects.filter(
+            date__gte=start, date__lte=end), vertical_id, company_id
+        ).values_list('date').annotate(r=Sum('revenue')).order_by()}
+    by_dow = defaultdict(list)
+    for d, r in totals.items():
+        by_dow[d.weekday()].append(r / day_factor(d))
+    return {dow: sum(v) / len(v) for dow, v in by_dow.items()}
+
+
+def _fill_unseen_weekdays(dow_avg, seen_dows, shape):
+    """Early in a month some weekdays haven't happened yet. Project each at this
+    month's level for the weekdays seen, scaled by its usual size relative to them
+    over the prior weeks (`shape`); without that history, at their plain average.
+    Never $0. Updates dow_avg in place."""
+    seen = [dow for dow in range(7) if dow in seen_dows]
+    if not seen or len(seen) == 7:
+        return
+    level = sum(float(dow_avg[d]) for d in seen) / len(seen)
+    shape_seen = [shape[d] for d in seen if d in shape]
+    ref = sum(shape_seen) / len(shape_seen) if len(shape_seen) == len(seen) else 0
+    for dow in range(7):
+        if dow in seen_dows:
+            continue
+        value = level * shape[dow] / ref if (ref and dow in shape) else level
+        dow_avg[dow] = Decimal(str(round(value, 2))) if isinstance(dow_avg[seen[0]], Decimal) else value
+
+
 def calculate_forecast(year, month, return_components=False, vertical_id=None, actuals=None, company_id=None,
                        statuses=('WIP',)):
     """Calculate forecast for a given month using weekday-weighted projection.
@@ -123,6 +165,10 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
         return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2
 
     dow_avg = {dow: _dow_typical(dow_values[dow]) for dow in range(7)}
+    seen_dows = {dow for dow in range(7) if dow_values[dow]}
+    if seen_dows and len(seen_dows) < 7 and last_of_month >= today:
+        _fill_unseen_weekdays(dow_avg, seen_dows, _prior_weekday_shape(
+            first_of_month, vertical_id, actuals, company_id))
 
     # Count remaining days in month by day-of-week
     if last_of_month < today:
@@ -171,23 +217,18 @@ def calculate_forecast(year, month, return_components=False, vertical_id=None, a
                 growth_scale = this_year_budget / py_year_total
                 base_forecast = py_month_total * growth_scale
 
-    # Add active project uplift — each WIP project contributes its daily revenue
-    # only for days in this month on or after its go-live (target completion).
+    # Add project uplift: each project's daily value from its go-live, ramped up
+    # over its ramp days and discounted by expected attainment (capability x
+    # target plausibility), so a launch never counts in full on day one.
     from strategy.models import Project
+    from project.services.impact import forecast_value_between
     projects = _scope_to(Project.objects.filter(
         status__in=statuses,
     ).filter(
         Q(target_completion__isnull=True) | Q(target_completion__lte=last_of_month)
     ), vertical_id, company_id)
-    project_uplift = Decimal('0')
-    for p in projects:
-        daily_value = Decimal(str(p.value or 0)) / Decimal('365')
-        if p.target_completion and p.target_completion > first_of_month:
-            active_start = p.target_completion
-        else:
-            active_start = first_of_month
-        active_days = (last_of_month - active_start).days + 1
-        project_uplift += daily_value * active_days
+    project_uplift = Decimal(str(round(sum(
+        forecast_value_between(p, first_of_month, last_of_month) for p in projects), 2)))
 
     if return_components:
         return base_forecast, project_uplift
@@ -285,10 +326,11 @@ def _daily_series(year, month, today, vertical_id, actuals, company_id, statuses
     pqs = _scope_to(Project.objects.filter(status__in=statuses).filter(
         Q(target_completion__isnull=True) | Q(target_completion__lte=last_of)
     ), vertical_id, company_id)
-    proj = list(pqs.values_list('value', 'target_completion'))
+    proj = list(pqs)
+    from project.services.impact import forecast_daily_value
 
     def _uplift_day(d):
-        return sum(float(v or 0) / 365.0 for v, launch in proj if (launch is None or launch <= d))
+        return sum(forecast_daily_value(p, d) for p in proj)
 
     labels, budget, fbase, puplift, actual = [], [], [], [], []
     cb = cf = cp = 0.0
@@ -459,12 +501,13 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
         for d in {a.date for a in daily_actuals_qs}:
             dow_counts[d.weekday()] += 1
 
-    dow_avg = {}
+    dow_avg = {dow: dow_totals[dow] / dow_counts[dow] for dow in range(7) if dow_counts[dow] > 0}
+    seen_dows = set(dow_avg)
     for dow in range(7):
-        if dow_counts[dow] > 0:
-            dow_avg[dow] = dow_totals[dow] / dow_counts[dow]
-        else:
-            dow_avg[dow] = 0
+        dow_avg.setdefault(dow, 0)
+    if seen_dows:                       # weekdays not seen yet: as in calculate_forecast
+        _fill_unseen_weekdays(dow_avg, seen_dows, _prior_weekday_shape(
+            date(year, current_month, 1), vertical_id, actuals, company_id))
 
     # Pre-compute per-project daily rates for MTD forecast
     from strategy.models import Project
@@ -474,15 +517,12 @@ def _build_chart_data(year, vertical_id=None, actuals=None, company_id=None):
     ).filter(
         Q(target_completion__isnull=True) | Q(target_completion__lte=last_of_current_month)
     ), vertical_id, company_id)
-    active_projects = list(project_qs.values_list('value', 'target_completion'))
+    active_projects = list(project_qs)
+    from project.services.impact import forecast_daily_value
 
     def _project_uplift_for_day(d):
-        """Sum daily value of all projects whose launch date is on or before d."""
-        total = 0.0
-        for value, launch in active_projects:
-            if launch is None or launch <= d:
-                total += float(value or 0) / 365.0
-        return total
+        """Expected lift on day d from the projects live by then (ramped, discounted)."""
+        return sum(forecast_daily_value(p, d) for p in active_projects)
 
     mtd_labels = []
     mtd_budget = []

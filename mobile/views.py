@@ -126,18 +126,14 @@ def _period(key, today):
     return [(y, m)], ('WIP',)
 
 
-def _days_value(value, start, end):
-    days = (end - start).days + 1
-    return (value or 0) / 365.0 * days if days > 0 else 0.0
-
-
 def _forecast(request, key):
     """Budget vs forecast for one period, with the projects that could close the gap.
 
     Landing = trending forecast + value of the projects already counted (WIP, plus
     On Deck for a future period), the same numbers as the Pipeline page. Each
-    candidate's contribution is its daily value from go-live (never before
-    tomorrow) to the period's end."""
+    candidate's contribution is what the forecast would count for it from its
+    go-live (never before tomorrow) to the period's end: ramped and discounted
+    by expected attainment, as for counted projects."""
     import calendar
     from app import views as av
     from app.integrations import ga4_dashboard
@@ -156,10 +152,10 @@ def _forecast(request, key):
     actual = s['actual'] if start <= today else 0
     gap = budget - landing                       # > 0: short of budget
 
+    from project.services.impact import forecast_value_between
     counted = []
     for p in _scope(Project.objects.filter(status__in=statuses).select_related('objective'), request):
-        live = max(start, p.target_completion) if p.target_completion else start
-        v = _days_value(p.value, live, end)
+        v = forecast_value_between(p, start, end)
         if v > 0:
             counted.append((_decorate(p, today), v))
     counted.sort(key=lambda t: -t[1])
@@ -169,9 +165,11 @@ def _forecast(request, key):
     candidates = []
     for p in _scope(Project.objects.filter(archived=False, status__in=cand_statuses)
                     .select_related('objective', 'vertical'), request):
+        # Valued as if it went live on its planned date, but not before tomorrow.
         live = max(start, tomorrow, p.target_completion or tomorrow)
-        p.contribution = _days_value(p.value, live, end)
-        p.live_from = live
+        p.target_completion, planned = live, p.target_completion
+        p.contribution = forecast_value_between(p, live, end)
+        p.target_completion, p.live_from = planned, live
         if p.contribution > 0:            # going live after the period adds nothing to it
             candidates.append(_decorate(p, today))
     candidates.sort(key=lambda p: (-p.contribution, -(p.value or 0)))

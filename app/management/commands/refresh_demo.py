@@ -9,8 +9,8 @@ idempotent and only touches the demo company:
    invisible until their date arrives, because every page reads actuals through
    today only. Sales continue each business unit's recent weekday pattern,
    scale to ~96% of budget in a new month, double on Black Friday and Cyber
-   Monday (app.seasonality), and pick up the ramped lift of projects as they go
-   live. Visits, orders, visitors, carts and units follow the unit's recent
+   Monday (app.seasonality), and pick up the lift of projects as they go live,
+   ramped and discounted as the forecast expects (within +/-12%). Visits, orders, visitors, carts and units follow the unit's recent
    ratios, with event-day shifts (higher close rate, lower order value).
 2. Holiday-season projects timed around Black Friday (added once, by name).
 3. Go-live dates that have passed for projects not yet started move forward, so the approval and gap views show plausible dates.
@@ -36,7 +36,6 @@ DEMO_SLUG = 'belami'
 NEW_MONTH_ACHIEVEMENT = 0.96     # share of budget a newly generated month lands at
 TRAILING_DAYS = 28               # recent window the weekday pattern and ratios come from
 NOISE = 0.06                     # +/- daily revenue noise
-LIVE_ATTAINMENT = 0.6            # share of a launched project's value that shows up in sales
 
 # Funnel shifts on event days: (close rate, order value, cart rate) multipliers.
 EVENT_FUNNEL = {
@@ -195,21 +194,21 @@ class Command(BaseCommand):
         return out
 
     def _launches(self, bu, last_seen):
-        """(go-live, daily value, ramp days) of this unit's projects that go live
-        after the last real day, so their lift isn't already in the trend."""
+        """This unit's projects that go live after the last real day (so their
+        lift isn't already in the trend), each with a fixed realization of 88-112%
+        of what the forecast expects, so actuals land near, not on, the forecast."""
         from strategy.models import Project
         out = []
         for p in Project.objects.filter(vertical=bu, status__in=('WIP', 'Complete', 'Launched'),
                                         target_completion__gt=last_seen, value__gt=0):
-            out.append((p.target_completion, p.value / 365.0, max(1, p.ramp_days or 30)))
+            out.append((p, random.Random(f'realize:{p.id}').uniform(0.88, 1.12)))
         return out
 
     def _project_lift(self, launches, day):
-        lift = 0.0
-        for go_live, daily, ramp in launches:
-            if day >= go_live:
-                lift += daily * min(1.0, ((day - go_live).days + 1) / ramp) * LIVE_ATTAINMENT
-        return lift
+        """Launched projects' lift on `day`: the forecast's ramped, discounted
+        daily value (impact.forecast_daily_value) times each one's realization."""
+        from project.services.impact import forecast_daily_value
+        return sum(forecast_daily_value(p, day) * realized for p, realized in launches)
 
     def _funnel(self, bu, day, revenue, ratios):
         rng = random.Random(f'{bu.id}:{day.isoformat()}:funnel')
