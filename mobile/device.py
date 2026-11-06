@@ -60,6 +60,7 @@ _TO_DESKTOP = {
     'start': '/app/home/',
     'home': '/app/',
     'forecast': '/app/',
+    'blocked': '/project/kanban/',
     'approve': '/project/executive-approval/',
     'score': '/app/score-projects/',
     'score_project': '/app/score-projects/',

@@ -233,6 +233,7 @@ a.m-row:active, button.m-row:active, .m-row-top:active { background: var(--bg-el
 .m-row-ic { width: 22px; text-align: center; color: var(--accent); font-size: 17px; flex: none; }
 .m-ic-round { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elevated); color: var(--accent); font-size: 15px; }
 .m-ic-good { background: var(--good-bg); color: var(--good); }
+.m-ic-bad { background: var(--bad-bg); color: var(--bad); }
 .m-ic-warn { background: var(--warn-bg); color: var(--warn); }
 .m-chev { color: var(--text-3); font-size: 18px; flex: none; opacity: .7; }
 .m-row-more { justify-content: space-between; color: var(--accent); font-weight: 600; min-height: 50px; }

@@ -161,6 +161,14 @@ def _period(key, today):
     return [(y, m)], ('WIP',)
 
 
+def _period_bounds(key, today):
+    """(first day, last day) of a period key."""
+    import calendar
+    months, _ = _period(key, today)
+    (fy, fm), (ly, lm) = months[0], months[-1]
+    return date(fy, fm, 1), date(ly, lm, calendar.monthrange(ly, lm)[1])
+
+
 def _forecast(request, key):
     """Budget vs forecast for one period, with the projects that could close the gap.
 
@@ -219,8 +227,6 @@ def _forecast(request, key):
         p.extra = i >= max(CLOSERS_SHOWN, shown_until or CLOSERS_SHOWN)
     closers_total = running
 
-    blocked = _blocked(request, start, end, today)
-
     def pct(v):
         return round(100 * v / budget, 1) if budget else 0
 
@@ -234,9 +240,6 @@ def _forecast(request, key):
         'gap': gap, 'ahead': gap <= 0, 'gap_abs': abs(gap),
         'pct_of_budget': pct(landing),
         'has_budget': budget > 0,
-        'blocked': blocked,
-        'blocked_value': sum(p.value or 0 for p in blocked),
-        'blocked_at_stake': sum(p.at_stake for p in blocked),
         # Landing bar segments as % of the bar's scale.
         'bar': {
             'actual': 100 * actual / scale,
@@ -306,6 +309,7 @@ def home(request):
     greenlight = _greenlight(request) if nav['is_exec'] else []
     intake = _intake(request)
     to_score = [p for p in _score_queue(request) if not p.has_voted]
+    blocked = _blocked(request, *_period_bounds(fc['key'], today), today)
     return render(request, 'mobile/home.html', dict(nav, **{
         'title': 'Home',
         'fc': fc,
@@ -315,6 +319,8 @@ def home(request):
         'intake_count': len(intake),
         'score_count': len(to_score),
         'score_value': sum(p.value or 0 for p in to_score),
+        'blocked_count': len(blocked),
+        'blocked_value': sum(p.value or 0 for p in blocked),
         'in_flight': in_flight[:4],
         'in_flight_count': len(in_flight),
         'in_flight_value': sum(p.value or 0 for p in in_flight),
@@ -333,6 +339,25 @@ def forecast(request):
         'fc': fc,
         'periods': PERIOD_TABS,
         'can_greenlight': is_executive(request.user),
+        'here': request.get_full_path(),
+    }))
+
+
+@login_required
+def blocked(request):
+    """Blocked projects with the value each holds up and why, so an executive can ask."""
+    today = timezone.localdate()
+    key = _period_key(request)
+    start, end = _period_bounds(key, today)
+    rows = _blocked(request, start, end, today)
+    return render(request, 'mobile/blocked.html', dict(_nav(request, 'home'), **{
+        'title': 'Blocked',
+        'back': reverse('mobile:home') + f'?p={key}',
+        'fc': {'key': key, 'label': dict(PERIODS)[key], 'end': end},
+        'periods': PERIOD_TABS,
+        'blocked': rows,
+        'blocked_value': sum(p.value or 0 for p in rows),
+        'blocked_at_stake': sum(p.at_stake for p in rows),
         'here': request.get_full_path(),
     }))
 

@@ -71,6 +71,7 @@ class RoutingTests(MobileBase):
     def test_desktop_on_mobile_url_goes_to_desktop(self):
         resp = self.client.get('/m/approve/', HTTP_USER_AGENT=MAC)
         self.assertEqual(resp['Location'], '/project/executive-approval/')
+        self.assertEqual(self.client.get('/m/blocked/', HTTP_USER_AGENT=MAC)['Location'], '/project/kanban/')
 
     def test_scope_query_is_kept(self):
         resp = self.phone_get(f'/app/?company={self.co.id}&vertical=all')
@@ -108,7 +109,7 @@ class PageTests(MobileBase):
         p = self.scored_project()
         for url in ('/m/', '/m/?p=year', '/m/forecast/?p=next_quarter', '/m/approve/', '/m/score/',
                     '/m/projects/', '/m/projects/?f=review', '/m/projects/?f=done',
-                    f'/m/projects/{p.id}/', '/m/story/', '/m/add/'):
+                    f'/m/projects/{p.id}/', '/m/story/', '/m/add/', '/m/blocked/'):
             resp = self.phone_get(url)
             self.assertEqual(resp.status_code, 200, url)
             self.assertContains(resp, 'm-tabs')
@@ -173,13 +174,17 @@ class PageTests(MobileBase):
                                   business_unit=Department.objects.create(name='General'), vertical=self.bu)
         ProjectComment.objects.create(project=p, author=self.user, text='Waiting on legal')
         ActionComment.objects.create(action=a, author=self.user, text='Vendor API keys not issued')
-        resp = self.phone_get('/m/forecast/?p=year')
-        fc = resp.context['fc']
-        self.assertEqual([b.name for b in fc['blocked']], ['Restock alerts'])
-        self.assertEqual(fc['blocked_value'], 365_000)
-        self.assertGreater(fc['blocked_at_stake'], 0)
-        self.assertNotIn('Restock alerts', [c.name for c in fc['candidates']])
-        b = fc['blocked'][0]
+        home = self.phone_get('/m/?p=year')
+        self.assertContains(home, 'Needs Review')
+        self.assertContains(home, '1 blocked')
+        self.assertContains(home, 'href="/m/blocked/?p=year"')
+        self.assertNotIn('Restock alerts', [c.name for c in self.phone_get('/m/forecast/?p=year').context['fc']['candidates']])
+        resp = self.phone_get('/m/blocked/?p=year')
+        ctx = resp.context
+        self.assertEqual([b.name for b in ctx['blocked']], ['Restock alerts'])
+        self.assertEqual(ctx['blocked_value'], 365_000)
+        self.assertGreater(ctx['blocked_at_stake'], 0)
+        b = ctx['blocked'][0]
         self.assertEqual((b.last_comment.text, b.last_comment_on), ('Vendor API keys not issued', 'Vendor feed'))
         self.assertEqual(b.blocked_actions, ['Vendor feed'])
         self.assertContains(resp, f'/m/projects/{p.id}/?back=')

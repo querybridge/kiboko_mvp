@@ -12,7 +12,7 @@
   </div>
 </a>
 
-{% if greenlight_count or intake_count or score_count %}
+{% if greenlight_count or intake_count or score_count or blocked_count %}
 <h2 class="m-h2">Needs Review</h2>
 <div class="m-list">
   {% if greenlight_count %}
@@ -33,6 +33,13 @@
   <a class="m-row" href="{% url 'mobile:score' %}">
     <span class="m-row-ic m-ic-round m-ic-warn"><i class="fa fa-sliders"></i></span>
     <span class="m-row-main"><b>{{ score_count }} to score</b><small>{{ score_value|money }}/yr waiting on your vote</small></span>
+    <i class="fa fa-angle-right m-chev"></i>
+  </a>
+  {% endif %}
+  {% if blocked_count %}
+  <a class="m-row" href="{% url 'mobile:blocked' %}?p={{ fc.key }}">
+    <span class="m-row-ic m-ic-round m-ic-bad"><i class="fa fa-ban"></i></span>
+    <span class="m-row-main"><b>{{ blocked_count }} blocked</b><small>{{ blocked_value|money }}/yr held up</small></span>
     <i class="fa fa-angle-right m-chev"></i>
   </a>
   {% endif %}
